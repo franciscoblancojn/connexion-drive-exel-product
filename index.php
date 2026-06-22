@@ -11,7 +11,10 @@ License URI: https://www.gnu.org/licenses/gpl-2.0.html
 Text Domain: connexion-drive-exel-product
 */
 
-defined('ABSPATH') || exit;
+if (!function_exists('is_plugin_active'))
+    require_once(ABSPATH . '/wp-admin/includes/plugin.php');
+
+require_once __DIR__ . '/libs/autoload.php';
 
 define("CDEP_KEY", 'CDEP');
 define("CDEP_MODE_DEV", in_array($_SERVER['HTTP_HOST'] ?? '', ['wordpress.local', 'localhost', '127.0.0.1',]));
