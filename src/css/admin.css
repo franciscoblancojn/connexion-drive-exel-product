@@ -1,0 +1,154 @@
+.cdep-wrap .cdep-section {
+    margin-top: 20px;
+}
+
+.cdep-wrap .cdep-card {
+    background: #fff;
+    border: 1px solid #ccd0d4;
+    box-shadow: 0 1px 1px rgba(0,0,0,.04);
+    padding: 20px;
+    margin-bottom: 20px;
+    max-width: 800px;
+}
+
+.cdep-wrap .cdep-card h3 {
+    margin-top: 0;
+    border-bottom: 1px solid #eee;
+    padding-bottom: 10px;
+}
+
+.cdep-wrap .cdep-card ol {
+    margin-left: 20px;
+}
+
+.cdep-wrap .cdep-card ol li {
+    margin-bottom: 5px;
+}
+
+.cdep-status {
+    font-size: 14px;
+    font-weight: 600;
+    padding: 4px 10px;
+    border-radius: 3px;
+    display: inline-block;
+}
+
+.cdep-status.connected {
+    color: #46b450;
+}
+
+.cdep-status.disconnected {
+    color: #dc3232;
+}
+
+.cdep-notice {
+    background: #fff8e5;
+    border-left: 4px solid #ffb900;
+    padding: 12px;
+    font-size: 13px;
+}
+
+.cdep-loading {
+    color: #666;
+    font-style: italic;
+    padding: 20px 0;
+}
+
+.cdep-empty {
+    color: #999;
+    padding: 20px 0;
+}
+
+.cdep-error {
+    color: #dc3232;
+    padding: 20px 0;
+}
+
+.cdep-breadcrumb {
+    padding: 10px 0;
+    margin-bottom: 15px;
+    border-bottom: 1px solid #eee;
+}
+
+.cdep-breadcrumb a {
+    text-decoration: none;
+}
+
+.cdep-breadcrumb-sep {
+    margin: 0 8px;
+    color: #999;
+}
+
+.cdep-current-folder {
+    color: #555;
+    font-weight: 600;
+}
+
+.cdep-wrap .wp-list-table td {
+    vertical-align: middle;
+}
+
+.cdep-wrap .wp-list-table .button-small {
+    margin: 0;
+}
+
+.cdep-folder-row {
+    cursor: pointer;
+}
+
+.cdep-folder-row:hover {
+    background-color: #f0f6fc !important;
+}
+
+.cdep-selected-file {
+    background: #f0f8f0;
+    border-left: 4px solid #46b450;
+    padding: 15px;
+    margin-top: 15px;
+}
+
+.cdep-table-scroll {
+    overflow-x: auto;
+    margin: 10px 0;
+}
+
+.cdep-table-scroll table {
+    font-size: 12px;
+}
+
+.cdep-table-scroll table th,
+.cdep-table-scroll table td {
+    white-space: nowrap;
+    padding: 4px 8px;
+}
+
+.cdep-progress-bar {
+    height: 24px;
+    background: #f0f0f1;
+    border-radius: 3px;
+    overflow: hidden;
+    margin: 10px 0;
+}
+
+.cdep-progress-fill {
+    height: 100%;
+    background: #2271b1;
+    transition: width 0.3s ease;
+    border-radius: 3px;
+}
+
+.cdep-progress-text {
+    text-align: center;
+    font-weight: 600;
+    color: #555;
+}
+
+.cdep-wrap .description {
+    color: #666;
+    font-style: italic;
+    margin-top: 4px;
+}
+
+.cdep-wrap .form-table th {
+    width: 200px;
+}

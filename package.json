@@ -1,0 +1,35 @@
+{
+  "name": "connexion-drive-exel-product",
+  "version": "1.0.0",
+  "description": "WordPress plugin to connect Google Drive, select Excel files, map columns (SKU, price, quantity), and mass update WooCommerce products.",
+  "scripts": {
+    "v": "grep -i \"Version:\" index.php | sed 's/.*Version:[[:space:]]*//'",
+    "sync:package": "VERSION=$(npm run -s v) && npm version $VERSION --no-git-tag-version",
+    "sync:version": "npm run sync:package",
+    "rm-gitignore": "find libs -type f -name \".gitignore\" -delete || true",
+    "rm-composer-json": "find libs -type f -name \"composer.json\" -delete || true",
+    "rm-package-json": "find libs -type f -name \"package.json\" -delete || true",
+    "rm-README": "find libs -type f -name \"README.md\" -delete || true",
+    "rm-composer-lock": "rm composer.lock || true",
+    "rm-post": "npm run rm-composer-lock && npm run rm-gitignore && npm run rm-composer-json && npm run rm-package-json && npm run rm-README",
+    "install": "composer install --no-dev --optimize-autoloader && npm run rm-post",
+    "optimize": "composer install --no-dev --optimize-autoloader"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/franciscoblancojn/connexion-drive-exel-product.git"
+  },
+  "keywords": [
+    "wordpress",
+    "woocommerce",
+    "google-drive",
+    "excel",
+    "product-update"
+  ],
+  "author": "franciscoblancojn",
+  "license": "GPL-2.0+",
+  "bugs": {
+    "url": "https://github.com/franciscoblancojn/connexion-drive-exel-product/issues"
+  },
+  "homepage": "https://github.com/franciscoblancojn/connexion-drive-exel-product#readme"
+}
