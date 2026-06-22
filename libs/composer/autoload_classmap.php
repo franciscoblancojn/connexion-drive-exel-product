@@ -811,4 +811,13 @@ return array(
     'ZipStream\\Zip64\\ExtendedInformationExtraField' => $vendorDir . '/maennchen/zipstream-php/src/Zip64/ExtendedInformationExtraField.php',
     'ZipStream\\ZipStream' => $vendorDir . '/maennchen/zipstream-php/src/ZipStream.php',
     'ZipStream\\Zs\\ExtendedInformationExtraField' => $vendorDir . '/maennchen/zipstream-php/src/Zs/ExtendedInformationExtraField.php',
+    'franciscoblancojn\\wordpress_utils\\FWUCollapse' => $vendorDir . '/franciscoblancojn/wordpress_utils/src/FWUCollapse.php',
+    'franciscoblancojn\\wordpress_utils\\FWUComponent' => $vendorDir . '/franciscoblancojn/wordpress_utils/src/FWUComponent.php',
+    'franciscoblancojn\\wordpress_utils\\FWUExportImport' => $vendorDir . '/franciscoblancojn/wordpress_utils/src/FWUExportImport.php',
+    'franciscoblancojn\\wordpress_utils\\FWUModal' => $vendorDir . '/franciscoblancojn/wordpress_utils/src/FWUModal.php',
+    'franciscoblancojn\\wordpress_utils\\FWUPage' => $vendorDir . '/franciscoblancojn/wordpress_utils/src/FWUPage.php',
+    'franciscoblancojn\\wordpress_utils\\FWURespond' => $vendorDir . '/franciscoblancojn/wordpress_utils/src/FWURespond.php',
+    'franciscoblancojn\\wordpress_utils\\FWUSystemLog' => $vendorDir . '/franciscoblancojn/wordpress_utils/src/FWUSystemLog.php',
+    'franciscoblancojn\\wordpress_utils\\FWUTooltip' => $vendorDir . '/franciscoblancojn/wordpress_utils/src/FWUTooltip.php',
+    'franciscoblancojn\\wordpress_utils\\FWUUpdate' => $vendorDir . '/franciscoblancojn/wordpress_utils/src/FWUUpdate.php',
 );

@@ -3,15 +3,10 @@
     "description": "WordPress plugin to connect Google Drive, select Excel files, map columns (SKU, price, quantity), and mass update WooCommerce products.",
     "type": "wordpress-plugin",
     "require": {
+        "franciscoblancojn/wordpress_utils": "^1",
         "phpoffice/phpspreadsheet": "^1.29"
     },
     "config": {
-        "autoloader-suffix": "CDEP",
-        "vendor-dir": "libs"
-    },
-    "scripts": {
-        "post-install-cmd": [
-            "rm -rf libs/composer/InstalledVersions.php"
-        ]
+        "autoloader-suffix": "CDEP"
     }
 }
