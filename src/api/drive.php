@@ -242,7 +242,7 @@ add_action('wp_ajax_cdep_save_config', function () {
         sanitize_text_field($_POST['redirect_uri'])
     );
 
-    wp_send_json_success(['message' => 'Configuración guardada']);
+    wp_send_json_success(['status' => 'ok', 'message' => 'Configuración guardada']);
 });
 
 add_action('wp_ajax_cdep_get_auth_url', function () {
@@ -275,7 +275,7 @@ add_action('wp_ajax_cdep_drive_connect', function () {
         wp_send_json_error($result->get_error_message());
     }
 
-    wp_send_json_success(['message' => 'Conectado a Google Drive exitosamente']);
+    wp_send_json_success(['status' => 'ok', 'message' => 'Conectado a Google Drive exitosamente']);
 });
 
 add_action('wp_ajax_cdep_drive_disconnect', function () {
@@ -285,7 +285,7 @@ add_action('wp_ajax_cdep_drive_disconnect', function () {
     check_ajax_referer('cdep_nonce', 'nonce');
 
     CDEP_DRIVE::disconnect();
-    wp_send_json_success(['message' => 'Desconectado de Google Drive']);
+    wp_send_json_success(['status' => 'ok', 'message' => 'Desconectado de Google Drive']);
 });
 
 add_action('wp_ajax_cdep_drive_list', function () {

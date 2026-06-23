@@ -152,3 +152,28 @@
 .cdep-wrap .form-table th {
     width: 200px;
 }
+
+.fwue-message {
+    font-weight: 900;
+    position: sticky;
+    left: 0;
+    top: 2.5rem;
+    padding: 1rem;
+    border-radius: .5rem;
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: .5rem;
+    z-index: 10;
+}
+.fwue-message.error {
+    color: #fff;
+    background: #d63638;
+}
+.fwue-message.ok {
+    color: #fff;
+    background: #25992f;
+}
+.fwue-message a {
+    color: inherit;
+}

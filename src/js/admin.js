@@ -1,5 +1,5 @@
 jQuery(function ($) {
-    var cdep = {
+    var state = {
         currentFolder: 'root',
         folderHistory: [],
         headers: [],
@@ -7,14 +7,15 @@ jQuery(function ($) {
         totalRows: 0,
         selectedFileId: '',
     };
+    var cdep = window.cdep;
 
     function ajax(action, data, success, error) {
         $.ajax({
-            url: cdep_ajax.ajaxurl,
+            url: cdep.ajaxurl,
             type: 'POST',
             data: $.extend({
                 action: action,
-                nonce: cdep_ajax.nonce,
+                nonce: cdep.nonce,
             }, data),
             success: function (resp) {
                 if (resp.success) {
@@ -34,7 +35,7 @@ jQuery(function ($) {
     function showMessage(selector, msg, type) {
         var el = $(selector);
         if (typeof msg === 'object') msg = msg.message || JSON.stringify(msg);
-        el.html('<div class="notice notice-' + type + ' inline"><p>' + msg + '</p></div>');
+        el.html('<p class="fwue-message ' + type + '">' + msg + '</p>');
         setTimeout(function () { el.empty(); }, 8000);
     }
 
@@ -47,7 +48,7 @@ jQuery(function ($) {
             client_secret: $('#client_secret').val(),
             redirect_uri: $('#redirect_uri').val(),
         }, function (data) {
-            showMessage('#cdep-config-message', data.message, 'success');
+            showMessage('#cdep-config-message', data.message, 'ok');
         }, function (msg) {
             showMessage('#cdep-config-message', msg, 'error');
         });
@@ -66,7 +67,7 @@ jQuery(function ($) {
     $('#cdep-drive-disconnect').on('click', function () {
         if (!confirm('¿Estás seguro de desconectar Google Drive?')) return;
         ajax('cdep_drive_disconnect', {}, function (data) {
-            showMessage('#cdep-connect-message', data.message, 'success');
+            showMessage('#cdep-connect-message', data.message, 'ok');
             setTimeout(function () { location.reload(); }, 1500);
         }, function (msg) {
             showMessage('#cdep-connect-message', msg, 'error');
@@ -78,11 +79,11 @@ jQuery(function ($) {
         var params = new URLSearchParams(window.location.search);
         var code = params.get('code');
         if (code) {
-            showMessage('#cdep-connect-message', 'Conectando a Google Drive...', 'success');
+            showMessage('#cdep-connect-message', 'Conectando a Google Drive...', 'ok');
             ajax('cdep_drive_connect', { code: code }, function (data) {
-                showMessage('#cdep-connect-message', data.message, 'success');
+                showMessage('#cdep-connect-message', data.message, 'ok');
                 setTimeout(function () {
-                    window.location.href = '?page=CDEP&tab=browse';
+                    window.location.href = '?page=CDEP#tag-browse';
                 }, 1500);
             }, function (msg) {
                 showMessage('#cdep-connect-message', msg, 'error');
@@ -93,7 +94,7 @@ jQuery(function ($) {
     // === BROWSE TAB ===
 
     function loadFiles(folderId, pageToken) {
-        cdep.currentFolder = folderId;
+        state.currentFolder = folderId;
         $('#cdep-file-list').html('<p class="cdep-loading">Cargando archivos...</p>');
 
         ajax('cdep_drive_list', {
@@ -148,10 +149,10 @@ jQuery(function ($) {
         e.preventDefault();
         var folderId = $(this).data('folder');
         if (folderId === 'root') {
-            cdep.folderHistory = [];
+            state.folderHistory = [];
             $('.cdep-current-folder').text('');
         } else {
-            cdep.folderHistory.push(cdep.currentFolder);
+            state.folderHistory.push(state.currentFolder);
             $('.cdep-current-folder').text($(this).closest('tr').find('td:first').text().trim());
         }
         loadFiles(folderId);
@@ -170,9 +171,9 @@ jQuery(function ($) {
             file_id: fileId,
             file_name: fileName,
         }, function (data) {
-            cdep.headers = data.headers;
-            cdep.totalRows = data.total_rows;
-            cdep.selectedFileId = fileId;
+            state.headers = data.headers;
+            state.totalRows = data.total_rows;
+            state.selectedFileId = fileId;
 
             $('#cdep-selected-file-name').text(fileName);
             $('#cdep-selected-file-rows').text(data.total_rows);
@@ -194,7 +195,7 @@ jQuery(function ($) {
     });
 
     // Load initial file list if on browse tab
-    if ($('#cdep-file-list').length) {
+    if ($('#cdep-file-list').length && $('#browse').is(':visible')) {
         loadFiles('root');
     }
 
@@ -212,7 +213,7 @@ jQuery(function ($) {
         }, function (data) {
             $('#cdep-mapping-container').html(
                 '<p class="cdep-notice">Los datos del archivo no están disponibles. '
-                + 'Ve a la pestaña <a href="?page=CDEP&tab=browse">Explorar</a> '
+                + 'Ve a la pestaña <a href="#tag-browse">Explorar</a> '
                 + 'y selecciona el archivo nuevamente.</p>'
             );
         });
@@ -283,7 +284,7 @@ jQuery(function ($) {
             return;
         }
 
-        cdep.mapping = mapping;
+        state.mapping = mapping;
 
         $(this).prop('disabled', true).text('Procesando...');
 
@@ -342,7 +343,7 @@ jQuery(function ($) {
             }
 
             html += '<p>Archivo: <strong>' + escHtml(data.file_name) + '</strong></p>';
-            html += '<p><a href="?page=CDEP&tab=update" class="button button-primary">Ir a Actualizar</a></p>';
+            html += '<p><a href="?page=CDEP#tag-update" class="button button-primary">Ir a Actualizar</a></p>';
 
             $('#cdep-preview-result').html(html);
             $('#cdep-preview-update').prop('disabled', false).text('Vista Previa de Actualización');
@@ -356,7 +357,7 @@ jQuery(function ($) {
     });
 
     // Load mapping data when tab is active
-    if ($('#cdep-mapping-container').length) {
+    if ($('#cdep-mapping-container').length && $('#mapping').is(':visible')) {
         loadMapping();
     }
 
@@ -390,9 +391,9 @@ jQuery(function ($) {
                     allErrors = allErrors.concat(data.errors);
                 }
 
-                var progress = Math.min(100, Math.round((offset + limit) / cdep.totalRows * 100));
+                var progress = Math.min(100, Math.round((offset + limit) / state.totalRows * 100));
                 $('.cdep-progress-fill').css('width', progress + '%');
-                $('.cdep-progress-text').text(totalUpdated + ' / ' + cdep.totalRows + ' productos actualizados');
+                $('.cdep-progress-text').text(totalUpdated + ' / ' + state.totalRows + ' productos actualizados');
 
                 if (data.completed) {
                     // Done
