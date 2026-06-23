@@ -1,0 +1,47 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "username": "developer",
+  "instructions": ["AGENTS.md", "CONTEXT.md"],
+  "agent": {
+    "cdep-dev": {
+      "description": "WordPress plugin developer especializado en Connexion Drive Excel Product. Usa este agente cuando trabajes en funcionalidades del plugin GPAI.",
+      "mode": "subagent",
+      "permission": {
+        "edit": "allow",
+        "bash": {
+          "git diff *": "allow",
+          "git log *": "allow",
+          "git status": "allow",
+          "npm *": "allow",
+          "*": "ask"
+        }
+      }
+    },
+    "cdep-reviewer": {
+      "description": "Revisor de código que valida que los cambios cumplan las reglas del plugin CDEP y WordPress Coding Standards.",
+      "mode": "subagent",
+      "permission": {
+        "edit": "deny",
+        "bash": {
+          "git diff *": "allow",
+          "git log *": "allow",
+          "git status": "allow",
+          "*": "deny"
+        }
+      }
+    }
+  },
+  "skills": {
+    "paths": [".rules"]
+  },
+  "permission": {
+    "edit": "allow",
+    "bash": {
+      "git *": "allow",
+      "npm *": "allow",
+      "composer *": "allow",
+      "wp *": "ask",
+      "*": "ask"
+    }
+  }
+}
