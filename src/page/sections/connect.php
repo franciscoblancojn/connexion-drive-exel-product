@@ -20,7 +20,6 @@ if (isset($_POST['save']) && $_POST['save'] === 'config') {
 }
 ?>
 <div class="cdep-section">
-    <h2>Configuración de Google Drive</h2>
 
     <div class="cdep-card">
         <h3>Credenciales de Google API</h3>
