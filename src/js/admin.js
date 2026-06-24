@@ -98,6 +98,7 @@ jQuery(function ($) {
             localStorage.setItem('cdep_folder', JSON.stringify({
                 currentFolder: state.currentFolder,
                 folderHistory: state.folderHistory,
+                folderName: $('.cdep-current-folder').text(),
             }));
         } catch (e) {}
     }
@@ -110,6 +111,9 @@ jQuery(function ($) {
                 if (data.currentFolder && data.currentFolder !== 'root') {
                     state.currentFolder = data.currentFolder;
                     state.folderHistory = data.folderHistory || [];
+                    if (data.folderName) {
+                        $('.cdep-current-folder').text(data.folderName);
+                    }
                     return true;
                 }
             }
