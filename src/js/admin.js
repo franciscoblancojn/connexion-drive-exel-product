@@ -349,11 +349,11 @@ jQuery(function ($) {
                     html += '<td>' + escHtml(p.categories) + '</td>';
                     html += '<td>' + escHtml(p.stock_status) + '</td>';
                     html += '<td>' + escHtml(p.current_price) + '</td>';
-                    html += '<td><strong>' + escHtml(p.new_price) + '</strong></td>';
+                    html += '<td><strong>' + (p.new_price ? escHtml(p.new_price) : '— No actualizar') + '</strong></td>';
                     html += '<td>' + escHtml(p.current_sale_price) + '</td>';
-                    html += '<td><strong>' + escHtml(p.new_sale_price) + '</strong></td>';
+                    html += '<td><strong>' + (p.new_sale_price ? escHtml(p.new_sale_price) : '— No actualizar') + '</strong></td>';
                     html += '<td>' + (p.current_stock !== null && p.current_stock !== '' ? p.current_stock : '-') + '</td>';
-                    html += '<td><strong>' + escHtml(p.new_stock) + '</strong></td>';
+                    html += '<td><strong>' + (p.new_stock !== '' ? escHtml(p.new_stock) : '— No actualizar') + '</strong></td>';
                     html += '<td class="cdep-estado" data-product-idx="' + i + '"><span class="cdep-badge cdep-badge-pending">Pendiente</span></td>';
                     html += '</tr>';
                 });
@@ -389,6 +389,23 @@ jQuery(function ($) {
         }, function (msg) {
             showMessage('#cdep-preview-result', msg, 'error');
             $('#cdep-preview-update').prop('disabled', false).text('Vista Previa de Actualización');
+        });
+    });
+
+    $(document).on('click', '#cdep-refresh-file', function (e) {
+        e.preventDefault();
+        var btn = $(this);
+        btn.prop('disabled', true).text('Actualizando...');
+
+        ajax('cdep_refresh_cache', {}, function (data) {
+            window.cdepParsedData = data;
+            $('#cdep-preview-result').html('');
+            loadMapping();
+            showMessage('#cdep-mapping-container', 'Archivo actualizado correctamente', 'ok');
+            btn.prop('disabled', false).text('Actualizar Archivo');
+        }, function (msg) {
+            showMessage('#cdep-mapping-container', msg, 'error');
+            btn.prop('disabled', false).text('Actualizar Archivo');
         });
     });
 

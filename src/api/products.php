@@ -71,7 +71,13 @@ class CDEP_PRODUCTS {
             }
 
             $thumbnail = get_the_post_thumbnail_url($productId, 'thumbnail');
-            $imageHtml = $thumbnail ? '<img src="' . esc_url($thumbnail) . '" width="40" height="40" style="object-fit:cover;border-radius:4px">' : '';
+            if (!$thumbnail && $product->get_type() === 'variation') {
+                $thumbnail = get_the_post_thumbnail_url($product->get_parent_id(), 'thumbnail');
+            }
+            if (!$thumbnail) {
+                $thumbnail = wc_placeholder_img_src('thumbnail');
+            }
+            $imageHtml = '<img src="' . esc_url($thumbnail) . '" width="40" height="40" style="object-fit:cover;border-radius:4px">';
 
             $terms = wp_get_post_terms($productId, 'product_cat', ['fields' => 'names']);
             $categories = !empty($terms) ? implode(', ', $terms) : '';

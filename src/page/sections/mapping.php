@@ -66,6 +66,9 @@ endif; ?>
                 <button id="cdep-preview-update" class="button button-primary">
                     Vista Previa de Actualización
                 </button>
+                <button id="cdep-refresh-file" class="button">
+                    Actualizar Archivo
+                </button>
             </p>
 
             <div id="cdep-preview-result"></div>
