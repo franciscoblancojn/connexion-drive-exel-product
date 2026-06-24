@@ -89,6 +89,19 @@ class CDEP_DRIVE {
     public static function disconnect() {
         delete_option(CDEP_TOKENS);
         delete_option(CDEP_SELECTED);
+        self::clearCachedData();
+    }
+
+    public static function saveCachedData($data) {
+        update_option(CDEP_SELECTED_DATA, $data);
+    }
+
+    public static function getCachedData() {
+        return get_option(CDEP_SELECTED_DATA, []);
+    }
+
+    public static function clearCachedData() {
+        delete_option(CDEP_SELECTED_DATA);
     }
 
     public static function getAccessToken() {
@@ -242,10 +255,11 @@ class CDEP_DRIVE {
         return wp_remote_retrieve_body($response);
     }
 
-    public static function saveSelectedFile($fileId, $fileName) {
+    public static function saveSelectedFile($fileId, $fileName, $mimeType = '') {
         $selected = [
             'file_id' => $fileId,
             'file_name' => $fileName,
+            'mime_type' => $mimeType,
             'selected_at' => time(),
         ];
         update_option(CDEP_SELECTED, $selected);
@@ -332,6 +346,88 @@ add_action('wp_ajax_cdep_drive_list', function () {
     wp_send_json_success($result);
 });
 
+add_action('wp_ajax_cdep_get_cached_data', function () {
+    if (!current_user_can('manage_options')) {
+        wp_send_json_error('Unauthorized');
+    }
+    check_ajax_referer('cdep_nonce', 'nonce');
+
+    $cached = CDEP_DRIVE::getCachedData();
+    if (empty($cached) || empty($cached['file_id'])) {
+        wp_send_json_error('No hay datos en caché');
+    }
+
+    wp_send_json_success([
+        'file_id' => $cached['file_id'],
+        'file_name' => $cached['file_name'],
+        'headers' => $cached['headers'],
+        'sample' => $cached['sample'],
+        'detected' => $cached['detected'],
+        'total_rows' => $cached['total_rows'],
+    ]);
+});
+
+add_action('wp_ajax_cdep_refresh_cache', function () {
+    if (!current_user_can('manage_options')) {
+        wp_send_json_error('Unauthorized');
+    }
+    check_ajax_referer('cdep_nonce', 'nonce');
+
+    CDEP_DRIVE::clearCachedData();
+
+    $selected = CDEP_DRIVE::getSelectedFile();
+    if (empty($selected['file_id'])) {
+        wp_send_json_error('No hay archivo seleccionado');
+    }
+
+    $fileId = $selected['file_id'];
+    $fileName = $selected['file_name'];
+    $mimeType = $selected['mime_type'] ?? '';
+
+    if ($mimeType === 'application/vnd.google-apps.spreadsheet') {
+        $content = CDEP_DRIVE::exportFile($fileId);
+        if (!preg_match('/\.(xlsx|xls|csv)$/i', $fileName)) {
+            $fileName .= '.xlsx';
+        }
+    } else {
+        $content = CDEP_DRIVE::downloadFile($fileId);
+    }
+
+    if (is_wp_error($content)) {
+        wp_send_json_error($content->get_error_message());
+    }
+
+    $uploadDir = wp_upload_dir();
+    $tempFile = $uploadDir['path'] . '/' . sanitize_file_name($fileName);
+
+    file_put_contents($tempFile, $content);
+
+    CDEP_DRIVE::saveSelectedFile($fileId, $fileName, $mimeType);
+
+    try {
+        $result = CDEP_EXCEL::parse($tempFile);
+        CDEP_DRIVE::saveCachedData([
+            'file_id' => $fileId,
+            'file_name' => $fileName,
+            'mime_type' => $mimeType,
+            'headers' => $result['headers'],
+            'sample' => $result['sample'],
+            'detected' => $result['detected'],
+            'total_rows' => $result['total_rows'],
+            'all_rows' => $result['all_rows'],
+        ]);
+        wp_send_json_success([
+            'headers' => $result['headers'],
+            'sample' => $result['sample'],
+            'detected' => $result['detected'],
+            'total_rows' => $result['total_rows'],
+        ]);
+    } catch (Exception $e) {
+        @unlink($tempFile);
+        wp_send_json_error('Error al parsear Excel: ' . $e->getMessage());
+    }
+});
+
 add_action('wp_ajax_cdep_drive_select_file', function () {
     if (!current_user_can('manage_options')) {
         wp_send_json_error('Unauthorized');
@@ -364,10 +460,20 @@ add_action('wp_ajax_cdep_drive_select_file', function () {
 
     file_put_contents($tempFile, $content);
 
-    CDEP_DRIVE::saveSelectedFile($fileId, $fileName);
+    CDEP_DRIVE::saveSelectedFile($fileId, $fileName, $mimeType);
 
     try {
         $result = CDEP_EXCEL::parse($tempFile);
+        CDEP_DRIVE::saveCachedData([
+            'file_id' => $fileId,
+            'file_name' => $fileName,
+            'mime_type' => $mimeType,
+            'headers' => $result['headers'],
+            'sample' => $result['sample'],
+            'detected' => $result['detected'],
+            'total_rows' => $result['total_rows'],
+            'all_rows' => $result['all_rows'],
+        ]);
         wp_send_json_success([
             'headers' => $result['headers'],
             'sample' => $result['sample'],
@@ -377,6 +483,7 @@ add_action('wp_ajax_cdep_drive_select_file', function () {
         ]);
     } catch (Exception $e) {
         @unlink($tempFile);
+        CDEP_DRIVE::clearCachedData();
         wp_send_json_error('Error al parsear Excel: ' . $e->getMessage());
     }
 });

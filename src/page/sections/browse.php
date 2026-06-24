@@ -1,7 +1,7 @@
 <?php
 defined('ABSPATH') || exit;
 
-if (!$isConnected): ?>
+if (!isset($isConnected) || !$isConnected): ?>
     <div class="cdep-section">
         <p class="cdep-notice">Primero debes conectarte a Google Drive en la pestaña "Conectar".</p>
     </div>
@@ -28,6 +28,9 @@ endif; ?>
             <p><strong>Nombre:</strong> <span id="cdep-selected-file-name"></span></p>
             <p><strong>Filas:</strong> <span id="cdep-selected-file-rows"></span></p>
             <p>
+                <a href="#" id="cdep-refresh-cache" class="button">
+                    Actualizar
+                </a>
                 <a href="?page=<?= CDEP_KEY ?>#tag-mapping" class="button button-primary">
                     Ir a Mapear Columnas
                 </a>

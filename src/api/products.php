@@ -176,27 +176,18 @@ add_action('wp_ajax_cdep_update_preview', function () {
         wp_send_json_error('No hay archivo seleccionado');
     }
 
-    $uploadDir = wp_upload_dir();
-    $tempFile = $uploadDir['path'] . '/' . sanitize_file_name($selected['file_name']);
-
-    if (!file_exists($tempFile)) {
-        wp_send_json_error('Archivo temporal no encontrado. Seleccione el archivo nuevamente.');
+    $cached = CDEP_DRIVE::getCachedData();
+    if (empty($cached) || empty($cached['all_rows'])) {
+        wp_send_json_error('No hay datos en caché. Seleccione el archivo nuevamente.');
     }
 
-    try {
-        $parsed = CDEP_EXCEL::parse($tempFile);
-    } catch (Exception $e) {
-        wp_send_json_error($e->getMessage());
-        return;
-    }
-
-    $result = CDEP_PRODUCTS::validateMapping($parsed['all_rows'], $parsed['headers'], $mapping);
+    $result = CDEP_PRODUCTS::validateMapping($cached['all_rows'], $cached['headers'], $mapping);
 
     if (is_wp_error($result)) {
         wp_send_json_error($result->get_error_message());
     }
 
-    $result['total'] = $parsed['total_rows'];
+    $result['total'] = $cached['total_rows'];
     $result['file_name'] = $selected['file_name'];
 
     wp_send_json_success($result);
@@ -217,21 +208,12 @@ add_action('wp_ajax_cdep_update_execute', function () {
         wp_send_json_error('No hay archivo seleccionado');
     }
 
-    $uploadDir = wp_upload_dir();
-    $tempFile = $uploadDir['path'] . '/' . sanitize_file_name($selected['file_name']);
-
-    if (!file_exists($tempFile)) {
-        wp_send_json_error('Archivo temporal no encontrado');
+    $cached = CDEP_DRIVE::getCachedData();
+    if (empty($cached) || empty($cached['all_rows'])) {
+        wp_send_json_error('No hay datos en caché');
     }
 
-    try {
-        $parsed = CDEP_EXCEL::parse($tempFile);
-    } catch (Exception $e) {
-        wp_send_json_error($e->getMessage());
-        return;
-    }
-
-    $result = CDEP_PRODUCTS::executeUpdate($parsed['all_rows'], $mapping, $offset, $limit);
+    $result = CDEP_PRODUCTS::executeUpdate($cached['all_rows'], $mapping, $offset, $limit);
 
     if (is_wp_error($result)) {
         wp_send_json_error($result->get_error_message());

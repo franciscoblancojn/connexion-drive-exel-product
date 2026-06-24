@@ -24,6 +24,7 @@ define("CDEP_BASENAME", plugin_basename(__FILE__));
 define("CDEP_CONFIG", 'CDEP_CONFIG');
 define("CDEP_TOKENS", 'CDEP_TOKENS');
 define("CDEP_SELECTED", 'CDEP_SELECTED');
+define("CDEP_SELECTED_DATA", 'CDEP_SELECTED_DATA');
 
 function CDEP_get_version()
 {

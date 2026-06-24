@@ -162,6 +162,30 @@ jQuery(function ($) {
         $('#cdep-selected-file-info').hide();
     });
 
+    $(document).on('click', '#cdep-refresh-cache', function (e) {
+        e.preventDefault();
+        var btn = $(this);
+        btn.text('Actualizando...').prop('disabled', true);
+
+        ajax('cdep_refresh_cache', {}, function (data) {
+            state.headers = data.headers;
+            state.totalRows = data.total_rows;
+            window.cdepParsedData = data;
+
+            $('#cdep-selected-file-rows').text(data.total_rows);
+            $('#cdep-file-list-message').html(
+                '<div class="notice notice-success inline"><p>Cache actualizado: '
+                + data.total_rows + ' filas</p></div>'
+            );
+            btn.text('Actualizar').prop('disabled', false);
+        }, function (msg) {
+            $('#cdep-file-list-message').html(
+                '<div class="notice notice-error inline"><p>' + msg + '</p></div>'
+            );
+            btn.text('Actualizar').prop('disabled', false);
+        });
+    });
+
     $(document).on('click', '.cdep-select-file', function (e) {
         e.preventDefault();
         var btn = $(this);
@@ -211,10 +235,10 @@ jQuery(function ($) {
             return;
         }
 
-        // If no data in memory, we need to re-select the file
-        ajax('cdep_drive_list', {
-            folder_id: 'root',
-        }, function (data) {
+        ajax('cdep_get_cached_data', {}, function (data) {
+            window.cdepParsedData = data;
+            renderMapping(data);
+        }, function (msg) {
             $('#cdep-mapping-container').html(
                 '<p class="cdep-notice">Los datos del archivo no están disponibles. '
                 + 'Ve a la pestaña <a href="#tag-browse">Explorar</a> '
@@ -439,6 +463,15 @@ jQuery(function ($) {
     });
 
     // === TAB SWITCHING ===
+    $(document).on('click', '.nav-tab', function () {
+        var tab = $(this).data('tab');
+        if (tab === 'mapping') {
+            loadMapping();
+        } else if (tab === 'browse') {
+            loadFiles(state.currentFolder);
+        }
+    });
+
     var currentQueryString = window.location.search;
     if (currentQueryString.indexOf('code=') !== -1 || currentQueryString.indexOf('tab=connect') !== -1) {
     }
