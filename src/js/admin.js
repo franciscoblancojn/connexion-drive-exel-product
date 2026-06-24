@@ -93,6 +93,36 @@ jQuery(function ($) {
 
     // === BROWSE TAB ===
 
+    function saveFolderState() {
+        try {
+            localStorage.setItem('cdep_folder', JSON.stringify({
+                currentFolder: state.currentFolder,
+                folderHistory: state.folderHistory,
+            }));
+        } catch (e) {}
+    }
+
+    function restoreFolderState() {
+        try {
+            var saved = localStorage.getItem('cdep_folder');
+            if (saved) {
+                var data = JSON.parse(saved);
+                if (data.currentFolder && data.currentFolder !== 'root') {
+                    state.currentFolder = data.currentFolder;
+                    state.folderHistory = data.folderHistory || [];
+                    return true;
+                }
+            }
+        } catch (e) {}
+        return false;
+    }
+
+    function clearFolderState() {
+        try {
+            localStorage.removeItem('cdep_folder');
+        } catch (e) {}
+    }
+
     function loadFiles(folderId, pageToken) {
         state.currentFolder = folderId;
         $('#cdep-file-list').html('<p class="cdep-loading">Cargando archivos...</p>');
@@ -133,6 +163,7 @@ jQuery(function ($) {
                 html += '</tbody></table>';
             }
             $('#cdep-file-list').html(html);
+            saveFolderState();
         }, function (msg) {
             $('#cdep-file-list').html('<p class="cdep-error">' + msg + '</p>');
         });
@@ -154,6 +185,7 @@ jQuery(function ($) {
         if (folderId === 'root') {
             state.folderHistory = [];
             $('.cdep-current-folder').text('');
+            clearFolderState();
         } else {
             state.folderHistory.push(state.currentFolder);
             $('.cdep-current-folder').text($(this).closest('tr').find('td:first').text().trim());
@@ -224,7 +256,11 @@ jQuery(function ($) {
 
     // Load initial file list if on browse tab
     if ($('#cdep-file-list').length && $('#browse').is(':visible')) {
-        loadFiles('root');
+        if (!restoreFolderState()) {
+            loadFiles('root');
+        } else {
+            loadFiles(state.currentFolder);
+        }
     }
 
     // === MAPPING TAB ===
@@ -523,7 +559,11 @@ jQuery(function ($) {
         if (tab === 'mapping') {
             loadMapping();
         } else if (tab === 'browse') {
-            loadFiles(state.currentFolder);
+            if (!restoreFolderState()) {
+                loadFiles('root');
+            } else {
+                loadFiles(state.currentFolder);
+            }
         }
     });
 
