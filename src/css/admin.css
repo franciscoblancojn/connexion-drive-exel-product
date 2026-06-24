@@ -177,3 +177,64 @@
 .fwue-message a {
     color: inherit;
 }
+
+.cdep-preview-summary {
+    background: #f0f6fc;
+    border-left: 4px solid #2271b1;
+    padding: 12px 15px;
+    margin: 15px 0;
+}
+
+.cdep-preview-summary p {
+    margin: 0;
+}
+
+.cdep-badge {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 3px;
+    font-size: 12px;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.cdep-badge-pending {
+    background: #f0f0f1;
+    color: #666;
+}
+
+.cdep-badge-ok {
+    background: #d5f5e3;
+    color: #1e7e34;
+}
+
+.cdep-badge-error {
+    background: #fde8e8;
+    color: #d63638;
+}
+
+#cdep-products-table th {
+    white-space: nowrap;
+    font-size: 11px;
+}
+
+#cdep-products-table td {
+    font-size: 12px;
+    vertical-align: middle;
+}
+
+.cdep-estado {
+    min-width: 100px;
+}
+
+#cdep-update-progress {
+    margin: 15px 0;
+    padding: 15px;
+    background: #f9f9f9;
+    border: 1px solid #e5e5e5;
+    border-radius: 4px;
+}
+
+#cdep-update-result {
+    margin-top: 15px;
+}

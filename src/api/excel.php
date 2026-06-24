@@ -116,11 +116,13 @@ class CDEP_EXCEL {
         $detected = [
             'sku' => null,
             'price' => null,
+            'sale_price' => null,
             'quantity' => null,
         ];
 
         $skuPatterns = ['/sku/i', '/código/i', '/codigo/i', '/cod/i', '/referencia/i', '/ref/i', '/product.*id/i', '/id.*product/i', '/item.*id/i'];
         $pricePatterns = ['/price/i', '/precio/i', '/cost/i', '/costo/i', '/pvp/i', '/precio_venta/i', '/precio_neto/i', '/neto/i', '/importe/i', '/valor/i'];
+        $salePricePatterns = ['/sale.*price/i', '/offer.*price/i', '/precio.*oferta/i', '/precio.*rebaj/i', '/special.*price/i', '/promo.*price/i', '/descuento/i', '/precio.*promo/i'];
         $quantityPatterns = ['/quantity/i', '/cantidad/i', '/stock/i', '/qty/i', '/inventario/i', '/existencia/i', '/unidades/i', '/inventory/i'];
 
         foreach ($headers as $i => $header) {
@@ -155,7 +157,20 @@ class CDEP_EXCEL {
         foreach ($headers as $i => $header) {
             $headerLower = strtolower(trim($header));
 
-            if ($detected['quantity'] === null && $i !== $detected['sku'] && $i !== $detected['price']) {
+            if ($detected['sale_price'] === null && $i !== $detected['sku'] && $i !== $detected['price']) {
+                foreach ($salePricePatterns as $pattern) {
+                    if (preg_match($pattern, $headerLower)) {
+                        $detected['sale_price'] = $i;
+                        break;
+                    }
+                }
+            }
+        }
+
+        foreach ($headers as $i => $header) {
+            $headerLower = strtolower(trim($header));
+
+            if ($detected['quantity'] === null && $i !== $detected['sku'] && $i !== $detected['price'] && $i !== $detected['sale_price']) {
                 foreach ($quantityPatterns as $pattern) {
                     if (preg_match($pattern, $headerLower)) {
                         $detected['quantity'] = $i;

@@ -42,7 +42,6 @@ function CDEP_render_page() {
         ['key' => 'connect', 'title' => 'Conectar'],
         ['key' => 'browse', 'title' => 'Explorar'],
         ['key' => 'mapping', 'title' => 'Mapear'],
-        ['key' => 'update', 'title' => 'Actualizar'],
     ];
 
     echo FWUPage::css();
