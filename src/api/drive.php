@@ -169,7 +169,11 @@ class CDEP_DRIVE {
             return new WP_Error('not_connected', 'Not connected to Google Drive');
         }
 
-        $query = "'{$folderId}' in parents and trashed = false";
+        if ($folderId === 'shared') {
+            $query = 'sharedWithMe = true and trashed = false';
+        } else {
+            $query = "'{$folderId}' in parents and trashed = false";
+        }
         $url = self::DRIVE_API . '/files?q=' . urlencode($query)
             . '&fields=files(id,name,mimeType,size,modifiedTime,webViewLink)'
             . '&orderBy=folder,name'

@@ -84,6 +84,14 @@
     font-weight: 600;
 }
 
+.cdep-breadcrumb-sub {
+    display: none;
+}
+
+.cdep-breadcrumb-sub.visible {
+    display: inline;
+}
+
 .cdep-wrap .wp-list-table td {
     vertical-align: middle;
 }

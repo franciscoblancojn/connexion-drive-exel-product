@@ -111,8 +111,11 @@ jQuery(function ($) {
                 if (data.currentFolder && data.currentFolder !== 'root') {
                     state.currentFolder = data.currentFolder;
                     state.folderHistory = data.folderHistory || [];
-                    if (data.folderName) {
+                    if (data.currentFolder === 'shared') {
+                        $('.cdep-breadcrumb-sub').addClass('visible');
+                    } else if (data.folderName) {
                         $('.cdep-current-folder').text(data.folderName);
+                        $('.cdep-breadcrumb-sub').addClass('visible');
                     }
                     return true;
                 }
@@ -136,30 +139,44 @@ jQuery(function ($) {
             page_token: pageToken || '',
         }, function (data) {
             var html = '';
-            if (data.files.length === 0) {
+            // Filter: only folders + spreadsheet files
+            var filtered = [];
+            $.each(data.files, function (i, file) {
+                var isFolder = file.mimeType === 'application/vnd.google-apps.folder';
+                var isSpreadsheet = file.mimeType === 'application/vnd.google-apps.spreadsheet'
+                    || file.mimeType === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+                    || file.mimeType === 'application/vnd.ms-excel'
+                    || file.name.match(/\.(xlsx|xls|csv)$/i);
+                if (isFolder || isSpreadsheet) {
+                    file._isFolder = isFolder;
+                    file._isSpreadsheet = isSpreadsheet;
+                    filtered.push(file);
+                }
+            });
+            // Sort: folders first, then by name
+            filtered.sort(function (a, b) {
+                if (a._isFolder && !b._isFolder) return -1;
+                if (!a._isFolder && b._isFolder) return 1;
+                return a.name.localeCompare(b.name);
+            });
+            if (filtered.length === 0) {
                 html = '<p class="cdep-empty">Esta carpeta está vacía</p>';
             } else {
                 html = '<table class="wp-list-table widefat fixed striped">';
                 html += '<thead><tr><th>Nombre</th><th>Tipo</th><th>Tamaño</th><th>Acción</th></tr></thead><tbody>';
-                $.each(data.files, function (i, file) {
-                    var isFolder = file.mimeType === 'application/vnd.google-apps.folder';
-                    var isGoogleSheet = file.mimeType === 'application/vnd.google-apps.spreadsheet';
-                    var isExcel = isGoogleSheet
-                        || file.mimeType === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-                        || file.mimeType === 'application/vnd.ms-excel'
-                        || file.name.match(/\.(xlsx|xls|csv)$/i);
-                    var icon = isFolder ? '📁' : (isExcel ? '📊' : '📄');
+                $.each(filtered, function (i, file) {
+                    var icon = file._isFolder ? '📁' : '📊';
                     var size = file.size ? formatSize(parseInt(file.size)) : '-';
-                    var typeLabel = isFolder ? 'Carpeta' : (isGoogleSheet ? 'Google Sheets' : (isExcel ? 'Excel' : file.mimeType));
+                    var typeLabel = file._isFolder ? 'Carpeta' : (file.mimeType === 'application/vnd.google-apps.spreadsheet' ? 'Google Sheets' : 'Excel');
 
-                    html += '<tr class="' + (isFolder ? 'cdep-folder-row' : '') + '">';
-                    html += '<td>' + icon + ' ' + escHtml(file.name) + '</td>';
+                    html += '<tr class="' + (file._isFolder ? 'cdep-folder-row' : '') + '" data-folder="' + (file._isFolder ? file.id : '') + '">';
+                    html += '<td class="cdep-folder-name">' + icon + ' ' + escHtml(file.name) + '</td>';
                     html += '<td>' + typeLabel + '</td>';
                     html += '<td>' + size + '</td>';
                     html += '<td>';
-                    if (isFolder) {
+                    if (file._isFolder) {
                         html += '<a href="#" class="button button-small cdep-folder-link" data-folder="' + file.id + '">Abrir</a>';
-                    } else if (isExcel) {
+                    } else {
                         html += '<a href="#" class="button button-primary button-small cdep-select-file" data-fileid="' + file.id + '" data-filename="' + escHtml(file.name) + '" data-mimetype="' + file.mimeType + '">Seleccionar</a>';
                     }
                     html += '</td></tr>';
@@ -186,17 +203,35 @@ jQuery(function ($) {
     $(document).on('click', '.cdep-folder-link', function (e) {
         e.preventDefault();
         var folderId = $(this).data('folder');
-        if (folderId === 'root') {
+        openFolder(folderId, $(this).closest('tr').find('td:first').text().trim());
+    });
+
+    $(document).on('click', '.cdep-folder-row td.cdep-folder-name', function (e) {
+        var folderId = $(this).closest('tr').data('folder');
+        if (folderId) {
+            openFolder(folderId, $(this).text().trim());
+        }
+    });
+
+    function openFolder(folderId, folderName) {
+        if (folderId === 'root' || folderId === 'shared') {
             state.folderHistory = [];
             $('.cdep-current-folder').text('');
-            clearFolderState();
+            $('.cdep-breadcrumb-sub').removeClass('visible');
+            if (folderId === 'shared') {
+                $('.cdep-breadcrumb-sub').addClass('visible');
+            }
+            if (folderId === 'root') {
+                clearFolderState();
+            }
         } else {
             state.folderHistory.push(state.currentFolder);
-            $('.cdep-current-folder').text($(this).closest('tr').find('td:first').text().trim());
+            $('.cdep-current-folder').text(folderName);
+            $('.cdep-breadcrumb-sub').addClass('visible');
         }
         loadFiles(folderId);
         $('#cdep-selected-file-info').hide();
-    });
+    }
 
     $(document).on('click', '#cdep-refresh-cache', function (e) {
         e.preventDefault();

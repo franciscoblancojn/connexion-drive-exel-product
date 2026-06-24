@@ -14,6 +14,8 @@ endif; ?>
         <div class="cdep-breadcrumb">
             <a href="#" class="cdep-folder-link" data-folder="root">Mi Unidad</a>
             <span class="cdep-breadcrumb-sep">/</span>
+            <a href="#" class="cdep-folder-link" data-folder="shared">Compartido conmigo</a>
+            <span class="cdep-breadcrumb-sep cdep-breadcrumb-sub">/</span>
             <span class="cdep-current-folder"></span>
         </div>
 
