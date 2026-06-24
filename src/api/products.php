@@ -6,10 +6,10 @@ class CDEP_PRODUCTS
 
     public static function validateMapping($allRows, $headers, $mapping)
     {
-        $skuIndex = intval($mapping['sku'] ?? -1);
-        $priceIndex = isset($mapping['price']) ? intval($mapping['price'] ?? -1) : -1;
-        $salePriceIndex = isset($mapping['sale_price']) ? intval($mapping['sale_price'] ?? -1) : -1;
-        $quantityIndex = isset($mapping['quantity']) ? intval($mapping['quantity'] ?? -1) : -1;
+        $skuIndex = $mapping['sku'] !== '' ? intval($mapping['sku']) : -1;
+        $priceIndex = isset($mapping['price']) && $mapping['price'] !== '' ? intval($mapping['price']) : -1;
+        $salePriceIndex = isset($mapping['sale_price']) && $mapping['sale_price'] !== '' ? intval($mapping['sale_price']) : -1;
+        $quantityIndex = isset($mapping['quantity']) && $mapping['quantity'] !== '' ? intval($mapping['quantity']) : -1;
 
         if ($skuIndex < 0) {
             return new WP_Error('missing_sku', 'Debe seleccionar la columna SKU');
@@ -113,10 +113,10 @@ class CDEP_PRODUCTS
 
     public static function executeUpdate($allRows, $mapping, $offset = 0, $limit = 25)
     {
-        $skuIndex = intval($mapping['sku'] ?? -1);
-        $priceIndex = intval($mapping['price'] ?? -1);
-        $salePriceIndex = intval($mapping['sale_price'] ?? -1);
-        $quantityIndex = intval($mapping['quantity'] ?? -1);
+        $skuIndex = $mapping['sku'] !== '' ? intval($mapping['sku']) : -1;
+        $priceIndex = isset($mapping['price']) && $mapping['price'] !== '' ? intval($mapping['price']) : -1;
+        $salePriceIndex = isset($mapping['sale_price']) && $mapping['sale_price'] !== '' ? intval($mapping['sale_price']) : -1;
+        $quantityIndex = isset($mapping['quantity']) && $mapping['quantity'] !== '' ? intval($mapping['quantity']) : -1;
 
         if ($skuIndex < 0) {
             return new WP_Error('missing_sku', 'Debe seleccionar la columna SKU');
