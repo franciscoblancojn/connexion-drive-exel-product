@@ -442,13 +442,16 @@ jQuery(function ($) {
 
             // Not found SKUs
             if (data.not_found && data.not_found.length > 0) {
-                html += '<h3>SKUs no encontrados en WooCommerce (' + data.not_found.length + ')</h3>';
+                html += '<details class="fwue-collapse" open>';
+                html += '<summary>SKUs no encontrados en WooCommerce (' + data.not_found.length + ')</summary>';
+                html += '<div class="fwue-collapse-content">';
                 html += '<div class="cdep-table-scroll"><table class="wp-list-table widefat fixed striped">';
                 html += '<thead><tr><th>Fila</th><th>SKU</th></tr></thead><tbody>';
                 $.each(data.not_found, function (i, nf) {
                     html += '<tr><td>' + nf.row + '</td><td>' + escHtml(nf.sku) + '</td></tr>';
                 });
                 html += '</tbody></table></div>';
+                html += '</div></details>';
             }
 
             html += '<p>Archivo: <strong>' + escHtml(data.file_name) + '</strong></p>';

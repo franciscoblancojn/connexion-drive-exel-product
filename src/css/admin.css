@@ -115,6 +115,11 @@
     margin-top: 15px;
 }
 
+#cdep-mapping-container {
+    overflow-x: auto;
+    max-width: 100%;
+}
+
 .cdep-table-scroll {
     overflow-x: auto;
     margin: 10px 0;
