@@ -215,6 +215,33 @@ class CDEP_DRIVE {
         return wp_remote_retrieve_body($response);
     }
 
+    public static function exportFile($fileId, $exportMimeType = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet') {
+        $accessToken = self::getAccessToken();
+        if (!$accessToken) {
+            return new WP_Error('not_connected', 'Not connected to Google Drive');
+        }
+
+        $url = self::DRIVE_API . '/files/' . urlencode($fileId) . '/export?mimeType=' . urlencode($exportMimeType);
+
+        $response = wp_remote_get($url, [
+            'headers' => [
+                'Authorization' => 'Bearer ' . $accessToken,
+            ],
+            'timeout' => 120,
+        ]);
+
+        if (is_wp_error($response)) {
+            return $response;
+        }
+
+        $code = wp_remote_retrieve_response_code($response);
+        if ($code !== 200) {
+            return new WP_Error('export_error', 'Failed to export Google Sheet. HTTP ' . $code);
+        }
+
+        return wp_remote_retrieve_body($response);
+    }
+
     public static function saveSelectedFile($fileId, $fileName) {
         $selected = [
             'file_id' => $fileId,
@@ -313,12 +340,21 @@ add_action('wp_ajax_cdep_drive_select_file', function () {
 
     $fileId = sanitize_text_field($_POST['file_id'] ?? '');
     $fileName = sanitize_text_field($_POST['file_name'] ?? '');
+    $mimeType = sanitize_text_field($_POST['mime_type'] ?? '');
 
     if (empty($fileId)) {
         wp_send_json_error('Seleccione un archivo');
     }
 
-    $content = CDEP_DRIVE::downloadFile($fileId);
+    if ($mimeType === 'application/vnd.google-apps.spreadsheet') {
+        $content = CDEP_DRIVE::exportFile($fileId);
+        if (!preg_match('/\.(xlsx|xls|csv)$/i', $fileName)) {
+            $fileName .= '.xlsx';
+        }
+    } else {
+        $content = CDEP_DRIVE::downloadFile($fileId);
+    }
+
     if (is_wp_error($content)) {
         wp_send_json_error($content->get_error_message());
     }

@@ -109,21 +109,24 @@ jQuery(function ($) {
                 html += '<thead><tr><th>Nombre</th><th>Tipo</th><th>Tamaño</th><th>Acción</th></tr></thead><tbody>';
                 $.each(data.files, function (i, file) {
                     var isFolder = file.mimeType === 'application/vnd.google-apps.folder';
-                    var isExcel = file.mimeType === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+                    var isGoogleSheet = file.mimeType === 'application/vnd.google-apps.spreadsheet';
+                    var isExcel = isGoogleSheet
+                        || file.mimeType === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
                         || file.mimeType === 'application/vnd.ms-excel'
                         || file.name.match(/\.(xlsx|xls|csv)$/i);
                     var icon = isFolder ? '📁' : (isExcel ? '📊' : '📄');
                     var size = file.size ? formatSize(parseInt(file.size)) : '-';
+                    var typeLabel = isFolder ? 'Carpeta' : (isGoogleSheet ? 'Google Sheets' : (isExcel ? 'Excel' : file.mimeType));
 
                     html += '<tr class="' + (isFolder ? 'cdep-folder-row' : '') + '">';
                     html += '<td>' + icon + ' ' + escHtml(file.name) + '</td>';
-                    html += '<td>' + (isFolder ? 'Carpeta' : (isExcel ? 'Excel' : file.mimeType)) + '</td>';
+                    html += '<td>' + typeLabel + '</td>';
                     html += '<td>' + size + '</td>';
                     html += '<td>';
                     if (isFolder) {
                         html += '<a href="#" class="button button-small cdep-folder-link" data-folder="' + file.id + '">Abrir</a>';
                     } else if (isExcel) {
-                        html += '<a href="#" class="button button-primary button-small cdep-select-file" data-fileid="' + file.id + '" data-filename="' + escHtml(file.name) + '">Seleccionar</a>';
+                        html += '<a href="#" class="button button-primary button-small cdep-select-file" data-fileid="' + file.id + '" data-filename="' + escHtml(file.name) + '" data-mimetype="' + file.mimeType + '">Seleccionar</a>';
                     }
                     html += '</td></tr>';
                 });
@@ -170,6 +173,7 @@ jQuery(function ($) {
         ajax('cdep_drive_select_file', {
             file_id: fileId,
             file_name: fileName,
+            mime_type: $(this).data('mimetype'),
         }, function (data) {
             state.headers = data.headers;
             state.totalRows = data.total_rows;
