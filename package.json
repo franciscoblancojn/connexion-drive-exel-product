@@ -1,12 +1,13 @@
 {
   "name": "connexion-drive-exel-product",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "WordPress plugin to connect Google Drive, select Excel files, map columns (SKU, price, quantity), and mass update WooCommerce products.",
   "scripts": {
     "v": "grep -i \"Version:\" index.php | sed 's/.*Version:[[:space:]]*//'",
     "sync:package": "VERSION=$(npm run -s v) && npm version $VERSION --no-git-tag-version",
-    "sync:readme": "VERSION=$(npm run -s v) && sed -i \"s/^Stable tag:.*/Stable tag: $VERSION/\" README.md",
+    "sync:readme": "VERSION=$(npm run -s v) && sed -i \"s/\\*\\*Version:\\*\\* [0-9.]\\+/**Version:** $VERSION/\" README.md",
     "sync:version": "npm run sync:package && npm run sync:readme",
+    "push-v": "bash scripts/bump-version.sh",
     "push-tag": "npm run sync:version && VERSION=$(npm run -s v) && git add . && git commit -m \"Release $VERSION\" && git tag $VERSION && git push origin master && git push origin $VERSION",
     "rm-composer": "echo 'off' || true || rm -r vendor/composer || true",
     "rm-autoload": "echo 'off' || true || rm vendor/autoload.php || true",
