@@ -368,6 +368,7 @@ add_action('wp_ajax_cdep_get_cached_data', function () {
         'sample' => $cached['sample'],
         'detected' => $cached['detected'],
         'total_rows' => $cached['total_rows'],
+        'header_row' => isset($cached['header_row']) ? $cached['header_row'] : 0,
     ]);
 });
 
@@ -376,6 +377,12 @@ add_action('wp_ajax_cdep_refresh_cache', function () {
         wp_send_json_error('Unauthorized');
     }
     check_ajax_referer('cdep_nonce', 'nonce');
+
+    $cachedHeaderRow = 0;
+    $prevCache = CDEP_DRIVE::getCachedData();
+    if (isset($prevCache['header_row'])) {
+        $cachedHeaderRow = intval($prevCache['header_row']);
+    }
 
     CDEP_DRIVE::clearCachedData();
 
@@ -409,7 +416,7 @@ add_action('wp_ajax_cdep_refresh_cache', function () {
     CDEP_DRIVE::saveSelectedFile($fileId, $fileName, $mimeType);
 
     try {
-        $result = CDEP_EXCEL::parse($tempFile);
+        $result = CDEP_EXCEL::parse($tempFile, $cachedHeaderRow);
         CDEP_DRIVE::saveCachedData([
             'file_id' => $fileId,
             'file_name' => $fileName,
@@ -419,7 +426,52 @@ add_action('wp_ajax_cdep_refresh_cache', function () {
             'detected' => $result['detected'],
             'total_rows' => $result['total_rows'],
             'all_rows' => $result['all_rows'],
+            'header_row' => $cachedHeaderRow,
         ]);
+        wp_send_json_success([
+            'headers' => $result['headers'],
+            'sample' => $result['sample'],
+            'detected' => $result['detected'],
+            'total_rows' => $result['total_rows'],
+            'header_row' => $cachedHeaderRow,
+        ]);
+    } catch (Exception $e) {
+        @unlink($tempFile);
+        wp_send_json_error('Error al parsear Excel: ' . $e->getMessage());
+    }
+});
+
+add_action('wp_ajax_cdep_reparse_file', function () {
+    if (!current_user_can('manage_options')) {
+        wp_send_json_error('Unauthorized');
+    }
+    check_ajax_referer('cdep_nonce', 'nonce');
+
+    $headerRow = intval($_POST['header_row'] ?? 0);
+    $selected = CDEP_DRIVE::getSelectedFile();
+
+    if (empty($selected['file_id'])) {
+        wp_send_json_error('No hay archivo seleccionado');
+    }
+
+    $uploadDir = wp_upload_dir();
+    $tempFile = $uploadDir['path'] . '/' . sanitize_file_name($selected['file_name']);
+
+    if (!file_exists($tempFile)) {
+        wp_send_json_error('Archivo temporal no encontrado. Seleccione el archivo nuevamente.');
+    }
+
+    try {
+        $result = CDEP_EXCEL::parse($tempFile, $headerRow);
+        $cached = CDEP_DRIVE::getCachedData();
+        $cached['headers'] = $result['headers'];
+        $cached['sample'] = $result['sample'];
+        $cached['detected'] = $result['detected'];
+        $cached['total_rows'] = $result['total_rows'];
+        $cached['all_rows'] = $result['all_rows'];
+        $cached['header_row'] = $headerRow;
+        CDEP_DRIVE::saveCachedData($cached);
+
         wp_send_json_success([
             'headers' => $result['headers'],
             'sample' => $result['sample'],
@@ -427,8 +479,7 @@ add_action('wp_ajax_cdep_refresh_cache', function () {
             'total_rows' => $result['total_rows'],
         ]);
     } catch (Exception $e) {
-        @unlink($tempFile);
-        wp_send_json_error('Error al parsear Excel: ' . $e->getMessage());
+        wp_send_json_error('Error al parsear: ' . $e->getMessage());
     }
 });
 
@@ -477,6 +528,7 @@ add_action('wp_ajax_cdep_drive_select_file', function () {
             'detected' => $result['detected'],
             'total_rows' => $result['total_rows'],
             'all_rows' => $result['all_rows'],
+            'header_row' => 0,
         ]);
         wp_send_json_success([
             'headers' => $result['headers'],
@@ -484,6 +536,7 @@ add_action('wp_ajax_cdep_drive_select_file', function () {
             'detected' => $result['detected'],
             'total_rows' => $result['total_rows'],
             'temp_file' => $tempFile,
+            'header_row' => 0,
         ]);
     } catch (Exception $e) {
         @unlink($tempFile);

@@ -3,7 +3,7 @@ defined('ABSPATH') || exit;
 
 class CDEP_EXCEL {
 
-    public static function parse($filePath) {
+    public static function parse($filePath, $headerRow = 0) {
         if (!file_exists($filePath)) {
             throw new Exception('File not found: ' . $filePath);
         }
@@ -11,15 +11,15 @@ class CDEP_EXCEL {
         $extension = strtolower(pathinfo($filePath, PATHINFO_EXTENSION));
 
         if (in_array($extension, ['xlsx', 'xls'])) {
-            return self::parseWithPhpSpreadsheet($filePath);
+            return self::parseWithPhpSpreadsheet($filePath, $headerRow);
         } elseif ($extension === 'csv') {
-            return self::parseCSV($filePath);
+            return self::parseCSV($filePath, $headerRow);
         } else {
             throw new Exception('Unsupported file format: ' . $extension);
         }
     }
 
-    private static function parseWithPhpSpreadsheet($filePath) {
+    private static function parseWithPhpSpreadsheet($filePath, $headerRow = 0) {
         if (!class_exists('PhpOffice\PhpSpreadsheet\IOFactory')) {
             throw new Exception('PhpSpreadsheet library not available. Run composer install.');
         }
@@ -32,8 +32,9 @@ class CDEP_EXCEL {
             throw new Exception('El archivo Excel está vacío');
         }
 
-        $headers = array_map('strval', array_map('trim', $data[0]));
-        $rows = array_slice($data, 1);
+        $rawHeaders = $data[$headerRow] ?? [];
+        $headers = array_map('strval', array_map('trim', $rawHeaders));
+        $rows = array_slice($data, $headerRow + 1);
 
         $filteredRows = [];
         foreach ($rows as $row) {
@@ -46,18 +47,21 @@ class CDEP_EXCEL {
             }
         }
 
-        $sample = array_slice($filteredRows, 0, 10);
-
-        $detected = self::detectColumns($headers);
-
+        // Build headerIndex excluding empty headers
         $headerIndex = [];
         foreach ($headers as $i => $h) {
+            if ($h === '') {
+                continue;
+            }
             $headerIndex[] = [
                 'index' => $i,
                 'name' => $h,
                 'sample' => isset($filteredRows[0][$i]) ? $filteredRows[0][$i] : '',
             ];
         }
+
+        $sample = array_slice($filteredRows, 0, 10);
+        $detected = self::detectColumns($headers);
 
         return [
             'headers' => $headerIndex,
@@ -68,47 +72,58 @@ class CDEP_EXCEL {
         ];
     }
 
-    private static function parseCSV($filePath) {
+    private static function parseCSV($filePath, $headerRow = 0) {
         $handle = fopen($filePath, 'r');
         if (!$handle) {
             throw new Exception('Cannot open CSV file');
         }
 
-        $headers = fgetcsv($handle);
-        if (!empty($headers)) {
-            $headers = array_map('trim', $headers);
+        $allLines = [];
+        while (($row = fgetcsv($handle)) !== false) {
+            $allLines[] = array_map('trim', $row);
+        }
+        fclose($handle);
+
+        if (empty($allLines)) {
+            throw new Exception('El archivo CSV está vacío');
         }
 
-        $rows = [];
-        while (($row = fgetcsv($handle)) !== false) {
-            $row = array_map('trim', $row);
+        $rawHeaders = $allLines[$headerRow] ?? [];
+        $headers = array_map('trim', $rawHeaders);
+        $rows = array_slice($allLines, $headerRow + 1);
+
+        $filteredRows = [];
+        foreach ($rows as $row) {
             $values = array_filter($row, function ($v) {
                 return $v !== '';
             });
             if (!empty($values)) {
-                $rows[] = $row;
+                $filteredRows[] = $row;
             }
         }
-        fclose($handle);
 
-        $sample = array_slice($rows, 0, 10);
-        $detected = self::detectColumns($headers);
-
+        // Build headerIndex excluding empty headers
         $headerIndex = [];
         foreach ($headers as $i => $h) {
+            if ($h === '') {
+                continue;
+            }
             $headerIndex[] = [
                 'index' => $i,
                 'name' => $h,
-                'sample' => isset($rows[0][$i]) ? $rows[0][$i] : '',
+                'sample' => isset($filteredRows[0][$i]) ? $filteredRows[0][$i] : '',
             ];
         }
+
+        $sample = array_slice($filteredRows, 0, 10);
+        $detected = self::detectColumns($headers);
 
         return [
             'headers' => $headerIndex,
             'sample' => $sample,
             'detected' => $detected,
-            'total_rows' => count($rows),
-            'all_rows' => $rows,
+            'total_rows' => count($filteredRows),
+            'all_rows' => $filteredRows,
         ];
     }
 

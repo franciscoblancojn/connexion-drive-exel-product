@@ -27,6 +27,14 @@ endif; ?>
         <div id="cdep-mapping-form" style="display:none">
             <table class="form-table">
                 <tr>
+                    <th><label for="cdep-header-row">Fila de encabezados</label></th>
+                    <td>
+                        <input type="number" id="cdep-header-row" class="small-text" value="0" min="0">
+                        <button id="cdep-apply-header-row" class="button">Aplicar</button>
+                        <p class="description">Número de fila que contiene los nombres de columna (0 = primera fila)</p>
+                    </td>
+                </tr>
+                <tr>
                     <th><label for="mapping-sku">Columna SKU</label></th>
                     <td>
                         <select id="mapping-sku" class="cdep-mapping-select"></select>

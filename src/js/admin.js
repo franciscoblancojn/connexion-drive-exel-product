@@ -335,8 +335,8 @@ jQuery(function ($) {
             html += '</tr></thead><tbody>';
             $.each(data.sample, function (ri, row) {
                 html += '<tr>';
-                $.each(row, function (ci, cell) {
-                    html += '<td>' + escHtml(cell) + '</td>';
+                $.each(data.headers, function (hi, h) {
+                    html += '<td>' + escHtml(row[h.index] || '') + '</td>';
                 });
                 html += '</tr>';
             });
@@ -367,6 +367,11 @@ jQuery(function ($) {
         }
         if (data.detected.quantity !== null) {
             $('#mapping-quantity').val(data.detected.quantity);
+        }
+
+        // Set header row input
+        if (typeof data.header_row !== 'undefined') {
+            $('#cdep-header-row').val(data.header_row);
         }
 
         $('#cdep-mapping-form').show();
@@ -481,6 +486,29 @@ jQuery(function ($) {
         }, function (msg) {
             showMessage('#cdep-mapping-container', msg, 'error');
             btn.prop('disabled', false).text('Actualizar Archivo');
+        });
+    });
+
+    $(document).on('click', '#cdep-apply-header-row', function () {
+        var headerRow = parseInt($('#cdep-header-row').val(), 10);
+        if (isNaN(headerRow) || headerRow < 0) {
+            showMessage('#cdep-mapping-container', 'Ingrese un número de fila válido', 'error');
+            return;
+        }
+        var btn = $(this);
+        btn.prop('disabled', true).text('Aplicando...');
+
+        ajax('cdep_reparse_file', {
+            header_row: headerRow,
+        }, function (data) {
+            window.cdepParsedData = data;
+            $('#cdep-preview-result').html('');
+            loadMapping();
+            showMessage('#cdep-mapping-container', 'Encabezados actualizados (fila ' + headerRow + ')', 'ok');
+            btn.prop('disabled', false).text('Aplicar');
+        }, function (msg) {
+            showMessage('#cdep-mapping-container', msg, 'error');
+            btn.prop('disabled', false).text('Aplicar');
         });
     });
 
