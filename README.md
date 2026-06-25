@@ -1,6 +1,6 @@
 # Connexion Drive Excel Product 🚀
 
-**Version:** 1.1.3 | **License:** GPL2+
+**Version:** 1.1.4 | **License:** GPL2+
 
 Conecta Google Drive, selecciona archivos Excel, mapea columnas (SKU, precio, cantidad) y actualiza productos WooCommerce de forma masiva.
 
