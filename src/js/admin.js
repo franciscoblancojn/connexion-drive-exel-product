@@ -1,4 +1,5 @@
 jQuery(function ($) {
+    const imageProductDefualt = `<img src="https://woocommerce.aveonline.co/wp-content/uploads/woocommerce-placeholder-150x150.png" width="40" height="40" style="object-fit:cover;border-radius:4px">`
     var state = {
         currentFolder: 'root',
         folderHistory: [],
@@ -468,7 +469,7 @@ jQuery(function ($) {
                 html += '<div class="cdep-table-wrapper"><table class="wp-list-table widefat fixed striped" id="cdep-products-table">';
                 html += '<thead><tr>';
                 html += '<th style="width:40px"><input type="checkbox" class="cdep-select-all" checked></th>';
-                html += '<th>Acción</th><th>Estado</th><th>SKU</th><th>Nombre</th><th>Imagen</th><th>Categorías</th>';
+                html += '<th>Acción</th><th>Estado</th><th>SKU</th><th>Imagen</th><th>Nombre</th><th>Categorías</th>';
                 $.each(mappedFields, function (i, f) {
                     html += '<th>' + escHtml(f.label) + '</th>';
                 });
@@ -481,6 +482,7 @@ jQuery(function ($) {
                     html += '<td><button class="button button-small cdep-process-single" data-sku="' + escHtml(p.sku) + '">Procesar</button></td>';
                     html += '<td class="cdep-status-cell">' + statusBadge + '</td>';
                     html += '<td><strong>' + escHtml(p.sku) + '</strong></td>';
+                    html += '<td>' + (p.image || imageProductDefualt) + '</td>';
 
                     // Nombre column: show diff if product_name is mapped, else show current name
                     if (productNameMapped && p.fields['product_name']) {
@@ -489,7 +491,6 @@ jQuery(function ($) {
                         html += '<td>' + escHtml(p.name) + '</td>';
                     }
 
-                    html += '<td>' + (p.image || '') + '</td>';
                     html += '<td>' + escHtml(p.categories) + '</td>';
 
                     $.each(mappedFields, function (fi, f) {

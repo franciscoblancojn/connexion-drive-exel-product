@@ -336,3 +336,6 @@
 .cdep-select-all {
     margin: 0;
 }
+.updates-table td input, .widefat tfoot td input, .widefat th input, .widefat thead td input{
+    margin: 0;
+}
