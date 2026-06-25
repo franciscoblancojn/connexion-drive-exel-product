@@ -467,6 +467,7 @@ jQuery(function ($) {
 
                 html += '<h3>Productos a procesar</h3>';
                 html += '<div class="cdep-table-wrapper">';
+                html += '<table class="wp-list-table widefat fixed striped" id="cdep-products-table">';
                 html += '<colgroup>';
                 html += '<col style="width: 40px;">';
                 html += '<col style="width: 80px;">';
@@ -479,7 +480,6 @@ jQuery(function ($) {
                     html += '<col style="width: auto;">';
                 });
                 html += '</colgroup>';
-                html += '<table class="wp-list-table widefat fixed striped" id="cdep-products-table">';
                 html += '<thead><tr>';
                 html += '<th style="width:40px"><input type="checkbox" class="cdep-select-all" checked></th>';
                 html += '<th>Acción</th><th>Estado</th><th>SKU</th><th>Imagen</th><th>Nombre</th><th>Categorías</th>';
