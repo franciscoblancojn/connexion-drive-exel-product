@@ -251,3 +251,66 @@
 #cdep-update-result {
     margin-top: 15px;
 }
+
+.cdep-diff {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    font-size: 12px;
+    line-height: 1.4;
+}
+
+.cdep-old-value {
+    color: #d63638;
+    text-decoration: line-through;
+    font-size: 11px;
+    opacity: 0.8;
+}
+
+.cdep-new-value {
+    color: #1e7e34;
+    font-weight: 700;
+    font-size: 12px;
+}
+
+.cdep-empty-value {
+    color: #999;
+}
+
+.cdep-badge-new {
+    background: #fff3cd;
+    color: #856404;
+}
+
+.cdep-badge-created {
+    background: #cce5ff;
+    color: #004085;
+}
+
+.cdep-status-cell {
+    min-width: 110px;
+    white-space: nowrap;
+}
+
+.cdep-product-row td {
+    vertical-align: middle;
+}
+
+#cdep-field-mapping-table {
+    margin: 10px 0 20px;
+    max-width: 600px;
+}
+
+#cdep-field-mapping-table th {
+    font-weight: 600;
+}
+
+#cdep-field-mapping-table td {
+    vertical-align: middle;
+    padding: 6px 10px;
+}
+
+#cdep-field-mapping-table select {
+    width: 100%;
+    max-width: 400px;
+}

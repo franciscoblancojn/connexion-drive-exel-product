@@ -3,132 +3,244 @@ defined('ABSPATH') || exit;
 
 class CDEP_PRODUCTS
 {
+    private static $fields = array(
+        'regular_price' => array('label' => 'Precio regular', 'type' => 'float'),
+        'sale_price' => array('label' => 'Precio de oferta', 'type' => 'float'),
+        'stock_quantity' => array('label' => 'Cantidad en stock', 'type' => 'int'),
+        'stock_status' => array('label' => 'Estado de stock', 'type' => 'string'),
+        'weight' => array('label' => 'Peso', 'type' => 'float'),
+        'length' => array('label' => 'Largo', 'type' => 'float'),
+        'width' => array('label' => 'Ancho', 'type' => 'float'),
+        'height' => array('label' => 'Alto', 'type' => 'float'),
+        'manage_stock' => array('label' => 'Gestionar stock', 'type' => 'bool'),
+        'backorders' => array('label' => 'Backorders', 'type' => 'string'),
+        'tax_status' => array('label' => 'Estado de impuesto', 'type' => 'string'),
+        'tax_class' => array('label' => 'Clase de impuesto', 'type' => 'string'),
+        'post_status' => array('label' => 'Estado del producto', 'type' => 'string'),
+        'product_name' => array('label' => 'Nombre del producto', 'type' => 'string'),
+        'short_description' => array('label' => 'Descripción corta', 'type' => 'string'),
+        'description' => array('label' => 'Descripción', 'type' => 'string'),
+    );
 
-    public static function validateMapping($allRows, $headers, $mapping)
+    public static function getFields()
     {
-        $skuIndex = $mapping['sku'] !== '' ? intval($mapping['sku']) : -1;
-        $priceIndex = isset($mapping['price']) && $mapping['price'] !== '' ? intval($mapping['price']) : -1;
-        $salePriceIndex = isset($mapping['sale_price']) && $mapping['sale_price'] !== '' ? intval($mapping['sale_price']) : -1;
-        $quantityIndex = isset($mapping['quantity']) && $mapping['quantity'] !== '' ? intval($mapping['quantity']) : -1;
+        return self::$fields;
+    }
+
+    private static function sanitizeValue($value, $type)
+    {
+        switch ($type) {
+            case 'float':
+                return floatval(str_replace(array('$', ',', ' '), array('', '', ''), $value));
+            case 'int':
+                return intval($value);
+            case 'bool':
+                return in_array(strtolower(trim($value)), array('sí', 'si', 'yes', '1', 'true', 'on'));
+            default:
+                return trim($value);
+        }
+    }
+
+    private static function getProductField($product, $field)
+    {
+        switch ($field) {
+            case 'regular_price': return $product->get_regular_price();
+            case 'sale_price': return $product->get_sale_price();
+            case 'stock_quantity': return $product->get_stock_quantity();
+            case 'stock_status': return $product->get_stock_status();
+            case 'weight': return $product->get_weight();
+            case 'length': return $product->get_length();
+            case 'width': return $product->get_width();
+            case 'height': return $product->get_height();
+            case 'manage_stock': return $product->get_manage_stock() ? 'sí' : 'no';
+            case 'backorders': return $product->get_backorders();
+            case 'tax_status': return $product->get_tax_status();
+            case 'tax_class': return $product->get_tax_class();
+            case 'post_status': return $product->get_status();
+            case 'product_name': return $product->get_name();
+            case 'short_description': return $product->get_short_description();
+            case 'description': return $product->get_description();
+            default: return '';
+        }
+    }
+
+    private static function setProductField($product, $field, $value, $type)
+    {
+        $sanitized = self::sanitizeValue($value, $type);
+
+        switch ($field) {
+            case 'regular_price':
+                $product->set_regular_price($sanitized > 0 ? strval($sanitized) : '');
+                break;
+            case 'sale_price':
+                $product->set_sale_price($sanitized > 0 ? strval($sanitized) : '');
+                break;
+            case 'stock_quantity':
+                $product->set_stock_quantity(intval($sanitized));
+                if (!$product->get_manage_stock()) {
+                    $product->set_manage_stock(true);
+                }
+                break;
+            case 'stock_status':
+                $product->set_stock_status(strval($sanitized));
+                break;
+            case 'weight':
+                $product->set_weight(floatval($sanitized));
+                break;
+            case 'length':
+                $product->set_length(floatval($sanitized));
+                break;
+            case 'width':
+                $product->set_width(floatval($sanitized));
+                break;
+            case 'height':
+                $product->set_height(floatval($sanitized));
+                break;
+            case 'manage_stock':
+                $product->set_manage_stock($sanitized === true);
+                break;
+            case 'backorders':
+                $product->set_backorders(strval($sanitized));
+                break;
+            case 'tax_status':
+                $product->set_tax_status(strval($sanitized));
+                break;
+            case 'tax_class':
+                $product->set_tax_class(strval($sanitized));
+                break;
+            case 'post_status':
+                $product->set_status(strval($sanitized));
+                break;
+            case 'product_name':
+                $product->set_name(strval($sanitized));
+                break;
+            case 'short_description':
+                $product->set_short_description(strval($sanitized));
+                break;
+            case 'description':
+                $product->set_description(strval($sanitized));
+                break;
+        }
+    }
+
+    public static function validateMapping($allRows, $mapping)
+    {
+        $skuIndex = isset($mapping['sku']) && $mapping['sku'] !== '' ? intval($mapping['sku']) : -1;
 
         if ($skuIndex < 0) {
             return new WP_Error('missing_sku', 'Debe seleccionar la columna SKU');
         }
 
-        $stats = [
-            'total' => count($allRows),
-            'found' => 0,
-            'not_found_count' => 0,
-            'skipped' => 0,
-            'not_found' => [],
-            'products' => [],
-        ];
+        $fieldMapping = array();
+        foreach ($mapping as $key => $colIndex) {
+            if ($key !== 'sku' && $colIndex !== '' && isset(self::$fields[$key])) {
+                $fieldMapping[$key] = intval($colIndex);
+            }
+        }
+
+        $products = array();
+        $found = 0;
+        $newCount = 0;
 
         foreach ($allRows as $rowIndex => $row) {
             $sku = isset($row[$skuIndex]) ? trim($row[$skuIndex]) : '';
 
             if (empty($sku)) {
-                $stats['skipped']++;
                 continue;
             }
 
             $productId = wc_get_product_id_by_sku($sku);
+            $product = $productId ? wc_get_product($productId) : false;
+            $exists = $productId && $product;
+            $status = $exists ? 'pending' : 'new';
 
-            if (!$productId) {
-                $stats['not_found_count']++;
-                $stats['not_found'][] = [
-                    'row' => $rowIndex + 2,
-                    'sku' => $sku,
-                ];
-                continue;
-            }
-
-            $product = wc_get_product($productId);
-            if (!$product) {
-                $stats['not_found_count']++;
-                $stats['not_found'][] = [
-                    'row' => $rowIndex + 2,
-                    'sku' => $sku,
-                ];
-                continue;
-            }
-
-            $stats['found']++;
-
-            $newPrice = '';
-            if ($priceIndex >= 0 && isset($row[$priceIndex])) {
-                $np = floatval(str_replace(['$', ',', ' '], ['', '', ''], $row[$priceIndex]));
-                if ($np > 0) $newPrice = $np;
-            }
-
-            $newSalePrice = '';
-            if ($salePriceIndex >= 0 && isset($row[$salePriceIndex])) {
-                $nsp = floatval(str_replace(['$', ',', ' '], ['', '', ''], $row[$salePriceIndex]));
-                if ($nsp > 0) $newSalePrice = $nsp;
-            }
-
-            $newStock = '';
-            if ($quantityIndex >= 0 && isset($row[$quantityIndex])) {
-                $newStock = intval($row[$quantityIndex]);
-            }
-
-            $thumbnail = get_the_post_thumbnail_url($productId, 'thumbnail');
-            if (!$thumbnail && $product->get_type() === 'variation') {
-                $thumbnail = get_the_post_thumbnail_url($product->get_parent_id(), 'thumbnail');
-            }
-            if (!$thumbnail) {
-                $thumbnail = wc_placeholder_img_src('thumbnail');
-            }
-            $imageHtml = '<img src="' . esc_url($thumbnail) . '" width="40" height="40" style="object-fit:cover;border-radius:4px">';
-
-            $terms = wp_get_post_terms($productId, 'product_cat', ['fields' => 'names']);
-            $categories = !empty($terms) ? implode(', ', $terms) : '';
-
-            $stockStatus = $product->get_stock_status();
-            if ($stockStatus === 'instock') {
-                $stockLabel = 'In stock';
-            } elseif ($stockStatus === 'outofstock') {
-                $stockLabel = 'Out of stock';
+            if ($exists) {
+                $found++;
             } else {
-                $stockLabel = 'On backorder';
+                $newCount++;
             }
 
-            $stats['products'][] = [
+            $productData = array(
                 'sku' => $sku,
-                'name' => $product->get_name(),
-                'image' => $imageHtml,
-                'categories' => $categories,
-                'stock_status' => $stockLabel,
-                'current_price' => $product->get_regular_price(),
-                'new_price' => $newPrice,
-                'current_sale_price' => $product->get_sale_price(),
-                'new_sale_price' => $newSalePrice,
-                'current_stock' => $product->get_stock_quantity(),
-                'new_stock' => $newStock,
-            ];
+                'row' => $rowIndex + 2,
+                'exists' => $exists,
+                'status' => $status,
+                'name' => '',
+                'image' => '',
+                'categories' => '',
+                'fields' => array(),
+            );
+
+            if ($exists) {
+                $productData['name'] = $product->get_name();
+
+                $thumbnail = get_the_post_thumbnail_url($productId, 'thumbnail');
+                if (!$thumbnail && $product->get_type() === 'variation') {
+                    $thumbnail = get_the_post_thumbnail_url($product->get_parent_id(), 'thumbnail');
+                }
+                if (!$thumbnail) {
+                    $thumbnail = wc_placeholder_img_src('thumbnail');
+                }
+                $productData['image'] = '<img src="' . esc_url($thumbnail) . '" width="40" height="40" style="object-fit:cover;border-radius:4px">';
+
+                $terms = wp_get_post_terms($productId, 'product_cat', array('fields' => 'names'));
+                $productData['categories'] = !empty($terms) ? implode(', ', $terms) : '';
+            }
+
+            foreach ($fieldMapping as $field => $colIndex) {
+                $newValue = isset($row[$colIndex]) ? trim($row[$colIndex]) : '';
+                $currentValue = $exists ? self::getProductField($product, $field) : '';
+                $changed = $exists ? (strval($currentValue) !== strval($newValue)) : true;
+
+                $productData['fields'][$field] = array(
+                    'current' => $currentValue !== null && $currentValue !== '' ? strval($currentValue) : '',
+                    'new' => $newValue,
+                    'changed' => $changed,
+                );
+            }
+
+            $products[] = $productData;
         }
 
-        return $stats;
+        $fieldLabels = array();
+        foreach ($fieldMapping as $field => $colIndex) {
+            if (isset(self::$fields[$field])) {
+                $fieldLabels[$field] = self::$fields[$field]['label'];
+            }
+        }
+
+        return array(
+            'total' => count($products),
+            'found' => $found,
+            'new_count' => $newCount,
+            'products' => $products,
+            'field_labels' => $fieldLabels,
+        );
     }
 
     public static function executeUpdate($allRows, $mapping, $offset = 0, $limit = 25)
     {
-        $skuIndex = $mapping['sku'] !== '' ? intval($mapping['sku']) : -1;
-        $priceIndex = isset($mapping['price']) && $mapping['price'] !== '' ? intval($mapping['price']) : -1;
-        $salePriceIndex = isset($mapping['sale_price']) && $mapping['sale_price'] !== '' ? intval($mapping['sale_price']) : -1;
-        $quantityIndex = isset($mapping['quantity']) && $mapping['quantity'] !== '' ? intval($mapping['quantity']) : -1;
+        $skuIndex = isset($mapping['sku']) && $mapping['sku'] !== '' ? intval($mapping['sku']) : -1;
 
         if ($skuIndex < 0) {
             return new WP_Error('missing_sku', 'Debe seleccionar la columna SKU');
         }
 
+        $fieldMapping = array();
+        foreach ($mapping as $key => $colIndex) {
+            if ($key !== 'sku' && $colIndex !== '' && isset(self::$fields[$key])) {
+                $fieldMapping[$key] = intval($colIndex);
+            }
+        }
+
         $batch = array_slice($allRows, $offset, $limit);
-        $results = [
+        $results = array(
             'updated' => 0,
-            'errors' => [],
+            'created' => 0,
+            'errors' => array(),
             'completed' => false,
-            'processed_skus' => [],
-        ];
+            'processed_skus' => array(),
+        );
 
         foreach ($batch as $rowIndex => $row) {
             $sku = isset($row[$skuIndex]) ? trim($row[$skuIndex]) : '';
@@ -138,62 +250,46 @@ class CDEP_PRODUCTS
             }
 
             $productId = wc_get_product_id_by_sku($sku);
-            if (!$productId) {
-                $results['errors'][] = [
-                    'row' => $offset + $rowIndex + 2,
-                    'sku' => $sku,
-                    'error' => 'Producto no encontrado',
-                ];
-                continue;
-            }
 
-            $product = wc_get_product($productId);
-            if (!$product) {
-                $results['errors'][] = [
-                    'row' => $offset + $rowIndex + 2,
-                    'sku' => $sku,
-                    'error' => 'Producto inválido',
-                ];
-                continue;
+            if ($productId) {
+                $product = wc_get_product($productId);
+                if (!$product) {
+                    $results['errors'][] = array(
+                        'row' => $offset + $rowIndex + 2,
+                        'sku' => $sku,
+                        'error' => 'Producto inválido',
+                    );
+                    continue;
+                }
+                $isNew = false;
+            } else {
+                $product = new WC_Product();
+                $product->set_sku($sku);
+                $isNew = true;
             }
 
             try {
-                $changed = false;
-
-                if ($priceIndex >= 0 && isset($row[$priceIndex])) {
-                    $newPrice = floatval(str_replace(['$', ',', ' '], ['', '', ''], $row[$priceIndex]));
-                    $product->set_regular_price($newPrice > 0 ? $newPrice : '');
-                    $changed = true;
-                }
-
-                if ($salePriceIndex >= 0 && isset($row[$salePriceIndex])) {
-                    $newSalePrice = floatval(str_replace(['$', ',', ' '], ['', '', ''], $row[$salePriceIndex]));
-                    $product->set_sale_price($newSalePrice > 0 ? $newSalePrice : '');
-                    $changed = true;
-                }
-
-                if ($quantityIndex >= 0 && isset($row[$quantityIndex])) {
-                    $newQty = intval($row[$quantityIndex]);
-                    $product->set_stock_quantity($newQty);
-                    $product->set_stock_status($newQty > 0 ? 'instock' : 'outofstock');
-                    if (!$product->get_manage_stock()) {
-                        $product->set_manage_stock(true);
+                foreach ($fieldMapping as $field => $colIndex) {
+                    if (isset($row[$colIndex])) {
+                        self::setProductField($product, $field, $row[$colIndex], self::$fields[$field]['type']);
                     }
-                    $changed = true;
                 }
 
-                if ($changed) {
-                    $product->save();
+                $product->save();
+
+                if ($isNew) {
+                    $results['created']++;
+                    $results['processed_skus'][] = array('sku' => $sku, 'status' => 'created');
+                } else {
                     $results['updated']++;
+                    $results['processed_skus'][] = array('sku' => $sku, 'status' => 'updated');
                 }
-
-                $results['processed_skus'][] = $sku;
             } catch (Exception $e) {
-                $results['errors'][] = [
+                $results['errors'][] = array(
                     'row' => $offset + $rowIndex + 2,
                     'sku' => $sku,
                     'error' => $e->getMessage(),
-                ];
+                );
             }
         }
 
@@ -211,7 +307,7 @@ add_action('wp_ajax_cdep_update_preview', function () {
     }
     check_ajax_referer('cdep_nonce', 'nonce');
 
-    $mapping = $_POST['mapping'] ?? [];
+    $mapping = isset($_POST['mapping']) ? $_POST['mapping'] : array();
     $selected = CDEP_DRIVE::getSelectedFile();
 
     if (empty($selected['file_id'])) {
@@ -223,7 +319,7 @@ add_action('wp_ajax_cdep_update_preview', function () {
         wp_send_json_error('No hay datos en caché. Seleccione el archivo nuevamente.');
     }
 
-    $result = CDEP_PRODUCTS::validateMapping($cached['all_rows'], $cached['headers'], $mapping);
+    $result = CDEP_PRODUCTS::validateMapping($cached['all_rows'], $mapping);
 
     if (is_wp_error($result)) {
         wp_send_json_error($result->get_error_message());
@@ -240,7 +336,7 @@ add_action('wp_ajax_cdep_update_execute', function () {
     }
     check_ajax_referer('cdep_nonce', 'nonce');
 
-    $mapping = $_POST['mapping'] ?? [];
+    $mapping = isset($_POST['mapping']) ? $_POST['mapping'] : array();
     $offset = intval($_POST['offset'] ?? 0);
     $limit = intval($_POST['limit'] ?? 25);
     $selected = CDEP_DRIVE::getSelectedFile();

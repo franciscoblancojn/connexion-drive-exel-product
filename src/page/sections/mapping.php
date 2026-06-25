@@ -13,7 +13,10 @@ if (empty($selected)): ?>
         <p class="cdep-notice">Primero debes seleccionar un archivo Excel en la pestaña "Explorar".</p>
     </div>
 <?php return;
-endif; ?>
+endif;
+
+$productFields = CDEP_PRODUCTS::getFields();
+?>
 <div class="cdep-section">
     <h2>Mapeo de Columnas</h2>
 
@@ -35,39 +38,38 @@ endif; ?>
                     </td>
                 </tr>
                 <tr>
-                    <th><label for="mapping-sku">Columna SKU</label></th>
+                    <th><label for="mapping-sku">Columna SKU <span style="color:#d63638">*</span></label></th>
                     <td>
-                        <select id="mapping-sku" class="cdep-mapping-select"></select>
-                        <p class="description">Columna que contiene el SKU del producto</p>
-                    </td>
-                </tr>
-                <tr>
-                    <th><label for="mapping-price">Columna Precio</label></th>
-                    <td>
-                        <select id="mapping-price" class="cdep-mapping-select">
-                            <option value="">— No actualizar —</option>
+                        <select id="mapping-sku" class="cdep-mapping-select">
+                            <option value="">— Seleccionar columna SKU —</option>
                         </select>
-                        <p class="description">Columna que contiene el precio regular del producto</p>
+                        <p class="description">Columna que contiene el SKU del producto (obligatorio)</p>
                     </td>
                 </tr>
-                <tr>
-                    <th><label for="mapping-sale-price">Columna Precio de Oferta</label></th>
-                    <td>
-                        <select id="mapping-sale-price" class="cdep-mapping-select">
-                            <option value="">— No actualizar —</option>
-                        </select>
-                        <p class="description">Columna que contiene el precio de oferta (sale price)</p>
-                    </td>
-                </tr>
-                <tr>
-                    <th><label for="mapping-quantity">Columna Cantidad</label></th>
-                    <td>
-                        <select id="mapping-quantity" class="cdep-mapping-select">
-                            <option value="">— No actualizar —</option>
-                        </select>
-                        <p class="description">Columna que contiene la cantidad en stock</p>
-                    </td>
-                </tr>
+            </table>
+
+            <h3>Mapeo de campos del producto</h3>
+            <p class="description">Selecciona qué columna del archivo corresponde a cada campo del producto. Deja en "— No mapear —" para los campos que no quieras actualizar.</p>
+
+            <table class="wp-list-table widefat striped" id="cdep-field-mapping-table">
+                <thead>
+                    <tr>
+                        <th style="width:40%">Campo del producto</th>
+                        <th style="width:60%">Columna en el archivo</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php foreach ($productFields as $fieldKey => $fieldInfo): ?>
+                    <tr>
+                        <td><strong><?= esc_html($fieldInfo['label']) ?></strong></td>
+                        <td>
+                            <select class="cdep-field-select" data-field="<?= esc_attr($fieldKey) ?>" style="width:100%;max-width:400px">
+                                <option value="">— No mapear —</option>
+                            </select>
+                        </td>
+                    </tr>
+                    <?php endforeach; ?>
+                </tbody>
             </table>
 
             <p>

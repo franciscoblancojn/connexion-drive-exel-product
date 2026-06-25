@@ -21,14 +21,20 @@ add_action('admin_enqueue_scripts', function ($hook) {
 
     wp_enqueue_style('cdep-admin', CDEP_URL . 'src/css/admin.css', [], filemtime(CDEP_DIR . 'src/css/admin.css'));
     wp_enqueue_script('cdep-admin', CDEP_URL . 'src/js/admin.js', ['jquery'], filemtime(CDEP_DIR . 'src/js/admin.js'), true);
-    wp_localize_script('cdep-admin', 'cdep', [
+    $productFields = array();
+    foreach (CDEP_PRODUCTS::getFields() as $key => $info) {
+        $productFields[$key] = $info['label'];
+    }
+
+    wp_localize_script('cdep-admin', 'cdep', array(
         'ajaxurl' => admin_url('admin-ajax.php'),
         'nonce' => wp_create_nonce('cdep_nonce'),
         'is_connected' => CDEP_DRIVE::isConnected(),
         'config' => CDEP_DRIVE::getConfig(),
         'selected_file' => CDEP_DRIVE::getSelectedFile(),
         'oauth_url' => admin_url('admin.php?page=' . CDEP_KEY),
-    ]);
+        'productFields' => $productFields,
+    ));
 });
 
 function CDEP_render_page() {
