@@ -378,6 +378,8 @@ jQuery(function ($) {
 
         $('#cdep-mapping-form').show();
         $('#cdep-preview-update').prop('disabled', false);
+
+        restoreMappingConfig();
     }
 
     function buildMapping() {
@@ -394,6 +396,29 @@ jQuery(function ($) {
         });
 
         return mapping;
+    }
+
+    function saveMappingConfig(mapping) {
+        try {
+            localStorage.setItem('cdep_mapping_config', JSON.stringify(mapping));
+        } catch (e) {}
+    }
+
+    function restoreMappingConfig() {
+        try {
+            var saved = localStorage.getItem('cdep_mapping_config');
+            if (!saved) return;
+            var mapping = JSON.parse(saved);
+            if (mapping.sku) {
+                $('#mapping-sku').val(mapping.sku);
+            }
+            $('.cdep-field-select').each(function () {
+                var field = $(this).data('field');
+                if (mapping[field]) {
+                    $(this).val(mapping[field]);
+                }
+            });
+        } catch (e) {}
     }
 
     function renderStatusBadge(status) {
@@ -439,6 +464,7 @@ jQuery(function ($) {
         }
 
         state.mapping = mapping;
+        saveMappingConfig(mapping);
 
         $(this).prop('disabled', true).text('Procesando...');
 
