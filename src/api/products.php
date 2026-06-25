@@ -169,6 +169,7 @@ class CDEP_PRODUCTS
                 'image' => '',
                 'categories' => '',
                 'fields' => array(),
+                'product_id' => $productId ? intval($productId) : 0,
             );
 
             if ($exists) {

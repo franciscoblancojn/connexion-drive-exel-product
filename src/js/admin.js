@@ -521,7 +521,12 @@ jQuery(function ($) {
                     html += '<td><button class="button button-small cdep-process-single" data-sku="' + escHtml(p.sku) + '">Procesar</button></td>';
                     html += '<td class="cdep-status-cell">' + statusBadge + '</td>';
                     html += '<td>' + (p.image || imageProductDefualt) + '</td>';
-                    html += '<td><strong>' + escHtml(p.sku) + '</strong></td>';
+                    if (p.exists && p.product_id) {
+                        var editUrl = cdep.ajaxurl.replace('admin-ajax.php', 'post.php?post=' + p.product_id + '&action=edit');
+                        html += '<td><strong><a href="' + editUrl + '" target="_blank">' + escHtml(p.sku) + '</a></strong></td>';
+                    } else {
+                        html += '<td><strong>' + escHtml(p.sku) + '</strong></td>';
+                    }
 
                     // Nombre column: show diff if product_name is mapped, else show current name
                     if (productNameMapped && p.fields['product_name']) {
