@@ -465,8 +465,9 @@ jQuery(function ($) {
                 }
 
                 html += '<h3>Productos a procesar</h3>';
-                html += '<div class="cdep-table-scroll"><table class="wp-list-table widefat fixed striped" id="cdep-products-table">';
+                html += '<div class="cdep-table-wrapper"><table class="wp-list-table widefat fixed striped" id="cdep-products-table">';
                 html += '<thead><tr>';
+                html += '<th style="width:40px"><input type="checkbox" class="cdep-select-all" checked></th>';
                 html += '<th>Acción</th><th>Estado</th><th>SKU</th><th>Nombre</th><th>Imagen</th><th>Categorías</th>';
                 $.each(mappedFields, function (i, f) {
                     html += '<th>' + escHtml(f.label) + '</th>';
@@ -476,6 +477,7 @@ jQuery(function ($) {
                 $.each(data.products, function (i, p) {
                     var statusBadge = renderStatusBadge(p.status);
                     html += '<tr class="cdep-product-row" data-sku="' + escHtml(p.sku) + '" data-status="' + p.status + '">';
+                    html += '<td><input type="checkbox" class="cdep-row-checkbox" value="' + escHtml(p.sku) + '" checked></td>';
                     html += '<td><button class="button button-small cdep-process-single" data-sku="' + escHtml(p.sku) + '">Procesar</button></td>';
                     html += '<td class="cdep-status-cell">' + statusBadge + '</td>';
                     html += '<td><strong>' + escHtml(p.sku) + '</strong></td>';
@@ -568,6 +570,21 @@ jQuery(function ($) {
 
     // === UPDATE EXECUTION ===
 
+    $(document).on('change', '.cdep-select-all', function () {
+        $('.cdep-row-checkbox').prop('checked', $(this).prop('checked'));
+    });
+
+    function findRowBySku(sku) {
+        var match = null;
+        $('.cdep-product-row').each(function () {
+            if ($(this).attr('data-sku') === sku) {
+                match = $(this);
+                return false;
+            }
+        });
+        return match;
+    }
+
     $(document).on('click', '#cdep-start-update', function () {
         var btn = $(this);
         var mapping = state.mapping;
@@ -577,91 +594,107 @@ jQuery(function ($) {
             return;
         }
 
+        var checkedSkus = [];
+        $('.cdep-row-checkbox:checked').each(function () {
+            checkedSkus.push($(this).val());
+        });
+
+        if (checkedSkus.length === 0) {
+            showMessage('#cdep-update-result', 'Selecciona al menos un producto', 'error');
+            return;
+        }
+
         btn.prop('disabled', true).text('Actualizando...');
         $('#cdep-update-progress').show();
         $('#cdep-update-result').html('');
 
-        var totalRows = $('.cdep-product-row').length;
+        var totalSkus = checkedSkus.length;
         var totalUpdated = 0;
         var totalCreated = 0;
         var allErrors = [];
-        var offset = 0;
-        var limit = 25;
+        var processedCount = 0;
+        var batchSize = 25;
 
-        function updateRowStatus(sku, status) {
-            $('.cdep-product-row').each(function () {
-                var $row = $(this);
-                if ($row.data('sku') === sku) {
-                    $row.attr('data-status', status);
-                    $row.find('.cdep-status-cell').html(renderStatusBadge(status));
-                }
-            });
+        var batches = [];
+        for (var i = 0; i < totalSkus; i += batchSize) {
+            batches.push(checkedSkus.slice(i, i + batchSize));
         }
 
-        function processBatch() {
-            ajax('cdep_update_execute', {
+        function processBatch(idx) {
+            if (idx >= batches.length) {
+                btn.prop('disabled', false).text('Iniciar Actualización Masiva');
+                var resultHtml = '<div class="notice notice-success inline"><p>';
+                resultHtml += '<strong>Actualización completada</strong><br>';
+                resultHtml += 'Actualizados: ' + totalUpdated + ' | ';
+                resultHtml += 'Creados: ' + totalCreated + '<br>';
+                if (allErrors.length > 0) {
+                    resultHtml += 'Errores: ' + allErrors.length;
+                }
+                resultHtml += '</p></div>';
+
+                if (allErrors.length > 0) {
+                    resultHtml += '<h4>Errores</h4>';
+                    resultHtml += '<div class="cdep-table-scroll"><table class="wp-list-table widefat fixed striped">';
+                    resultHtml += '<thead><tr><th>SKU</th><th>Error</th></tr></thead><tbody>';
+                    $.each(allErrors.slice(0, 50), function (i, err) {
+                        resultHtml += '<tr><td>' + escHtml(err.sku) + '</td><td>' + escHtml(err.error) + '</td></tr>';
+                    });
+                    if (allErrors.length > 50) {
+                        resultHtml += '<tr><td colspan="2">... y ' + (allErrors.length - 50) + ' más</td></tr>';
+                    }
+                    resultHtml += '</tbody></table></div>';
+                }
+
+                $('#cdep-update-result').html(resultHtml);
+                $('.cdep-progress-text').text('Completado: ' + totalUpdated + ' actualizados, ' + totalCreated + ' creados');
+                return;
+            }
+
+            ajax('cdep_update_batch_skus', {
+                skus: batches[idx],
                 mapping: mapping,
-                offset: offset,
-                limit: limit,
             }, function (data) {
                 totalUpdated += data.updated;
                 totalCreated += data.created;
 
                 if (data.processed_skus) {
                     $.each(data.processed_skus, function (i, item) {
-                        updateRowStatus(item.sku, item.status);
+                        var $row = findRowBySku(item.sku);
+                        if ($row) {
+                            $row.attr('data-status', item.status);
+                            $row.find('.cdep-status-cell').html(renderStatusBadge(item.status));
+                            $row.find('.cdep-diff').each(function () {
+                                var newVal = $(this).find('.cdep-new-value').text();
+                                $(this).replaceWith('<strong>' + newVal + '</strong>');
+                            });
+                        }
+                        processedCount++;
                     });
                 }
 
                 if (data.errors) {
                     $.each(data.errors, function (i, err) {
-                        updateRowStatus(err.sku, 'error');
+                        var $row = findRowBySku(err.sku);
+                        if ($row) {
+                            $row.attr('data-status', 'error');
+                            $row.find('.cdep-status-cell').html(renderStatusBadge('error'));
+                        }
                     });
                     allErrors = allErrors.concat(data.errors);
                 }
 
-                var doneCount = $('.cdep-product-row[data-status="updated"], .cdep-product-row[data-status="created"], .cdep-product-row[data-status="error"]').length;
-                var progress = Math.min(100, Math.round(doneCount / totalRows * 100));
+                var progress = Math.min(100, Math.round(processedCount / totalSkus * 100));
                 $('.cdep-progress-fill').css('width', progress + '%');
-                $('.cdep-progress-text').text(doneCount + ' / ' + totalRows + ' productos procesados');
+                $('.cdep-progress-text').text(processedCount + ' / ' + totalSkus + ' productos procesados');
 
-                if (data.completed) {
-                    btn.prop('disabled', false).text('Iniciar Actualización Masiva');
-                    var resultHtml = '<div class="notice notice-success inline"><p>';
-                    resultHtml += '<strong>Actualización completada</strong><br>';
-                    resultHtml += 'Actualizados: ' + totalUpdated + ' | ';
-                    resultHtml += 'Creados: ' + totalCreated + '<br>';
-                    if (allErrors.length > 0) {
-                        resultHtml += 'Errores: ' + allErrors.length;
-                    }
-                    resultHtml += '</p></div>';
-
-                    if (allErrors.length > 0) {
-                        resultHtml += '<h4>Errores</h4>';
-                        resultHtml += '<div class="cdep-table-scroll"><table class="wp-list-table widefat fixed striped">';
-                        resultHtml += '<thead><tr><th>SKU</th><th>Error</th></tr></thead><tbody>';
-                        $.each(allErrors.slice(0, 50), function (i, err) {
-                            resultHtml += '<tr><td>' + escHtml(err.sku) + '</td><td>' + escHtml(err.error) + '</td></tr>';
-                        });
-                        if (allErrors.length > 50) {
-                            resultHtml += '<tr><td colspan="2">... y ' + (allErrors.length - 50) + ' más</td></tr>';
-                        }
-                        resultHtml += '</tbody></table></div>';
-                    }
-
-                    $('#cdep-update-result').html(resultHtml);
-                    $('.cdep-progress-text').text('Completado: ' + totalUpdated + ' actualizados, ' + totalCreated + ' creados');
-                } else {
-                    offset = data.next_offset || (offset + limit);
-                    processBatch();
-                }
+                processBatch(idx + 1);
             }, function (msg) {
                 btn.prop('disabled', false).text('Iniciar Actualización Masiva');
                 showMessage('#cdep-update-result', msg, 'error');
             });
         }
 
-        processBatch();
+        processBatch(0);
     });
 
     // === SINGLE PRODUCT PROCESS ===

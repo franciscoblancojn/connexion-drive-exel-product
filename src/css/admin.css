@@ -314,3 +314,25 @@
     width: 100%;
     max-width: 400px;
 }
+
+.cdep-table-wrapper {
+    max-height: 70dvh;
+    overflow-y: auto;
+    overflow-x: auto;
+    margin: 10px 0;
+    border: 1px solid #e5e5e5;
+    border-radius: 4px;
+}
+
+.cdep-table-wrapper table {
+    margin: 0;
+    border: none;
+}
+
+.cdep-row-checkbox {
+    margin: 0;
+}
+
+.cdep-select-all {
+    margin: 0;
+}

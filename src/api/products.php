@@ -387,6 +387,52 @@ add_action('wp_ajax_cdep_update_execute', function () {
     wp_send_json_success($result);
 });
 
+add_action('wp_ajax_cdep_update_batch_skus', function () {
+    if (!current_user_can('manage_options')) {
+        wp_send_json_error('Unauthorized');
+    }
+    check_ajax_referer('cdep_nonce', 'nonce');
+
+    $skus = isset($_POST['skus']) ? $_POST['skus'] : array();
+    $mapping = isset($_POST['mapping']) ? $_POST['mapping'] : array();
+
+    if (empty($skus) || !is_array($skus)) {
+        wp_send_json_error('No se recibieron SKUs');
+    }
+
+    $skus = array_map('sanitize_text_field', $skus);
+
+    $cached = CDEP_DRIVE::getCachedData();
+    if (empty($cached) || empty($cached['all_rows'])) {
+        wp_send_json_error('No hay datos en caché');
+    }
+
+    $skuIndex = isset($mapping['sku']) && $mapping['sku'] !== '' ? intval($mapping['sku']) : -1;
+    if ($skuIndex < 0) {
+        wp_send_json_error('Mapeo SKU inválido');
+    }
+
+    $rowsToProcess = array();
+    foreach ($cached['all_rows'] as $row) {
+        $rowSku = isset($row[$skuIndex]) ? trim($row[$skuIndex]) : '';
+        if (in_array($rowSku, $skus)) {
+            $rowsToProcess[] = $row;
+        }
+    }
+
+    if (empty($rowsToProcess)) {
+        wp_send_json_error('No se encontraron filas con los SKUs proporcionados');
+    }
+
+    $result = CDEP_PRODUCTS::executeUpdate($rowsToProcess, $mapping, 0, count($rowsToProcess));
+
+    if (is_wp_error($result)) {
+        wp_send_json_error($result->get_error_message());
+    }
+
+    wp_send_json_success($result);
+});
+
 add_action('wp_ajax_cdep_update_single', function () {
     if (!current_user_can('manage_options')) {
         wp_send_json_error('Unauthorized');
