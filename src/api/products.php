@@ -191,12 +191,17 @@ class CDEP_PRODUCTS
                 $newValue = isset($row[$colIndex]) ? trim($row[$colIndex]) : '';
                 $currentValue = $exists ? self::getProductField($product, $field) : '';
 
-                // Normalize and detect changes
+                // Detect changes (numeric for prices/qty, string for text)
                 $changed = $exists;
+                $numericFields = array('regular_price', 'sale_price', 'stock_quantity', 'weight', 'length', 'width', 'height');
                 if ($changed) {
-                    $normCurrent = floatval(preg_replace('/[^0-9.eE\-]/', '', strval($currentValue)));
-                    $normNew = floatval(preg_replace('/[^0-9.eE\-]/', '', strval($newValue)));
-                    $changed = (strval($normCurrent) !== strval($normNew));
+                    if (in_array($field, $numericFields)) {
+                        $normCurrent = floatval(preg_replace('/[^0-9.eE\-]/', '', strval($currentValue)));
+                        $normNew = floatval(preg_replace('/[^0-9.eE\-]/', '', strval($newValue)));
+                        $changed = (strval($normCurrent) !== strval($normNew));
+                    } else {
+                        $changed = (trim(strval($currentValue)) !== trim(strval($newValue)));
+                    }
                 }
 
                 // Format display values consistently
@@ -373,6 +378,50 @@ add_action('wp_ajax_cdep_update_execute', function () {
     }
 
     $result = CDEP_PRODUCTS::executeUpdate($cached['all_rows'], $mapping, $offset, $limit);
+
+    if (is_wp_error($result)) {
+        wp_send_json_error($result->get_error_message());
+    }
+
+    wp_send_json_success($result);
+});
+
+add_action('wp_ajax_cdep_update_single', function () {
+    if (!current_user_can('manage_options')) {
+        wp_send_json_error('Unauthorized');
+    }
+    check_ajax_referer('cdep_nonce', 'nonce');
+
+    $sku = sanitize_text_field($_POST['sku'] ?? '');
+    $mapping = isset($_POST['mapping']) ? $_POST['mapping'] : array();
+
+    if (empty($sku)) {
+        wp_send_json_error('SKU vacío');
+    }
+
+    $cached = CDEP_DRIVE::getCachedData();
+    if (empty($cached) || empty($cached['all_rows'])) {
+        wp_send_json_error('No hay datos en caché');
+    }
+
+    $skuIndex = isset($mapping['sku']) && $mapping['sku'] !== '' ? intval($mapping['sku']) : -1;
+    if ($skuIndex < 0) {
+        wp_send_json_error('Mapeo SKU inválido');
+    }
+
+    $foundRow = null;
+    foreach ($cached['all_rows'] as $row) {
+        if (isset($row[$skuIndex]) && trim($row[$skuIndex]) === $sku) {
+            $foundRow = $row;
+            break;
+        }
+    }
+
+    if ($foundRow === null) {
+        wp_send_json_error('SKU no encontrado en el archivo');
+    }
+
+    $result = CDEP_PRODUCTS::executeUpdate(array($foundRow), $mapping, 0, 1);
 
     if (is_wp_error($result)) {
         wp_send_json_error($result->get_error_message());

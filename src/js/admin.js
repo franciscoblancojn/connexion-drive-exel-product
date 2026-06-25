@@ -462,7 +462,7 @@ jQuery(function ($) {
                 html += '<h3>Productos a procesar</h3>';
                 html += '<div class="cdep-table-scroll"><table class="wp-list-table widefat fixed striped" id="cdep-products-table">';
                 html += '<thead><tr>';
-                html += '<th>Estado</th><th>SKU</th><th>Nombre</th><th>Imagen</th><th>Categorías</th>';
+                html += '<th>Acción</th><th>Estado</th><th>SKU</th><th>Nombre</th><th>Imagen</th><th>Categorías</th>';
                 $.each(mappedFields, function (i, f) {
                     html += '<th>' + escHtml(f.label) + '</th>';
                 });
@@ -471,6 +471,7 @@ jQuery(function ($) {
                 $.each(data.products, function (i, p) {
                     var statusBadge = renderStatusBadge(p.status);
                     html += '<tr class="cdep-product-row" data-sku="' + escHtml(p.sku) + '" data-status="' + p.status + '">';
+                    html += '<td><button class="button button-small cdep-process-single" data-sku="' + escHtml(p.sku) + '">Procesar</button></td>';
                     html += '<td class="cdep-status-cell">' + statusBadge + '</td>';
                     html += '<td><strong>' + escHtml(p.sku) + '</strong></td>';
                     html += '<td>' + escHtml(p.name) + '</td>';
@@ -649,6 +650,37 @@ jQuery(function ($) {
         }
 
         processBatch();
+    });
+
+    // === SINGLE PRODUCT PROCESS ===
+
+    $(document).on('click', '.cdep-process-single', function () {
+        var btn = $(this);
+        var sku = btn.data('sku');
+        var mapping = state.mapping;
+
+        if (!mapping || !mapping.sku) {
+            showMessage('#cdep-update-result', 'Primero haz una vista previa', 'error');
+            return;
+        }
+
+        btn.prop('disabled', true).text('Procesando...');
+
+        ajax('cdep_update_single', {
+            sku: sku,
+            mapping: mapping,
+        }, function (data) {
+            if (data.processed_skus && data.processed_skus.length > 0) {
+                var item = data.processed_skus[0];
+                updateRowStatus(item.sku, item.status);
+                var badgeClass = item.status === 'updated' ? 'cdep-badge-ok' : 'cdep-badge-created';
+                var badgeText = item.status === 'updated' ? 'Actualizado' : 'Creado';
+                btn.replaceWith('<span class="cdep-badge ' + badgeClass + '">' + badgeText + '</span>');
+            }
+        }, function (msg) {
+            btn.prop('disabled', false).text('Procesar');
+            showMessage('#cdep-update-result', msg, 'error');
+        });
     });
 
     // === TAB SWITCHING ===
