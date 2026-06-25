@@ -44,12 +44,8 @@ class CDEP_PRODUCTS
     private static function getProductField($product, $field)
     {
         switch ($field) {
-            case 'regular_price':
-                $price = $product->get_regular_price();
-                return $price !== '' && $price !== null ? number_format(floatval($price), 2, '.', ',') : '';
-            case 'sale_price':
-                $price = $product->get_sale_price();
-                return $price !== '' && $price !== null ? number_format(floatval($price), 2, '.', ',') : '';
+            case 'regular_price': return $product->get_regular_price();
+            case 'sale_price': return $product->get_sale_price();
             case 'stock_quantity': return $product->get_stock_quantity();
             case 'stock_status': return $product->get_stock_status();
             case 'weight': return $product->get_weight();
@@ -194,6 +190,8 @@ class CDEP_PRODUCTS
             foreach ($fieldMapping as $field => $colIndex) {
                 $newValue = isset($row[$colIndex]) ? trim($row[$colIndex]) : '';
                 $currentValue = $exists ? self::getProductField($product, $field) : '';
+
+                // Normalize and detect changes
                 $changed = $exists;
                 if ($changed) {
                     $normCurrent = floatval(preg_replace('/[^0-9.eE\-]/', '', strval($currentValue)));
@@ -201,9 +199,24 @@ class CDEP_PRODUCTS
                     $changed = (strval($normCurrent) !== strval($normNew));
                 }
 
+                // Format display values consistently
+                $displayCurrent = $currentValue !== null && $currentValue !== '' ? strval($currentValue) : '';
+                $displayNew = $newValue;
+
+                if (in_array($field, array('regular_price', 'sale_price'))) {
+                    $rawCurrent = floatval(preg_replace('/[^0-9.eE\-]/', '', strval($currentValue)));
+                    $rawNew = floatval(preg_replace('/[^0-9.eE\-]/', '', strval($newValue)));
+                    if ($rawCurrent > 0) {
+                        $displayCurrent = strip_tags(wc_price($rawCurrent));
+                    }
+                    if ($rawNew > 0) {
+                        $displayNew = strip_tags(wc_price($rawNew));
+                    }
+                }
+
                 $productData['fields'][$field] = array(
-                    'current' => $currentValue !== null && $currentValue !== '' ? strval($currentValue) : '',
-                    'new' => $newValue,
+                    'current' => $displayCurrent,
+                    'new' => $displayNew,
                     'changed' => $changed,
                 );
             }
