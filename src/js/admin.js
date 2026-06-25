@@ -470,10 +470,10 @@ jQuery(function ($) {
                 html += '<table class="wp-list-table widefat fixed striped" id="cdep-products-table">';
                 html += '<colgroup>';
                 html += '<col style="width: 40px;">';
-                html += '<col style="width: 80px;">';
-                html += '<col style="width: 100px;">';
-                html += '<col style="width: auto;">';
+                html += '<col style="width: 90px;">';
+                html += '<col style="width: 110px;">';
                 html += '<col style="width: 60px;">';
+                html += '<col style="width: auto;">';
                 html += '<col style="width: auto;">';
                 html += '<col style="width: auto;">';
                 $.each(mappedFields, function (i, f) {
@@ -494,8 +494,8 @@ jQuery(function ($) {
                     html += '<td><input type="checkbox" class="cdep-row-checkbox" value="' + escHtml(p.sku) + '" checked></td>';
                     html += '<td><button class="button button-small cdep-process-single" data-sku="' + escHtml(p.sku) + '">Procesar</button></td>';
                     html += '<td class="cdep-status-cell">' + statusBadge + '</td>';
-                    html += '<td><strong>' + escHtml(p.sku) + '</strong></td>';
                     html += '<td>' + (p.image || imageProductDefualt) + '</td>';
+                    html += '<td><strong>' + escHtml(p.sku) + '</strong></td>';
 
                     // Nombre column: show diff if product_name is mapped, else show current name
                     if (productNameMapped && p.fields['product_name']) {
