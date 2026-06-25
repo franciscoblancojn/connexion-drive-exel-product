@@ -292,6 +292,7 @@ class CDEP_PRODUCTS
             } else {
                 $product = new WC_Product();
                 $product->set_sku($sku);
+                $product->set_status('pending');
                 $isNew = true;
             }
 

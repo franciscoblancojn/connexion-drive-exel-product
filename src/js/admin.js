@@ -451,11 +451,16 @@ jQuery(function ($) {
             html += '</div>';
 
             if (data.products && data.products.length > 0) {
-                // Determine which fields are mapped
+                // Determine which fields are mapped (exclude product_name from dynamic columns)
                 var mappedFields = [];
+                var productNameMapped = false;
                 if (data.field_labels) {
                     $.each(data.field_labels, function (key, label) {
-                        mappedFields.push({ key: key, label: label });
+                        if (key === 'product_name') {
+                            productNameMapped = true;
+                        } else {
+                            mappedFields.push({ key: key, label: label });
+                        }
                     });
                 }
 
@@ -474,7 +479,14 @@ jQuery(function ($) {
                     html += '<td><button class="button button-small cdep-process-single" data-sku="' + escHtml(p.sku) + '">Procesar</button></td>';
                     html += '<td class="cdep-status-cell">' + statusBadge + '</td>';
                     html += '<td><strong>' + escHtml(p.sku) + '</strong></td>';
-                    html += '<td>' + escHtml(p.name) + '</td>';
+
+                    // Nombre column: show diff if product_name is mapped, else show current name
+                    if (productNameMapped && p.fields['product_name']) {
+                        html += '<td>' + renderFieldCell(p.fields['product_name'], p.exists) + '</td>';
+                    } else {
+                        html += '<td>' + escHtml(p.name) + '</td>';
+                    }
+
                     html += '<td>' + (p.image || '') + '</td>';
                     html += '<td>' + escHtml(p.categories) + '</td>';
 
