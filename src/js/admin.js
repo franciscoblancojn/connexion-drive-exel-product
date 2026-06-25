@@ -685,10 +685,19 @@ jQuery(function ($) {
             if (data.processed_skus && data.processed_skus.length > 0) {
                 var item = data.processed_skus[0];
                 updateRowStatus(item.sku, item.status);
-                var badgeClass = item.status === 'updated' ? 'cdep-badge-ok' : 'cdep-badge-created';
-                var badgeText = item.status === 'updated' ? 'Actualizado' : 'Creado';
-                btn.replaceWith('<span class="cdep-badge ' + badgeClass + '">' + badgeText + '</span>');
+
+                // Flatten diff cells in the processed row — replace diff with just new value
+                $('.cdep-product-row').each(function () {
+                    var $row = $(this);
+                    if ($row.data('sku') === item.sku) {
+                        $row.find('.cdep-diff').each(function () {
+                            var newVal = $(this).find('.cdep-new-value').text();
+                            $(this).replaceWith('<strong>' + newVal + '</strong>');
+                        });
+                    }
+                });
             }
+            btn.prop('disabled', false).text('Procesar');
         }, function (msg) {
             btn.prop('disabled', false).text('Procesar');
             showMessage('#cdep-update-result', msg, 'error');
