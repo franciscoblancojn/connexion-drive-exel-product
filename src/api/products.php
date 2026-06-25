@@ -207,10 +207,10 @@ class CDEP_PRODUCTS
                     $rawCurrent = floatval(preg_replace('/[^0-9.eE\-]/', '', strval($currentValue)));
                     $rawNew = floatval(preg_replace('/[^0-9.eE\-]/', '', strval($newValue)));
                     if ($rawCurrent > 0) {
-                        $displayCurrent = strip_tags(wc_price($rawCurrent));
+                        $displayCurrent = html_entity_decode(strip_tags(wc_price($rawCurrent)), ENT_QUOTES, 'UTF-8');
                     }
                     if ($rawNew > 0) {
-                        $displayNew = strip_tags(wc_price($rawNew));
+                        $displayNew = html_entity_decode(strip_tags(wc_price($rawNew)), ENT_QUOTES, 'UTF-8');
                     }
                 }
 
