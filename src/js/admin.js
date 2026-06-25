@@ -668,8 +668,9 @@ jQuery(function ($) {
 
     $(document).on('click', '.cdep-process-single', function () {
         var btn = $(this);
-        var sku = btn.data('sku');
+        var sku = btn.attr('data-sku');
         var mapping = state.mapping;
+        var $row = btn.closest('.cdep-product-row');
 
         if (!mapping || !mapping.sku) {
             showMessage('#cdep-update-result', 'Primero haz una vista previa', 'error');
@@ -683,24 +684,21 @@ jQuery(function ($) {
             mapping: mapping,
         }, function (data) {
             if (data.processed_skus && data.processed_skus.length > 0) {
-                var item = data.processed_skus[0];
-                updateRowStatus(item.sku, item.status);
+                var status = data.processed_skus[0].status;
 
-                // Flatten diff cells in the processed row — replace diff with just new value
-                $('.cdep-product-row').each(function () {
-                    var $row = $(this);
-                    if ($row.data('sku') === item.sku) {
-                        $row.find('.cdep-diff').each(function () {
-                            var newVal = $(this).find('.cdep-new-value').text();
-                            $(this).replaceWith('<strong>' + newVal + '</strong>');
-                        });
-                    }
+                // Update status badge
+                $row.attr('data-status', status);
+                $row.find('.cdep-status-cell').html(renderStatusBadge(status));
+
+                // Flatten diff cells — replace with just the new value
+                $row.find('.cdep-diff').each(function () {
+                    var newVal = $(this).find('.cdep-new-value').text();
+                    $(this).replaceWith('<strong>' + newVal + '</strong>');
                 });
             }
             btn.prop('disabled', false).text('Procesar');
         }, function (msg) {
             btn.prop('disabled', false).text('Procesar');
-            showMessage('#cdep-update-result', msg, 'error');
         });
     });
 
