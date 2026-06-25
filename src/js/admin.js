@@ -482,7 +482,7 @@ jQuery(function ($) {
                 html += '</colgroup>';
                 html += '<thead><tr>';
                 html += '<th style="width:40px"><input type="checkbox" class="cdep-select-all" checked></th>';
-                html += '<th>Acción</th><th>Estado</th><th>SKU</th><th>Imagen</th><th>Nombre</th><th>Categorías</th>';
+                html += '<th>Acción</th><th>Estado</th><th>Imagen</th><th>SKU</th><th>Nombre</th><th>Categorías</th>';
                 $.each(mappedFields, function (i, f) {
                     html += '<th>' + escHtml(f.label) + '</th>';
                 });
