@@ -105,14 +105,37 @@ $productFields = CDEP_PRODUCTS::getFields();
                 <div class="cdep-two-columns-right">
                     <h3>Configuraciones de Creación</h3>
                     <p class="description">Configuraciones que se aplicarán a todos los productos nuevos creados.</p>
-                    <table class="form-table">
-                        <tr>
-                            <th><label for="creation-brand">Marca</label></th>
-                            <td>
-                                <input type="text" id="creation-brand" class="regular-text" placeholder="Nombre de la marca">
-                                <p class="description">Marca que se asignará a todos los productos nuevos.</p>
-                            </td>
-                        </tr>
+                    <table class="wp-list-table widefat striped" id="cdep-creation-config-table">
+                        <thead>
+                            <tr>
+                                <th>Configuración</th>
+                                <th>Valor</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>Marca</strong></td>
+                                <td>
+                                    <select id="creation-brand" style="width:100%">
+                                        <option value="">— Sin marca —</option>
+                                        <?php
+                                        $brandTerms = taxonomy_exists('product_brand') ? get_terms(array(
+                                            'taxonomy' => 'product_brand',
+                                            'hide_empty' => false,
+                                        )) : array();
+                                        if (!empty($brandTerms) && !is_wp_error($brandTerms)):
+                                            foreach ($brandTerms as $term):
+                                        ?>
+                                        <option value="<?= esc_attr($term->slug) ?>"><?= esc_html($term->name) ?></option>
+                                        <?php
+                                            endforeach;
+                                        endif;
+                                        ?>
+                                    </select>
+                                    <p class="description">Marca que se asignará a todos los productos nuevos.</p>
+                                </td>
+                            </tr>
+                        </tbody>
                     </table>
                 </div>
             </div>

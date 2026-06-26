@@ -399,14 +399,19 @@
 .cdep-two-columns-right {
 }
 
-.cdep-two-columns-right .form-table th {
-    width: 80px;
+#cdep-creation-config-table {
+    margin: 10px 0;
 }
 
-.cdep-two-columns-right .form-table td {
-    padding: 10px 0;
+#cdep-creation-config-table th {
+    font-weight: 600;
 }
 
-.cdep-two-columns-right .form-table input {
+#cdep-creation-config-table td {
+    vertical-align: middle;
+    padding: 6px 10px;
+}
+
+#cdep-creation-config-table select {
     width: 100%;
 }
