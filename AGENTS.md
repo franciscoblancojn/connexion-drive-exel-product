@@ -15,11 +15,12 @@ Este archivo contiene las reglas, validaciones y convenciones que toda IA debe s
 - **Capabilities**: Toda operación admin debe verificar `current_user_can('manage_options')`.
 
 ### JavaScript
-- **ES5**: Usa ES5 (`var`, `function`, no arrow functions, no `let`/`const`, no template literals).
+- **ES5**: Usa ES5 (`var`, `function`, no arrow functions, no `let`/`const`, no template literals). Excepción conocida: `URLSearchParams` se usa en el callback OAuth (admin.js).
 - **jQuery**: Usa `jQuery(function($){ ... })` para DOM ready.
-- **Objeto global**: Usa `window.cdep` (localizado via `wp_localize_script`) para `ajaxurl`, `nonce`, `config`.
+- **Objeto global**: Usa `window.cdep` (localizado via `wp_localize_script`) para `ajaxurl`, `nonce`, `config`, `is_connected`, `selected_file`, `oauth_url`, `productFields`.
 - **AJAX**: Toda llamada AJAX usa la función helper `ajax(action, data, success, error)` definida en admin.js.
 - **Respuestas**: Espera `resp.success` + `resp.data` (estándar WordPress AJAX).
+- **localStorage**: Se usan dos keys: `cdep_folder` (estado de navegación) y `cdep_mapping_config` (mapeo de columnas).
 
 ### CSS
 - **Prefijo**: Todas las clases CSS deben llevar prefijo `cdep-`.
@@ -34,7 +35,7 @@ Este archivo contiene las reglas, validaciones y convenciones que toda IA debe s
 - `src/_.php` → Cargador maestro (`require` de `data/_.php`, `api/_.php`, `page/_.php`).
 - `src/api/` → Clases CDEP_DRIVE, CDEP_EXCEL, CDEP_PRODUCTS + handlers AJAX como closures.
 - `src/data/` → Capa de datos (CDEP_USE_DATA_BASE).
-- `src/page/` → Página admin con tabs (Conectar, Explorar, Mapear, Actualizar).
+- `src/page/` → Página admin con tabs (Conectar, Explorar, Mapear).
 - `src/js/admin.js` → Todo el JavaScript del admin.
 - `src/css/admin.css` → Estilos admin.
 
@@ -44,12 +45,14 @@ Usa las constantes definidas en `index.php`:
 - `CDEP_CONFIG` para configuración de OAuth
 - `CDEP_TOKENS` para tokens de acceso
 - `CDEP_SELECTED` para archivo seleccionado
+- `CDEP_SELECTED_DATA` para datos parseados en caché
 - Nunca hardcodees strings como `'CDEP'` o `'CDEP_CONFIG'`
 
 ### wp_options
 - `CDEP_CONFIG` → Array: `client_id`, `client_secret`, `redirect_uri`
 - `CDEP_TOKENS` → Array: `access_token`, `refresh_token`, `expires_in`, `created`
-- `CDEP_SELECTED` → Array: `file_id`, `file_name`, `selected_at`
+- `CDEP_SELECTED` → Array: `file_id`, `file_name`, `mime_type`, `selected_at`
+- `CDEP_SELECTED_DATA` → Array: `file_id`, `file_name`, `headers`, `sample`, `detected`, `total_rows`, `all_rows`, `header_row`
 
 ---
 
@@ -95,13 +98,31 @@ Usa las constantes definidas en `index.php`:
 
 ---
 
-## 5. Git Workflow
+## 5. Datos del Producto en Vista Previa
+
+La respuesta de `cdep_update_preview` devuelve por cada producto (`products[]`):
+
+| Campo | Tipo | Descripción |
+|---|---|---|
+| `sku` | string | SKU del producto |
+| `row` | int | Número de fila en el Excel |
+| `exists` | bool | Si el producto existe en WooCommerce |
+| `product_id` | int | ID del producto (0 si no existe) |
+| `status` | string | `pending` o `new` |
+| `name` | string | Nombre actual del producto |
+| `image` | string | HTML de la imagen thumbnail |
+| `categories` | string | Categorías del producto |
+| `fields` | object | Mapa de campo → `{current, new, changed}` |
+
+---
+
+## 6. Git Workflow
 
 1. **Commits**: No hacer commits automáticamente, solo dar sugerencias de commits.
 
 ---
 
-## 6. Lo que NO debes hacer
+## 7. Lo que NO debes hacer
 
 - ✗ NO modifiques `index.php` (plugin header).
 - ✗ NO elimines el prefijo `CDEP_` de ninguna clase/función.
