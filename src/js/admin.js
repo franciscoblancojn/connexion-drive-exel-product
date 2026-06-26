@@ -500,7 +500,7 @@ jQuery(function ($) {
         html += '<col style="width: 40px;">';
         html += '<col style="width: 90px;">';
         html += '<col style="width: 110px;">';
-        html += '<col style="width: 60px;">';
+        html += '<col style="width: 70px;">';
         html += '<col style="width: auto;">';
         html += '<col style="width: auto;">';
         html += '<col style="width: auto;">';
