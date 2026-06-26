@@ -707,14 +707,30 @@ jQuery(function ($) {
             html += '</div>';
 
             if (data.products && data.products.length > 0) {
-                var mappedFields = [];
-                var productNameMapped = false;
-                if (data.field_labels) {
-                    $.each(data.field_labels, function (key, label) {
+                // Update tab fields (only price/stock)
+                var updateMappedFields = [];
+                var updateProductNameMapped = false;
+                var updateLabels = data.update_field_labels || data.field_labels;
+                if (updateLabels) {
+                    $.each(updateLabels, function (key, label) {
                         if (key === 'product_name') {
-                            productNameMapped = true;
+                            updateProductNameMapped = true;
                         } else {
-                            mappedFields.push({ key: key, label: label });
+                            updateMappedFields.push({ key: key, label: label });
+                        }
+                    });
+                }
+
+                // Create tab fields (all mapped fields for creation)
+                var createMappedFields = [];
+                var createProductNameMapped = false;
+                var createLabels = data.create_field_labels || data.field_labels;
+                if (createLabels) {
+                    $.each(createLabels, function (key, label) {
+                        if (key === 'product_name') {
+                            createProductNameMapped = true;
+                        } else {
+                            createMappedFields.push({ key: key, label: label });
                         }
                     });
                 }
@@ -745,7 +761,7 @@ jQuery(function ($) {
                 // Update tab
                 html += '<div class="cdep-preview-tab-content active" id="cdep-preview-update-content" data-tab="update">';
                 if (existingProducts.length > 0) {
-                    html += renderProductsTable(existingProducts, mappedFields, productNameMapped, aiFields);
+                    html += renderProductsTable(existingProducts, updateMappedFields, updateProductNameMapped, aiFields);
                     html += '<hr>';
                     html += '<p><button id="cdep-start-update" class="button button-primary">Iniciar Actualización Masiva</button>';
                     if (hasAiFields) {
@@ -765,7 +781,7 @@ jQuery(function ($) {
                 // Create tab
                 html += '<div class="cdep-preview-tab-content" id="cdep-preview-create-content" data-tab="create">';
                 if (newProducts.length > 0) {
-                    html += renderProductsTable(newProducts, mappedFields, productNameMapped, aiFields);
+                    html += renderProductsTable(newProducts, createMappedFields, createProductNameMapped, aiFields);
                     html += '<hr>';
                     html += '<p><button id="cdep-start-create" class="button button-primary">Iniciar Creación Masiva</button>';
                     if (hasAiFields) {

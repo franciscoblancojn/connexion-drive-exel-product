@@ -286,13 +286,21 @@ class CDEP_PRODUCTS
             $products[] = $productData;
         }
 
-        $fieldLabels = array();
-        $allMapped = array_merge($updateMapping, $createMapping);
-        foreach ($allMapped as $field => $colIndex) {
+        $updateFieldLabels = array();
+        foreach ($updateMapping as $field => $colIndex) {
             if (isset(self::$fields[$field])) {
-                $fieldLabels[$field] = self::$fields[$field]['label'];
+                $updateFieldLabels[$field] = self::$fields[$field]['label'];
             }
         }
+
+        $createFieldLabels = array();
+        foreach ($createMapping as $field => $colIndex) {
+            if (isset(self::$fields[$field])) {
+                $createFieldLabels[$field] = self::$fields[$field]['label'];
+            }
+        }
+
+        $fieldLabels = array_merge($updateFieldLabels, $createFieldLabels);
 
         return array(
             'total' => count($products),
@@ -300,6 +308,8 @@ class CDEP_PRODUCTS
             'new_count' => $newCount,
             'products' => $products,
             'field_labels' => $fieldLabels,
+            'update_field_labels' => $updateFieldLabels,
+            'create_field_labels' => $createFieldLabels,
             'ai_fields' => $aiFields,
         );
     }
