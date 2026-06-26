@@ -761,13 +761,9 @@ jQuery(function ($) {
                 // Update tab
                 html += '<div class="cdep-preview-tab-content active" id="cdep-preview-update-content" data-tab="update">';
                 if (existingProducts.length > 0) {
-                    html += renderProductsTable(existingProducts, updateMappedFields, updateProductNameMapped, aiFields);
+                    html += renderProductsTable(existingProducts, updateMappedFields, updateProductNameMapped, []);
                     html += '<hr>';
-                    html += '<p><button id="cdep-start-update" class="button button-primary">Iniciar Actualización Masiva</button>';
-                    if (hasAiFields) {
-                        html += ' <button id="cdep-ai-generate-update" class="button cdep-ai-generate-btn">Generar contenido con IA</button>';
-                    }
-                    html += '</p>';
+                    html += '<p><button id="cdep-start-update" class="button button-primary">Iniciar Actualización Masiva</button></p>';
                 } else {
                     html += '<p>No hay productos existentes para actualizar.</p>';
                 }
