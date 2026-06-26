@@ -76,29 +76,46 @@ $productFields = CDEP_PRODUCTS::getFields();
                 </tbody>
             </table>
 
-            <h3>Productos nuevos — Creación</h3>
-            <p class="description">Selecciona columnas para crear nuevos productos en WooCommerce. Todos los campos están disponibles.</p>
+            <div class="cdep-two-columns">
+                <div class="cdep-two-columns-left">
+                    <h3>Productos nuevos — Creación</h3>
+                    <p class="description">Selecciona columnas para crear nuevos productos en WooCommerce. Todos los campos están disponibles.</p>
 
-            <table class="wp-list-table widefat striped" id="cdep-field-mapping-create">
-                <thead>
-                    <tr>
-                        <th style="width:40%">Campo del producto</th>
-                        <th style="width:60%">Columna en el archivo</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <?php foreach ($productFields as $fieldKey => $fieldInfo): ?>
-                    <tr>
-                        <td><strong><?= esc_html($fieldInfo['label']) ?></strong></td>
-                        <td>
-                            <select class="cdep-field-select-create" data-field="<?= esc_attr($fieldKey) ?>" style="width:100%;max-width:400px">
-                                <option value="">— No mapear —</option>
-                            </select>
-                        </td>
-                    </tr>
-                    <?php endforeach; ?>
-                </tbody>
-            </table>
+                    <table class="wp-list-table widefat striped" id="cdep-field-mapping-create">
+                        <thead>
+                            <tr>
+                                <th style="width:40%">Campo del producto</th>
+                                <th style="width:60%">Columna en el archivo</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php foreach ($productFields as $fieldKey => $fieldInfo): ?>
+                            <tr>
+                                <td><strong><?= esc_html($fieldInfo['label']) ?></strong></td>
+                                <td>
+                                    <select class="cdep-field-select-create" data-field="<?= esc_attr($fieldKey) ?>" style="width:100%;max-width:400px">
+                                        <option value="">— No mapear —</option>
+                                    </select>
+                                </td>
+                            </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="cdep-two-columns-right">
+                    <h3>Configuraciones de Creación</h3>
+                    <p class="description">Configuraciones que se aplicarán a todos los productos nuevos creados.</p>
+                    <table class="form-table">
+                        <tr>
+                            <th><label for="creation-brand">Marca</label></th>
+                            <td>
+                                <input type="text" id="creation-brand" class="regular-text" placeholder="Nombre de la marca">
+                                <p class="description">Marca que se asignará a todos los productos nuevos.</p>
+                            </td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
 
             <p>
                 <button id="cdep-preview-update" class="button button-primary">

@@ -288,6 +288,8 @@ class CDEP_PRODUCTS
             }
         }
 
+        $creationBrand = isset($mapping['creation_brand']) ? sanitize_text_field($mapping['creation_brand']) : '';
+
         $batch = array_slice($allRows, $offset, $limit);
         $results = array(
             'updated' => 0,
@@ -332,6 +334,22 @@ class CDEP_PRODUCTS
                     if (isset($row[$colIndex])) {
                         self::setProductField($product, $field, $row[$colIndex], self::$fields[$field]['type']);
                     }
+                }
+
+                if ($isNew && !empty($creationBrand)) {
+                    $attrs = $product->get_attributes();
+                    if (!is_array($attrs)) {
+                        $attrs = array();
+                    }
+                    $attrs['brand'] = array(
+                        'name' => 'Brand',
+                        'value' => $creationBrand,
+                        'position' => 0,
+                        'is_visible' => 1,
+                        'is_variation' => 0,
+                        'is_taxonomy' => 0,
+                    );
+                    $product->set_attributes($attrs);
                 }
 
                 $product->save();

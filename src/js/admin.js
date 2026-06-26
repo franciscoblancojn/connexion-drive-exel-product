@@ -425,6 +425,12 @@ jQuery(function ($) {
             }
         });
 
+        // Creation config
+        var brand = $('#creation-brand').val();
+        if (brand) {
+            mapping['creation_brand'] = brand;
+        }
+
         return mapping;
     }
 
@@ -456,6 +462,10 @@ jQuery(function ($) {
                     $(this).val(mapping['create_' + field]);
                 }
             });
+            // Restore creation config
+            if (mapping['creation_brand']) {
+                $('#creation-brand').val(mapping['creation_brand']);
+            }
         } catch (e) {}
     }
 
