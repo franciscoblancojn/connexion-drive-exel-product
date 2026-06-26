@@ -1,6 +1,6 @@
 # Connexion Drive Excel Product — Contexto para IAs
 
-> Plugin WordPress v1.1.14 — Contexto actualizado automaticamente para que IAs entren en contexto rapido.
+> Plugin WordPress v1.1.21 — Contexto actualizado automaticamente para que IAs entren en contexto rapido.
 
 ---
 
@@ -44,7 +44,7 @@ src/
     _.php               -> Cargador data (require base.php)
     base.php            -> CDEP_USE_DATA_BASE: CRUD generico wp_options
   js/
-    admin.js            -> Frontend JS (800 lineas): OAuth, browse, mapping, update
+    admin.js            -> Frontend JS (~1000 lineas): OAuth, browse, mapping, update
   page/
     _.php               -> Cargador page (require add.php)
     add.php             -> add_menu_page(), enqueue assets, tabs con FWUPage
@@ -94,8 +94,9 @@ src/
 | `sanitizeValue($value, $type)` | (privado) Sanitiza valor segun tipo |
 | `getProductField($product, $field)` | (privado) Obtiene valor actual de un campo |
 | `setProductField($product, $field, $value, $type)` | (privado) Asigna valor a un campo via WooCommerce setter |
-| `validateMapping($allRows, $mapping)` | Valida mapeo y genera vista previa con datos de producto |
-| `executeUpdate($allRows, $mapping, $offset, $limit)` | Ejecuta actualizacion por lotes (default 25) |
+| `resolveTemplate($template, $row, $headers, $configVars)` | (privado) Reemplaza `{var}` con valores de columna o config |
+| `validateMapping($allRows, $mapping, $headers, $configVars)` | Valida mapeo con vista previa; acepta headers y config_vars |
+| `executeUpdate($allRows, $mapping, $offset, $limit, $headers, $configVars)` | Ejecuta actualizacion por lotes (default 25) |
 
 ### CDEP_USE_DATA_BASE (`src/data/base.php`)
 | Metodo | Descripcion |
@@ -131,10 +132,10 @@ src/
 | `cdep_refresh_cache` | Closure en `drive.php` | 375 | Redescarga y re-parsea archivo |
 | `cdep_reparse_file` | Closure en `drive.php` | 444 | Re-parsea con nueva fila de encabezados |
 | `cdep_drive_select_file` | Closure en `drive.php` | 486 | Descarga + parsea + cachea archivo |
-| `cdep_update_preview` | Closure en `products.php` | 333 | Validacion de mapeo con vista previa |
-| `cdep_update_execute` | Closure en `products.php` | 362 | Ejecuta actualizacion por lotes (offset) |
-| `cdep_update_batch_skus` | Closure en `products.php` | 391 | Actualiza SKUs especificos |
-| `cdep_update_single` | Closure en `products.php` | 437 | Actualiza un solo producto |
+| `cdep_update_preview` | Closure en `products.php` | 413 | Validacion de mapeo con vista previa |
+| `cdep_update_execute` | Closure en `products.php` | 443 | Ejecuta actualizacion por lotes (offset) |
+| `cdep_update_batch_skus` | Closure en `products.php` | 473 | Actualiza SKUs especificos |
+| `cdep_update_single` | Closure en `products.php` | 520 | Actualiza un solo producto |
 
 Todos los AJAX:
 - Verifican nonce con `check_ajax_referer('cdep_nonce', 'nonce')`
@@ -189,10 +190,14 @@ El plugin no usa `wp_head`, `the_content`, ni ningun filtro de frontend. Solo op
 1. JS renderiza tabla de vista previa con selects de columnas
 2. Auto-selecciona columnas detectadas (SKU, precio, precio oferta, cantidad)
 3. Usuario puede cambiar la fila de encabezados y re-parsear
-4. Usuario selecciona que columna corresponde a cada campo del producto (16 campos)
-5. "Vista Previa" llama a `cdep_update_preview` AJAX
-6. `CDEP_PRODUCTS::validateMapping()` cruza SKUs con WooCommerce, genera diffs
-7. SKUs existentes se muestran como link a `post.php?action=edit` en nueva pestana
+4. Usuario selecciona que columna corresponde a cada campo del producto:
+   - **Productos existentes (Actualizar)**: Solo 3 campos (regular_price, sale_price, stock_quantity) vía `.cdep-field-select`
+   - **Productos nuevos (Crear)**: 16 campos vía `.cdep-field-select-create`, con soporte de "Personalizar" (templates con `{columna}`)
+5. "Configuraciones de Creación" permite configurar valores fijos (ej: Marca desde `product_brand` taxonomy)
+6. "Vista Previa" llama a `cdep_update_preview` AJAX
+7. `CDEP_PRODUCTS::validateMapping()` cruza SKUs con WooCommerce, genera diffs
+8. Resultados se muestran en tabs: "Productos a actualizar" y "Productos a crear"
+9. SKUs y nombres existentes se muestran como link a `post.php?action=edit` en nueva pestana
 
 ### 6. Actualizacion masiva/individual
 - **Masiva**: JS recolecta SKUs seleccionados, los envia en lotes via `cdep_update_batch_skus`
@@ -235,6 +240,29 @@ El plugin no usa `wp_head`, `the_content`, ni ningun filtro de frontend. Solo op
 - **Google Drive API** (OAuth 2.0, Google Cloud Platform)
 - **Composer**: `franciscoblancojn/wordpress_utils` (FWUPage, FWUCollapse, FWUTooltip, FWURespond, FWUUpdate, FWUSystemLog)
 - **Composer**: `phpoffice/phpspreadsheet` (lectura de archivos Excel)
+
+---
+
+### Mapping keys
+`buildMapping()` retorna un objeto con:
+- `sku` → indice de columna SKU
+- `regular_price`, `sale_price`, `stock_quantity` → indices para actualizar existentes
+- `create_{field}` → para campos de creacion (indice de columna o `custom:template`)
+- `creation_brand` → nombre de la marca seleccionada
+- `config_vars` → objeto `{varname: value}` para resolver `{varname}` en templates
+
+### Templates personalizados
+- Se almacenan con prefijo `custom:` (ej: `create_product_name = "custom:Reloj {marca} {name}"`)
+- `{marca}` se resuelve via `config_vars` (valores del formulario de configuracion)
+- `{nombre_columna}` se resuelve via `$headers` (nombres de columna del archivo)
+- `resolveTemplate()` revisa config_vars primero, luego columnas
+
+### Marca
+- Select poblado desde taxonomy `product_brand`
+- El valor usado es el **nombre** del termino, no el slug (tanto para `creation_brand` como para `config_vars.marca`)
+
+### Product name como link
+- Cuando un producto existe, tanto SKU como Nombre son links a `post.php?action=edit&post={product_id}`
 
 ---
 

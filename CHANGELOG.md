@@ -4,6 +4,23 @@ All notable changes to **Connexion Drive Excel Product** are documented here.
 
 ---
 
+## [1.1.15] - 2026-06-25
+
+### Added
+- Split mapping into two sections: update existing (3 fields) and create new (16 fields)
+- Preview results split into "Productos a actualizar" and "Productos a crear" tabs
+- Creation configuration section with brand selector (`product_brand` taxonomy)
+- Custom template support: "Personalizar" option with `{column_name}` variables
+- Config variables (from creation config) appear in template variable list with separator
+- Product name now links to WooCommerce editor (like SKU)
+
+### Changed
+- Brand value uses term name instead of slug (both for attribute and template resolution)
+- `resolveTemplate()`, `validateMapping()`, `executeUpdate()` accept `$configVars` parameter
+- Updated documentation files (AGENTS.md, README.md, CONTEXT.md, CHANGELOG.md)
+
+---
+
 ## [1.1.14] - 2026-06-25
 
 ### Added

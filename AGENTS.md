@@ -98,7 +98,31 @@ Usa las constantes definidas en `index.php`:
 
 ---
 
-## 5. Datos del Producto en Vista Previa
+## 5. Mapeo y Creación de Productos
+
+### Mapping (buildMapping)
+- `buildMapping()` retorna un objeto con tres grupos:
+  - **Update**: keys directas `regular_price`, `sale_price`, `stock_quantity` (índices de columna)
+  - **Create**: keys con prefijo `create_` (ej: `create_product_name`, `create_regular_price`) — valor = índice de columna o `custom:template`
+  - **Config**: `creation_brand` (nombre del término, no slug), `config_vars` (objeto `{varname: value}` para templates)
+
+### Custom Templates
+- Opción "Personalizar" en selects de creación guarda el template con prefijo `custom:`
+- Ej: `create_product_name = "custom:Reloj {marca} {name}"`
+- `resolveTemplate()` resuelve `{varname}` revisando primero `config_vars`, luego columnas del archivo
+- El listado de variables muestra primero las de configuración (ej: `marca`), separador, luego columnas
+
+### Marca
+- `<select>` poblado desde taxonomy `product_brand`
+- Valor enviado: **nombre** del término (`$term->name`), no el slug (`$term->slug`)
+- Se usa tanto en `creation_brand` (atributo del producto) como en `config_vars.marca` (templates)
+
+### Producto existente: nombre como link
+- Cuando `product_id > 0`, tanto SKU como Nombre son links a `post.php?action=edit&post={product_id}` con `target="_blank"`
+
+---
+
+## 6. Datos del Producto en Vista Previa
 
 La respuesta de `cdep_update_preview` devuelve por cada producto (`products[]`):
 
@@ -116,13 +140,13 @@ La respuesta de `cdep_update_preview` devuelve por cada producto (`products[]`):
 
 ---
 
-## 6. Git Workflow
+## 7. Git Workflow
 
 1. **Commits**: No hacer commits automáticamente, solo dar sugerencias de commits.
 
 ---
 
-## 7. Lo que NO debes hacer
+## 8. Lo que NO debes hacer
 
 - ✗ NO modifiques `index.php` (plugin header).
 - ✗ NO elimines el prefijo `CDEP_` de ninguna clase/función.

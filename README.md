@@ -10,11 +10,12 @@ Conecta Google Drive, selecciona archivos Excel/CSV, mapea columnas a 16 campos 
 
 - 🔌 **Conexion Google Drive** — Autenticacion OAuth 2.0 con refresh token y renovacion automatica.
 - 📂 **Explorador de Archivos** — Navega carpetas de Drive, soporta Excel (.xlsx, .xls), Google Sheets y CSV.
-- 🗺️ **Mapeo de Columnas** — Detecta automaticamente columnas SKU, precio, precio oferta y cantidad. Mapeo a 16 campos del producto.
-- 👁️ **Vista Previa** — Validacion con diffs (antes/despues), imagenes, badges de estado.
-- ⚡ **Actualizacion Masiva** — Procesa en lotes de 25 con barra de progreso. Soporta actualizar productos existentes y crear nuevos.
+- 🗺️ **Mapeo de Columnas** — Detecta automaticamente columnas SKU, precio, precio oferta y cantidad. Mapeo separado para actualizar existentes (3 campos) y crear nuevos (16 campos).
+- 🎨 **Templates Personalizados** — Crea nombres y descripciones combinando texto fijo con variables de columna y configuracion (ej: `"Reloj {marca} {name}"`).
+- 👁️ **Vista Previa** — Validacion con diffs (antes/despues), imagenes, badges de estado. Resultados en tabs independientes por tipo.
+- ⚡ **Actualizacion Masiva** — Procesa en lotes de 25 con barra de progreso. Actualiza existentes y crea nuevos productos simultaneamente.
 - 🎯 **Actualizacion Individual** — Boton "Procesar" por fila para actualizar un solo producto.
-- 🔗 **Enlace a Edicion** — SKUs existentes abren el editor de WooCommerce en nueva pestana.
+- 🔗 **Enlace a Edicion** — SKUs y nombres existentes abren el editor de WooCommerce en nueva pestana.
 - 🛡️ **Seguridad** — Nonces, capabilities `manage_options`, sanitizacion de inputs, escapado de outputs.
 
 ---
@@ -90,7 +91,7 @@ connexion-drive-exel-product/
 |---|---|
 | 🔌 **Conectar** | Configuracion de credenciales OAuth 2.0, conectar/desconectar Google Drive |
 | 📂 **Explorar** | Navegacion por carpetas de Drive y seleccion de archivo |
-| 🗺️ **Mapear** | Seleccion de fila de encabezados, mapeo de columnas a 16 campos, vista previa con diffs |
+| 🗺️ **Mapear** | Seleccion de fila de encabezados, mapeo de columnas (actualizar existentes / crear nuevos), configuracion de creacion (marca), templates personalizados, vista previa con diffs |
 
 ---
 
@@ -107,10 +108,10 @@ connexion-drive-exel-product/
 | `cdep_refresh_cache` | Closure en `drive.php:375` | Redescarga archivo y re-parsea |
 | `cdep_reparse_file` | Closure en `drive.php:444` | Re-parsea archivo temporal con nueva fila de encabezados |
 | `cdep_drive_select_file` | Closure en `drive.php:486` | Descarga, parsea y cachea archivo seleccionado |
-| `cdep_update_preview` | Closure en `products.php:333` | Valida mapeo y genera vista previa |
-| `cdep_update_execute` | Closure en `products.php:362` | Ejecuta actualizacion por lotes (offset) |
-| `cdep_update_batch_skus` | Closure en `products.php:391` | Actualiza SKUs especificos por lote |
-| `cdep_update_single` | Closure en `products.php:437` | Actualiza un solo producto por SKU |
+| `cdep_update_preview` | Closure en `products.php:413` | Valida mapeo y genera vista previa |
+| `cdep_update_execute` | Closure en `products.php:443` | Ejecuta actualizacion por lotes (offset) |
+| `cdep_update_batch_skus` | Closure en `products.php:473` | Actualiza SKUs especificos por lote |
+| `cdep_update_single` | Closure en `products.php:520` | Actualiza un solo producto por SKU |
 
 ---
 
@@ -134,6 +135,8 @@ connexion-drive-exel-product/
 | `product_name` | string | `set_name()` |
 | `short_description` | string | `set_short_description()` |
 | `description` | string | `set_description()` |
+
+> **Nota:** Para productos existentes solo se mapean 3 campos (`regular_price`, `sale_price`, `stock_quantity`). Para productos nuevos se mapean los 16 campos completos.
 
 ---
 
