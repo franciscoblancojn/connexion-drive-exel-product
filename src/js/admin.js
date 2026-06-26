@@ -361,8 +361,8 @@ jQuery(function ($) {
         // Populate create field mapping selects (new products)
         $('.cdep-field-select-create').each(function () {
             var $sel = $(this);
-            // Keep first options: "— No mapear —" and "Personalizar"
-            while ($sel.find('option').length > 2) {
+            // Keep first options: "— No mapear —", "Personalizar" and "Generar con IA"
+            while ($sel.find('option').length > 3) {
                 $sel.find('option:last').remove();
             }
             $.each(data.headers, function (i, h) {
@@ -429,6 +429,8 @@ jQuery(function ($) {
                     if (template) {
                         mapping['create_' + field] = 'custom:' + template;
                     }
+                } else if (val === '__ai__') {
+                    mapping['create_' + field] = '__ai__';
                 } else {
                     mapping['create_' + field] = val;
                 }
@@ -492,7 +494,9 @@ jQuery(function ($) {
                 var field = $(this).data('field');
                 if (mapping['create_' + field]) {
                     var val = mapping['create_' + field];
-                    if (val.indexOf('custom:') === 0) {
+                    if (val === '__ai__') {
+                        $(this).val('__ai__');
+                    } else if (val.indexOf('custom:') === 0) {
                         $(this).val('__custom__');
                         var $td = $(this).closest('td');
                         $td.find('.cdep-custom-template-input').val(val.substring(7));
@@ -513,7 +517,8 @@ jQuery(function ($) {
 
     $(document).on('change', '.cdep-field-select-create', function () {
         var val = $(this).val();
-        var $wrap = $(this).closest('td').find('.cdep-custom-template-wrap');
+        var $td = $(this).closest('td');
+        var $wrap = $td.find('.cdep-custom-template-wrap');
         if (val === '__custom__') {
             $wrap.show();
         } else {
@@ -607,7 +612,7 @@ jQuery(function ($) {
             + '</div>';
     }
 
-    function renderProductsTable(products, mappedFields, productNameMapped) {
+    function renderProductsTable(products, mappedFields, productNameMapped, aiFields) {
         var html = '<div class="cdep-table-wrapper">';
         html += '<table class="wp-list-table widefat fixed striped">';
         html += '<colgroup>';
@@ -644,11 +649,16 @@ jQuery(function ($) {
                 html += '<td><strong>' + escHtml(p.sku) + '</strong></td>';
             }
             if (productNameMapped && p.fields['product_name']) {
-                var nameHtml = renderFieldCell(p.fields['product_name'], p.exists);
-                if (p.exists && p.product_id) {
-                    html += '<td><a href="' + editUrl + '" target="_blank">' + nameHtml + '</a></td>';
+                var isAiName = aiFields && aiFields.indexOf('product_name') !== -1;
+                if (isAiName) {
+                    html += '<td><span class="cdep-badge cdep-badge-ai">Pendiente de generar</span></td>';
                 } else {
-                    html += '<td>' + nameHtml + '</td>';
+                    var nameHtml = renderFieldCell(p.fields['product_name'], p.exists);
+                    if (p.exists && p.product_id) {
+                        html += '<td><a href="' + editUrl + '" target="_blank">' + nameHtml + '</a></td>';
+                    } else {
+                        html += '<td>' + nameHtml + '</td>';
+                    }
                 }
             } else {
                 if (p.exists && p.product_id) {
@@ -660,7 +670,12 @@ jQuery(function ($) {
             html += '<td>' + escHtml(p.categories) + '</td>';
             $.each(mappedFields, function (fi, f) {
                 var fd = p.fields[f.key];
-                html += '<td>' + (fd ? renderFieldCell(fd, p.exists) : '') + '</td>';
+                var isAi = aiFields && aiFields.indexOf(f.key) !== -1;
+                if (isAi) {
+                    html += '<td><span class="cdep-badge cdep-badge-ai">Pendiente de generar</span></td>';
+                } else {
+                    html += '<td>' + (fd ? renderFieldCell(fd, p.exists) : '') + '</td>';
+                }
             });
             html += '</tr>';
         });
@@ -704,6 +719,9 @@ jQuery(function ($) {
                     });
                 }
 
+                // Detect AI fields
+                var aiFields = data.ai_fields || [];
+
                 // Split products into existing and new
                 var existingProducts = [];
                 var newProducts = [];
@@ -715,6 +733,8 @@ jQuery(function ($) {
                     }
                 });
 
+                var hasAiFields = aiFields.length > 0;
+
                 html += '<h3>Productos a procesar</h3>';
                 html += '<div class="cdep-preview-tabs-wrapper">';
                 html += '<div class="cdep-preview-tabs">';
@@ -725,9 +745,13 @@ jQuery(function ($) {
                 // Update tab
                 html += '<div class="cdep-preview-tab-content active" id="cdep-preview-update-content" data-tab="update">';
                 if (existingProducts.length > 0) {
-                    html += renderProductsTable(existingProducts, mappedFields, productNameMapped);
+                    html += renderProductsTable(existingProducts, mappedFields, productNameMapped, aiFields);
                     html += '<hr>';
-                    html += '<p><button id="cdep-start-update" class="button button-primary">Iniciar Actualización Masiva</button></p>';
+                    html += '<p><button id="cdep-start-update" class="button button-primary">Iniciar Actualización Masiva</button>';
+                    if (hasAiFields) {
+                        html += ' <button id="cdep-ai-generate-update" class="button cdep-ai-generate-btn">Generar contenido con IA</button>';
+                    }
+                    html += '</p>';
                 } else {
                     html += '<p>No hay productos existentes para actualizar.</p>';
                 }
@@ -741,9 +765,13 @@ jQuery(function ($) {
                 // Create tab
                 html += '<div class="cdep-preview-tab-content" id="cdep-preview-create-content" data-tab="create">';
                 if (newProducts.length > 0) {
-                    html += renderProductsTable(newProducts, mappedFields, productNameMapped);
+                    html += renderProductsTable(newProducts, mappedFields, productNameMapped, aiFields);
                     html += '<hr>';
-                    html += '<p><button id="cdep-start-create" class="button button-primary">Iniciar Creación Masiva</button></p>';
+                    html += '<p><button id="cdep-start-create" class="button button-primary">Iniciar Creación Masiva</button>';
+                    if (hasAiFields) {
+                        html += ' <button id="cdep-ai-generate-create" class="button cdep-ai-generate-btn">Generar contenido con IA</button>';
+                    }
+                    html += '</p>';
                 } else {
                     html += '<p>No hay productos nuevos para crear.</p>';
                 }
@@ -943,6 +971,11 @@ jQuery(function ($) {
 
     $(document).on('click', '#cdep-start-create', function () {
         runBatchUpdate('cdep-preview-create-content', 'cdep-start-create', 'cdep-create-progress', 'cdep-create-result', state.mapping);
+    });
+
+    // === AI GENERATE BUTTON (placeholder) ===
+    $(document).on('click', '.cdep-ai-generate-btn', function () {
+        showMessage('#cdep-preview-result', 'Funcionalidad de IA próximamente disponible.', 'ok');
     });
 
     // === SINGLE PRODUCT PROCESS ===

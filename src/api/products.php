@@ -154,6 +154,7 @@ class CDEP_PRODUCTS
         $updateFields = array('regular_price', 'sale_price', 'stock_quantity');
         $updateMapping = array();
         $createMapping = array();
+        $aiFields = array();
         foreach ($mapping as $key => $colIndex) {
             if ($key === 'sku' || $colIndex === '') {
                 continue;
@@ -161,7 +162,14 @@ class CDEP_PRODUCTS
             if (strpos($key, 'create_') === 0) {
                 $realKey = substr($key, 7);
                 if (isset(self::$fields[$realKey])) {
-                    $createMapping[$realKey] = (is_string($colIndex) && strpos($colIndex, 'custom:') === 0) ? $colIndex : intval($colIndex);
+                    if ($colIndex === '__ai__') {
+                        $createMapping[$realKey] = '__ai__';
+                        $aiFields[] = $realKey;
+                    } elseif (is_string($colIndex) && strpos($colIndex, 'custom:') === 0) {
+                        $createMapping[$realKey] = $colIndex;
+                    } else {
+                        $createMapping[$realKey] = intval($colIndex);
+                    }
                 }
             } elseif (isset(self::$fields[$key])) {
                 $updateMapping[$key] = intval($colIndex);
@@ -223,6 +231,14 @@ class CDEP_PRODUCTS
             $activeMapping = $exists ? $updateMapping : $createMapping;
 
             foreach ($activeMapping as $field => $colIndex) {
+                if ($colIndex === '__ai__') {
+                    $productData['fields'][$field] = array(
+                        'current' => '',
+                        'new' => '',
+                        'changed' => false,
+                    );
+                    continue;
+                }
                 $newValue = '';
                 if (is_string($colIndex) && strpos($colIndex, 'custom:') === 0) {
                     $template = substr($colIndex, 7);
@@ -284,6 +300,7 @@ class CDEP_PRODUCTS
             'new_count' => $newCount,
             'products' => $products,
             'field_labels' => $fieldLabels,
+            'ai_fields' => $aiFields,
         );
     }
 
@@ -305,7 +322,13 @@ class CDEP_PRODUCTS
             if (strpos($key, 'create_') === 0) {
                 $realKey = substr($key, 7);
                 if (isset(self::$fields[$realKey])) {
-                    $createMapping[$realKey] = (is_string($colIndex) && strpos($colIndex, 'custom:') === 0) ? $colIndex : intval($colIndex);
+                    if ($colIndex === '__ai__') {
+                        continue;
+                    } elseif (is_string($colIndex) && strpos($colIndex, 'custom:') === 0) {
+                        $createMapping[$realKey] = $colIndex;
+                    } else {
+                        $createMapping[$realKey] = intval($colIndex);
+                    }
                 }
             } elseif (isset(self::$fields[$key])) {
                 $updateMapping[$key] = intval($colIndex);
