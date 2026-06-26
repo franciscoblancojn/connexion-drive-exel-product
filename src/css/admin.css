@@ -465,7 +465,7 @@
 }
 
 .cdep-template-variable-separator {
-    height: 1px;
-    background: #ccd0d4;
-    margin: 4px 0;
+    height: 4px;
+    background: #9e9898;
+    margin: 0;
 }

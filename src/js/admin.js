@@ -436,7 +436,8 @@ jQuery(function ($) {
         });
 
         // Creation config
-        var brand = $('#creation-brand').val();
+        var $brand = $('#creation-brand');
+        var brand = $brand.is('select') ? $brand.find('option:selected').text() : $brand.val();
         if (brand) {
             mapping['creation_brand'] = brand;
         }
@@ -446,7 +447,7 @@ jQuery(function ($) {
         $('#cdep-creation-config-table tbody tr').each(function () {
             var label = $(this).find('td:first').text().trim().toLowerCase();
             var $input = $(this).find('input, select');
-            var val = $input.val();
+            var val = $input.is('select') ? $input.find('option:selected').text() : $input.val();
             if (val && label) {
                 var varName = label.replace(/[^a-z0-9_]/g, '_').replace(/_+/g, '_').replace(/^_|_$/g, '');
                 if (varName) {
