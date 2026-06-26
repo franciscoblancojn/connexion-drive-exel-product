@@ -349,7 +349,7 @@ jQuery(function ($) {
             $skuSelect.append('<option value="' + h.index + '">' + escHtml(h.name) + '</option>');
         });
 
-        // Populate field mapping selects
+        // Populate update field mapping selects (existing products)
         $('.cdep-field-select').each(function () {
             var $sel = $(this);
             $sel.find('option:not(:first)').remove();
@@ -358,7 +358,16 @@ jQuery(function ($) {
             });
         });
 
-        // Auto-select detected columns
+        // Populate create field mapping selects (new products)
+        $('.cdep-field-select-create').each(function () {
+            var $sel = $(this);
+            $sel.find('option:not(:first)').remove();
+            $.each(data.headers, function (i, h) {
+                $sel.append('<option value="' + h.index + '">' + escHtml(h.name) + '</option>');
+            });
+        });
+
+        // Auto-select detected columns for update fields
         if (data.detected.sku !== null) {
             $('#mapping-sku').val(data.detected.sku);
         }
@@ -370,6 +379,17 @@ jQuery(function ($) {
         }
         if (data.detected.quantity !== null) {
             $('.cdep-field-select[data-field="stock_quantity"]').val(data.detected.quantity);
+        }
+
+        // Auto-select detected columns for create fields
+        if (data.detected.price !== null) {
+            $('.cdep-field-select-create[data-field="regular_price"]').val(data.detected.price);
+        }
+        if (data.detected.sale_price !== null) {
+            $('.cdep-field-select-create[data-field="sale_price"]').val(data.detected.sale_price);
+        }
+        if (data.detected.quantity !== null) {
+            $('.cdep-field-select-create[data-field="stock_quantity"]').val(data.detected.quantity);
         }
 
         if (typeof data.header_row !== 'undefined') {
@@ -387,11 +407,21 @@ jQuery(function ($) {
             sku: $('#mapping-sku').val(),
         };
 
+        // Update fields (existing products): regular_price, sale_price, stock_quantity
         $('.cdep-field-select').each(function () {
             var field = $(this).data('field');
             var val = $(this).val();
             if (val) {
                 mapping[field] = val;
+            }
+        });
+
+        // Create fields (new products): all fields with create_ prefix
+        $('.cdep-field-select-create').each(function () {
+            var field = $(this).data('field');
+            var val = $(this).val();
+            if (val) {
+                mapping['create_' + field] = val;
             }
         });
 
@@ -412,10 +442,18 @@ jQuery(function ($) {
             if (mapping.sku) {
                 $('#mapping-sku').val(mapping.sku);
             }
+            // Restore update fields
             $('.cdep-field-select').each(function () {
                 var field = $(this).data('field');
                 if (mapping[field]) {
                     $(this).val(mapping[field]);
+                }
+            });
+            // Restore create fields
+            $('.cdep-field-select-create').each(function () {
+                var field = $(this).data('field');
+                if (mapping['create_' + field]) {
+                    $(this).val(mapping['create_' + field]);
                 }
             });
         } catch (e) {}
@@ -455,6 +493,59 @@ jQuery(function ($) {
             + '</div>';
     }
 
+    function renderProductsTable(products, mappedFields, productNameMapped) {
+        var html = '<div class="cdep-table-wrapper">';
+        html += '<table class="wp-list-table widefat fixed striped">';
+        html += '<colgroup>';
+        html += '<col style="width: 40px;">';
+        html += '<col style="width: 90px;">';
+        html += '<col style="width: 110px;">';
+        html += '<col style="width: 60px;">';
+        html += '<col style="width: auto;">';
+        html += '<col style="width: auto;">';
+        html += '<col style="width: auto;">';
+        $.each(mappedFields, function (i, f) {
+            html += '<col style="width: auto;">';
+        });
+        html += '</colgroup>';
+        html += '<thead><tr>';
+        html += '<th style="width:40px"><input type="checkbox" class="cdep-select-all" checked></th>';
+        html += '<th>Acción</th><th>Estado</th><th>Imagen</th><th>SKU</th><th>Nombre</th><th>Categorías</th>';
+        $.each(mappedFields, function (i, f) {
+            html += '<th>' + escHtml(f.label) + '</th>';
+        });
+        html += '</tr></thead><tbody>';
+
+        $.each(products, function (i, p) {
+            var statusBadge = renderStatusBadge(p.status);
+            html += '<tr class="cdep-product-row" data-sku="' + escHtml(p.sku) + '" data-status="' + p.status + '">';
+            html += '<td><input type="checkbox" class="cdep-row-checkbox" value="' + escHtml(p.sku) + '" checked></td>';
+            html += '<td><button class="button button-small cdep-process-single" data-sku="' + escHtml(p.sku) + '">Procesar</button></td>';
+            html += '<td class="cdep-status-cell">' + statusBadge + '</td>';
+            html += '<td>' + (p.image || imageProductDefualt) + '</td>';
+            if (p.exists && p.product_id) {
+                var editUrl = cdep.ajaxurl.replace('admin-ajax.php', 'post.php?post=' + p.product_id + '&action=edit');
+                html += '<td><strong><a href="' + editUrl + '" target="_blank">' + escHtml(p.sku) + '</a></strong></td>';
+            } else {
+                html += '<td><strong>' + escHtml(p.sku) + '</strong></td>';
+            }
+            if (productNameMapped && p.fields['product_name']) {
+                html += '<td>' + renderFieldCell(p.fields['product_name'], p.exists) + '</td>';
+            } else {
+                html += '<td>' + escHtml(p.name) + '</td>';
+            }
+            html += '<td>' + escHtml(p.categories) + '</td>';
+            $.each(mappedFields, function (fi, f) {
+                var fd = p.fields[f.key];
+                html += '<td>' + (fd ? renderFieldCell(fd, p.exists) : '') + '</td>';
+            });
+            html += '</tr>';
+        });
+
+        html += '</tbody></table></div>';
+        return html;
+    }
+
     $('#cdep-preview-update').on('click', function () {
         var mapping = buildMapping();
 
@@ -478,7 +569,6 @@ jQuery(function ($) {
             html += '</div>';
 
             if (data.products && data.products.length > 0) {
-                // Determine which fields are mapped (exclude product_name from dynamic columns)
                 var mappedFields = [];
                 var productNameMapped = false;
                 if (data.field_labels) {
@@ -491,73 +581,60 @@ jQuery(function ($) {
                     });
                 }
 
-                html += '<h3>Productos a procesar</h3>';
-                html += '<div class="cdep-table-wrapper">';
-                html += '<table class="wp-list-table widefat fixed striped" id="cdep-products-table">';
-                html += '<colgroup>';
-                html += '<col style="width: 40px;">';
-                html += '<col style="width: 90px;">';
-                html += '<col style="width: 110px;">';
-                html += '<col style="width: 60px;">';
-                html += '<col style="width: auto;">';
-                html += '<col style="width: auto;">';
-                html += '<col style="width: auto;">';
-                $.each(mappedFields, function (i, f) {
-                    html += '<col style="width: auto;">';
-                });
-                html += '</colgroup>';
-                html += '<thead><tr>';
-                html += '<th style="width:40px"><input type="checkbox" class="cdep-select-all" checked></th>';
-                html += '<th>Acción</th><th>Estado</th><th>Imagen</th><th>SKU</th><th>Nombre</th><th>Categorías</th>';
-                $.each(mappedFields, function (i, f) {
-                    html += '<th>' + escHtml(f.label) + '</th>';
-                });
-                html += '</tr></thead><tbody>';
-
+                // Split products into existing and new
+                var existingProducts = [];
+                var newProducts = [];
                 $.each(data.products, function (i, p) {
-                    var statusBadge = renderStatusBadge(p.status);
-                    html += '<tr class="cdep-product-row" data-sku="' + escHtml(p.sku) + '" data-status="' + p.status + '">';
-                    html += '<td><input type="checkbox" class="cdep-row-checkbox" value="' + escHtml(p.sku) + '" checked></td>';
-                    html += '<td><button class="button button-small cdep-process-single" data-sku="' + escHtml(p.sku) + '">Procesar</button></td>';
-                    html += '<td class="cdep-status-cell">' + statusBadge + '</td>';
-                    html += '<td>' + (p.image || imageProductDefualt) + '</td>';
-                    if (p.exists && p.product_id) {
-                        var editUrl = cdep.ajaxurl.replace('admin-ajax.php', 'post.php?post=' + p.product_id + '&action=edit');
-                        html += '<td><strong><a href="' + editUrl + '" target="_blank">' + escHtml(p.sku) + '</a></strong></td>';
+                    if (p.exists) {
+                        existingProducts.push(p);
                     } else {
-                        html += '<td><strong>' + escHtml(p.sku) + '</strong></td>';
+                        newProducts.push(p);
                     }
-
-                    // Nombre column: show diff if product_name is mapped, else show current name
-                    if (productNameMapped && p.fields['product_name']) {
-                        html += '<td>' + renderFieldCell(p.fields['product_name'], p.exists) + '</td>';
-                    } else {
-                        html += '<td>' + escHtml(p.name) + '</td>';
-                    }
-
-                    html += '<td>' + escHtml(p.categories) + '</td>';
-
-                    $.each(mappedFields, function (fi, f) {
-                        var fd = p.fields[f.key];
-                        html += '<td>' + (fd ? renderFieldCell(fd, p.exists) : '') + '</td>';
-                    });
-
-                    html += '</tr>';
                 });
 
-                html += '</tbody></table></div>';
+                html += '<h3>Productos a procesar</h3>';
+                html += '<div class="cdep-preview-tabs-wrapper">';
+                html += '<div class="cdep-preview-tabs">';
+                html += '<a href="#" class="cdep-preview-tab active" data-tab="update">Productos a actualizar (' + existingProducts.length + ')</a>';
+                html += '<a href="#" class="cdep-preview-tab" data-tab="create">Productos a crear (' + newProducts.length + ')</a>';
+                html += '</div>';
+
+                // Update tab
+                html += '<div class="cdep-preview-tab-content active" id="cdep-preview-update-content" data-tab="update">';
+                if (existingProducts.length > 0) {
+                    html += renderProductsTable(existingProducts, mappedFields, productNameMapped);
+                    html += '<hr>';
+                    html += '<p><button id="cdep-start-update" class="button button-primary">Iniciar Actualización Masiva</button></p>';
+                } else {
+                    html += '<p>No hay productos existentes para actualizar.</p>';
+                }
+                html += '<div id="cdep-update-progress" style="display:none">';
+                html += '<div class="cdep-progress-bar"><div class="cdep-progress-fill" style="width:0%"></div></div>';
+                html += '<p class="cdep-progress-text">0 / ' + existingProducts.length + ' productos procesados</p>';
+                html += '</div>';
+                html += '<div id="cdep-update-result"></div>';
+                html += '</div>';
+
+                // Create tab
+                html += '<div class="cdep-preview-tab-content" id="cdep-preview-create-content" data-tab="create">';
+                if (newProducts.length > 0) {
+                    html += renderProductsTable(newProducts, mappedFields, productNameMapped);
+                    html += '<hr>';
+                    html += '<p><button id="cdep-start-create" class="button button-primary">Iniciar Actualización Masiva</button></p>';
+                } else {
+                    html += '<p>No hay productos nuevos para crear.</p>';
+                }
+                html += '<div id="cdep-create-progress" style="display:none">';
+                html += '<div class="cdep-progress-bar"><div class="cdep-progress-fill" style="width:0%"></div></div>';
+                html += '<p class="cdep-progress-text">0 / ' + newProducts.length + ' productos procesados</p>';
+                html += '</div>';
+                html += '<div id="cdep-create-result"></div>';
+                html += '</div>';
+
+                html += '</div>'; // .cdep-preview-tabs-wrapper
             }
 
             html += '<p>Archivo: <strong>' + escHtml(data.file_name) + '</strong></p>';
-
-            // Update button and progress bar
-            html += '<hr>';
-            html += '<p><button id="cdep-start-update" class="button button-primary">Iniciar Actualización Masiva</button></p>';
-            html += '<div id="cdep-update-progress" style="display:none">';
-            html += '<div class="cdep-progress-bar"><div class="cdep-progress-fill" style="width:0%"></div></div>';
-            html += '<p class="cdep-progress-text">0 / ' + data.products.length + ' productos procesados</p>';
-            html += '</div>';
-            html += '<div id="cdep-update-result"></div>';
 
             state.products = data.products;
 
@@ -616,7 +693,7 @@ jQuery(function ($) {
     // === UPDATE EXECUTION ===
 
     $(document).on('change', '.cdep-select-all', function () {
-        $('.cdep-row-checkbox').prop('checked', $(this).prop('checked'));
+        $(this).closest('.cdep-table-wrapper').find('.cdep-row-checkbox').prop('checked', $(this).prop('checked'));
     });
 
     function findRowBySku(sku) {
@@ -630,28 +707,23 @@ jQuery(function ($) {
         return match;
     }
 
-    $(document).on('click', '#cdep-start-update', function () {
-        var btn = $(this);
-        var mapping = state.mapping;
-
-        if (!mapping || !mapping.sku) {
-            showMessage('#cdep-update-result', 'Primero haz una vista previa', 'error');
-            return;
-        }
-
+    function runBatchUpdate(containerId, buttonId, progressId, resultId, mapping) {
+        var $container = $('#' + containerId);
+        var btn = $('#' + buttonId);
         var checkedSkus = [];
-        $('.cdep-row-checkbox:checked').each(function () {
+
+        $container.find('.cdep-row-checkbox:checked').each(function () {
             checkedSkus.push($(this).val());
         });
 
         if (checkedSkus.length === 0) {
-            showMessage('#cdep-update-result', 'Selecciona al menos un producto', 'error');
+            showMessage('#' + resultId, 'Selecciona al menos un producto', 'error');
             return;
         }
 
         btn.prop('disabled', true).text('Actualizando...');
-        $('#cdep-update-progress').show();
-        $('#cdep-update-result').html('');
+        $('#' + progressId).show();
+        $('#' + resultId).html('');
 
         var totalSkus = checkedSkus.length;
         var totalUpdated = 0;
@@ -690,8 +762,8 @@ jQuery(function ($) {
                     resultHtml += '</tbody></table></div>';
                 }
 
-                $('#cdep-update-result').html(resultHtml);
-                $('.cdep-progress-text').text('Completado: ' + totalUpdated + ' actualizados, ' + totalCreated + ' creados');
+                $('#' + resultId).html(resultHtml);
+                $('#' + containerId + ' .cdep-progress-text').text('Completado: ' + totalUpdated + ' actualizados, ' + totalCreated + ' creados');
                 return;
             }
 
@@ -729,17 +801,25 @@ jQuery(function ($) {
                 }
 
                 var progress = Math.min(100, Math.round(processedCount / totalSkus * 100));
-                $('.cdep-progress-fill').css('width', progress + '%');
-                $('.cdep-progress-text').text(processedCount + ' / ' + totalSkus + ' productos procesados');
+                $('#' + containerId + ' .cdep-progress-fill').css('width', progress + '%');
+                $('#' + containerId + ' .cdep-progress-text').text(processedCount + ' / ' + totalSkus + ' productos procesados');
 
                 processBatch(idx + 1);
             }, function (msg) {
                 btn.prop('disabled', false).text('Iniciar Actualización Masiva');
-                showMessage('#cdep-update-result', msg, 'error');
+                showMessage('#' + resultId, msg, 'error');
             });
         }
 
         processBatch(0);
+    }
+
+    $(document).on('click', '#cdep-start-update', function () {
+        runBatchUpdate('cdep-preview-update-content', 'cdep-start-update', 'cdep-update-progress', 'cdep-update-result', state.mapping);
+    });
+
+    $(document).on('click', '#cdep-start-create', function () {
+        runBatchUpdate('cdep-preview-create-content', 'cdep-start-create', 'cdep-create-progress', 'cdep-create-result', state.mapping);
     });
 
     // === SINGLE PRODUCT PROCESS ===
@@ -778,6 +858,16 @@ jQuery(function ($) {
         }, function (msg) {
             btn.prop('disabled', false).text('Procesar');
         });
+    });
+
+    // === PREVIEW TABS SWITCHING ===
+    $(document).on('click', '.cdep-preview-tab', function () {
+        var tab = $(this).data('tab');
+        $('.cdep-preview-tab').removeClass('active');
+        $(this).addClass('active');
+        $('.cdep-preview-tab-content').removeClass('active');
+        $('.cdep-preview-tab-content[data-tab="' + tab + '"]').addClass('active');
+        return false;
     });
 
     // === TAB SWITCHING ===

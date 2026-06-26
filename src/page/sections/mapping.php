@@ -48,10 +48,38 @@ $productFields = CDEP_PRODUCTS::getFields();
                 </tr>
             </table>
 
-            <h3>Mapeo de campos del producto</h3>
-            <p class="description">Selecciona qué columna del archivo corresponde a cada campo del producto. Deja en "— No mapear —" para los campos que no quieras actualizar.</p>
+            <h3>Productos existentes — Actualización</h3>
+            <p class="description">Selecciona columnas para actualizar productos que ya existen en WooCommerce. Solo se actualizarán precio y stock.</p>
 
-            <table class="wp-list-table widefat striped" id="cdep-field-mapping-table">
+            <table class="wp-list-table widefat striped" id="cdep-field-mapping-update">
+                <thead>
+                    <tr>
+                        <th style="width:40%">Campo del producto</th>
+                        <th style="width:60%">Columna en el archivo</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php
+                    $updateFields = array('regular_price', 'sale_price', 'stock_quantity');
+                    foreach ($updateFields as $fieldKey):
+                        $fieldInfo = $productFields[$fieldKey];
+                    ?>
+                    <tr>
+                        <td><strong><?= esc_html($fieldInfo['label']) ?></strong></td>
+                        <td>
+                            <select class="cdep-field-select" data-field="<?= esc_attr($fieldKey) ?>" style="width:100%;max-width:400px">
+                                <option value="">— No mapear —</option>
+                            </select>
+                        </td>
+                    </tr>
+                    <?php endforeach; ?>
+                </tbody>
+            </table>
+
+            <h3>Productos nuevos — Creación</h3>
+            <p class="description">Selecciona columnas para crear nuevos productos en WooCommerce. Todos los campos están disponibles.</p>
+
+            <table class="wp-list-table widefat striped" id="cdep-field-mapping-create">
                 <thead>
                     <tr>
                         <th style="width:40%">Campo del producto</th>
@@ -63,7 +91,7 @@ $productFields = CDEP_PRODUCTS::getFields();
                     <tr>
                         <td><strong><?= esc_html($fieldInfo['label']) ?></strong></td>
                         <td>
-                            <select class="cdep-field-select" data-field="<?= esc_attr($fieldKey) ?>" style="width:100%;max-width:400px">
+                            <select class="cdep-field-select-create" data-field="<?= esc_attr($fieldKey) ?>" style="width:100%;max-width:400px">
                                 <option value="">— No mapear —</option>
                             </select>
                         </td>

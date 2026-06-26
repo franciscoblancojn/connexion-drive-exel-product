@@ -131,10 +131,22 @@ class CDEP_PRODUCTS
             return new WP_Error('missing_sku', 'Debe seleccionar la columna SKU');
         }
 
-        $fieldMapping = array();
+        // Split mapping: update fields for existing products, create fields for new products
+        $updateFields = array('regular_price', 'sale_price', 'stock_quantity');
+        $updateMapping = array();
+        $createMapping = array();
         foreach ($mapping as $key => $colIndex) {
-            if ($key !== 'sku' && $colIndex !== '' && isset(self::$fields[$key])) {
-                $fieldMapping[$key] = intval($colIndex);
+            if ($key === 'sku' || $colIndex === '') {
+                continue;
+            }
+            if (strpos($key, 'create_') === 0) {
+                $realKey = substr($key, 7);
+                if (isset(self::$fields[$realKey])) {
+                    $createMapping[$realKey] = intval($colIndex);
+                }
+            } elseif (isset(self::$fields[$key])) {
+                $updateMapping[$key] = intval($colIndex);
+                $createMapping[$key] = intval($colIndex);
             }
         }
 
@@ -188,7 +200,10 @@ class CDEP_PRODUCTS
                 $productData['categories'] = !empty($terms) ? implode(', ', $terms) : '';
             }
 
-            foreach ($fieldMapping as $field => $colIndex) {
+            // Use appropriate mapping: only update fields for existing, all fields for new
+            $activeMapping = $exists ? $updateMapping : $createMapping;
+
+            foreach ($activeMapping as $field => $colIndex) {
                 $newValue = isset($row[$colIndex]) ? trim($row[$colIndex]) : '';
                 $currentValue = $exists ? self::getProductField($product, $field) : '';
 
@@ -231,7 +246,8 @@ class CDEP_PRODUCTS
         }
 
         $fieldLabels = array();
-        foreach ($fieldMapping as $field => $colIndex) {
+        $allMapped = array_merge($updateMapping, $createMapping);
+        foreach ($allMapped as $field => $colIndex) {
             if (isset(self::$fields[$field])) {
                 $fieldLabels[$field] = self::$fields[$field]['label'];
             }
@@ -254,10 +270,21 @@ class CDEP_PRODUCTS
             return new WP_Error('missing_sku', 'Debe seleccionar la columna SKU');
         }
 
-        $fieldMapping = array();
+        // Split mapping: update fields for existing, create fields for new
+        $updateMapping = array();
+        $createMapping = array();
         foreach ($mapping as $key => $colIndex) {
-            if ($key !== 'sku' && $colIndex !== '' && isset(self::$fields[$key])) {
-                $fieldMapping[$key] = intval($colIndex);
+            if ($key === 'sku' || $colIndex === '') {
+                continue;
+            }
+            if (strpos($key, 'create_') === 0) {
+                $realKey = substr($key, 7);
+                if (isset(self::$fields[$realKey])) {
+                    $createMapping[$realKey] = intval($colIndex);
+                }
+            } elseif (isset(self::$fields[$key])) {
+                $updateMapping[$key] = intval($colIndex);
+                $createMapping[$key] = intval($colIndex);
             }
         }
 
@@ -298,7 +325,10 @@ class CDEP_PRODUCTS
             }
 
             try {
-                foreach ($fieldMapping as $field => $colIndex) {
+                // Use appropriate mapping per product type
+                $activeMapping = $isNew ? $createMapping : $updateMapping;
+
+                foreach ($activeMapping as $field => $colIndex) {
                     if (isset($row[$colIndex])) {
                         self::setProductField($product, $field, $row[$colIndex], self::$fields[$field]['type']);
                     }
