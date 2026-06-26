@@ -386,20 +386,17 @@
 }
 
 .cdep-two-columns {
-    display: flex;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
     gap: 30px;
     margin: 15px 0;
     align-items: flex-start;
 }
 
 .cdep-two-columns-left {
-    flex: 1;
-    min-width: 0;
 }
 
 .cdep-two-columns-right {
-    width: 320px;
-    flex-shrink: 0;
 }
 
 .cdep-two-columns-right .form-table th {
