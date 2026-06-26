@@ -95,7 +95,15 @@ $productFields = CDEP_PRODUCTS::getFields();
                                 <td>
                                     <select class="cdep-field-select-create" data-field="<?= esc_attr($fieldKey) ?>" style="width:100%;max-width:400px">
                                         <option value="">— No mapear —</option>
+                                        <option value="__custom__">Personalizar</option>
                                     </select>
+                                    <div class="cdep-custom-template-wrap" style="display:none;margin-top:4px">
+                                        <div class="cdep-template-input-row">
+                                            <input type="text" class="cdep-custom-template-input" placeholder="Ej: {nombre} - {tipo}" style="width:100%">
+                                            <button type="button" class="cdep-template-variable-btn button button-small" title="Insertar variable">+</button>
+                                        </div>
+                                        <div class="cdep-template-variables-list" style="display:none"></div>
+                                    </div>
                                 </td>
                             </tr>
                             <?php endforeach; ?>

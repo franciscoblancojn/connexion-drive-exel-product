@@ -317,7 +317,7 @@
 }
 
 .cdep-table-wrapper {
-    max-height: 70dvh;
+    max-height: 65dvh;
     overflow-y: auto;
     overflow-x: auto;
     margin: 10px 0;
@@ -414,4 +414,52 @@
 
 #cdep-creation-config-table select {
     width: 100%;
+}
+
+.cdep-template-input-row {
+    display: flex;
+    gap: 4px;
+    align-items: stretch;
+}
+
+.cdep-template-input-row input {
+    flex: 1;
+    min-width: 0;
+}
+
+.cdep-template-variable-btn {
+    flex-shrink: 0;
+    font-weight: 700;
+    font-size: 16px;
+    line-height: 1;
+}
+
+.cdep-template-variables-list {
+    position: absolute;
+    z-index: 100;
+    background: #fff;
+    border: 1px solid #ccd0d4;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    max-height: 200px;
+    overflow-y: auto;
+    min-width: 180px;
+}
+
+.cdep-template-variable-item {
+    display: block;
+    padding: 6px 12px;
+    text-decoration: none;
+    color: #333;
+    font-size: 13px;
+    cursor: pointer;
+    border-bottom: 1px solid #f0f0f1;
+}
+
+.cdep-template-variable-item:hover {
+    background: #f0f6fc;
+    color: #2271b1;
+}
+
+.cdep-custom-template-wrap {
+    position: relative;
 }

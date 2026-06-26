@@ -361,7 +361,10 @@ jQuery(function ($) {
         // Populate create field mapping selects (new products)
         $('.cdep-field-select-create').each(function () {
             var $sel = $(this);
-            $sel.find('option:not(:first)').remove();
+            // Keep first options: "— No mapear —" and "Personalizar"
+            while ($sel.find('option').length > 2) {
+                $sel.find('option:last').remove();
+            }
             $.each(data.headers, function (i, h) {
                 $sel.append('<option value="' + h.index + '">' + escHtml(h.name) + '</option>');
             });
@@ -421,7 +424,14 @@ jQuery(function ($) {
             var field = $(this).data('field');
             var val = $(this).val();
             if (val) {
-                mapping['create_' + field] = val;
+                if (val === '__custom__') {
+                    var template = $(this).closest('td').find('.cdep-custom-template-input').val();
+                    if (template) {
+                        mapping['create_' + field] = 'custom:' + template;
+                    }
+                } else {
+                    mapping['create_' + field] = val;
+                }
             }
         });
 
@@ -459,7 +469,15 @@ jQuery(function ($) {
             $('.cdep-field-select-create').each(function () {
                 var field = $(this).data('field');
                 if (mapping['create_' + field]) {
-                    $(this).val(mapping['create_' + field]);
+                    var val = mapping['create_' + field];
+                    if (val.indexOf('custom:') === 0) {
+                        $(this).val('__custom__');
+                        var $td = $(this).closest('td');
+                        $td.find('.cdep-custom-template-input').val(val.substring(7));
+                        $td.find('.cdep-custom-template-wrap').show();
+                    } else {
+                        $(this).val(val);
+                    }
                 }
             });
             // Restore creation config
@@ -468,6 +486,52 @@ jQuery(function ($) {
             }
         } catch (e) {}
     }
+
+    // === CUSTOM TEMPLATE UI ===
+
+    $(document).on('change', '.cdep-field-select-create', function () {
+        var val = $(this).val();
+        var $wrap = $(this).closest('td').find('.cdep-custom-template-wrap');
+        if (val === '__custom__') {
+            $wrap.show();
+        } else {
+            $wrap.hide();
+        }
+    });
+
+    $(document).on('click', '.cdep-template-variable-btn', function () {
+        var $list = $(this).closest('.cdep-custom-template-wrap').find('.cdep-template-variables-list');
+        if ($list.is(':visible')) {
+            $list.hide();
+            return;
+        }
+        var headers = window.cdepParsedData ? window.cdepParsedData.headers : [];
+        var html = '';
+        $.each(headers, function (i, h) {
+            html += '<a href="#" class="cdep-template-variable-item" data-name="' + escHtml(h.name) + '">' + escHtml(h.name) + '</a>';
+        });
+        $list.html(html).show();
+    });
+
+    $(document).on('click', '.cdep-template-variable-item', function () {
+        var name = $(this).data('name');
+        var $input = $(this).closest('.cdep-custom-template-wrap').find('.cdep-custom-template-input');
+        var input = $input[0];
+        var start = input.selectionStart;
+        var end = input.selectionEnd;
+        var text = input.value;
+        input.value = text.substring(0, start) + '{' + name + '}' + text.substring(end);
+        input.selectionStart = input.selectionEnd = start + name.length + 2;
+        $input.focus();
+        $(this).closest('.cdep-template-variables-list').hide();
+        return false;
+    });
+
+    $(document).on('click', function (e) {
+        if (!$(e.target).closest('.cdep-custom-template-wrap').length) {
+            $('.cdep-template-variables-list').hide();
+        }
+    });
 
     function renderStatusBadge(status) {
         var labels = {

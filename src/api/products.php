@@ -123,7 +123,21 @@ class CDEP_PRODUCTS
         }
     }
 
-    public static function validateMapping($allRows, $mapping)
+    private static function resolveTemplate($template, $row, $headers)
+    {
+        return preg_replace_callback('/\{([^}]+)\}/', function ($matches) use ($row, $headers) {
+            $placeholder = trim($matches[1]);
+            foreach ($headers as $h) {
+                if ($h['name'] === $placeholder) {
+                    $idx = intval($h['index']);
+                    return isset($row[$idx]) ? trim($row[$idx]) : '';
+                }
+            }
+            return $matches[0];
+        }, $template);
+    }
+
+    public static function validateMapping($allRows, $mapping, $headers = array())
     {
         $skuIndex = isset($mapping['sku']) && $mapping['sku'] !== '' ? intval($mapping['sku']) : -1;
 
@@ -142,7 +156,7 @@ class CDEP_PRODUCTS
             if (strpos($key, 'create_') === 0) {
                 $realKey = substr($key, 7);
                 if (isset(self::$fields[$realKey])) {
-                    $createMapping[$realKey] = intval($colIndex);
+                    $createMapping[$realKey] = (is_string($colIndex) && strpos($colIndex, 'custom:') === 0) ? $colIndex : intval($colIndex);
                 }
             } elseif (isset(self::$fields[$key])) {
                 $updateMapping[$key] = intval($colIndex);
@@ -204,7 +218,13 @@ class CDEP_PRODUCTS
             $activeMapping = $exists ? $updateMapping : $createMapping;
 
             foreach ($activeMapping as $field => $colIndex) {
-                $newValue = isset($row[$colIndex]) ? trim($row[$colIndex]) : '';
+                $newValue = '';
+                if (is_string($colIndex) && strpos($colIndex, 'custom:') === 0) {
+                    $template = substr($colIndex, 7);
+                    $newValue = self::resolveTemplate($template, $row, $headers);
+                } else {
+                    $newValue = isset($row[$colIndex]) ? trim($row[$colIndex]) : '';
+                }
                 $currentValue = $exists ? self::getProductField($product, $field) : '';
 
                 // Detect changes (numeric for prices/qty, string for text)
@@ -262,7 +282,7 @@ class CDEP_PRODUCTS
         );
     }
 
-    public static function executeUpdate($allRows, $mapping, $offset = 0, $limit = 25)
+    public static function executeUpdate($allRows, $mapping, $offset = 0, $limit = 25, $headers = array())
     {
         $skuIndex = isset($mapping['sku']) && $mapping['sku'] !== '' ? intval($mapping['sku']) : -1;
 
@@ -280,7 +300,7 @@ class CDEP_PRODUCTS
             if (strpos($key, 'create_') === 0) {
                 $realKey = substr($key, 7);
                 if (isset(self::$fields[$realKey])) {
-                    $createMapping[$realKey] = intval($colIndex);
+                    $createMapping[$realKey] = (is_string($colIndex) && strpos($colIndex, 'custom:') === 0) ? $colIndex : intval($colIndex);
                 }
             } elseif (isset(self::$fields[$key])) {
                 $updateMapping[$key] = intval($colIndex);
@@ -331,8 +351,15 @@ class CDEP_PRODUCTS
                 $activeMapping = $isNew ? $createMapping : $updateMapping;
 
                 foreach ($activeMapping as $field => $colIndex) {
-                    if (isset($row[$colIndex])) {
-                        self::setProductField($product, $field, $row[$colIndex], self::$fields[$field]['type']);
+                    $value = '';
+                    if (is_string($colIndex) && strpos($colIndex, 'custom:') === 0) {
+                        $template = substr($colIndex, 7);
+                        $value = self::resolveTemplate($template, $row, $headers);
+                    } else {
+                        $value = isset($row[$colIndex]) ? $row[$colIndex] : '';
+                    }
+                    if ($value !== '') {
+                        self::setProductField($product, $field, $value, self::$fields[$field]['type']);
                     }
                 }
 
@@ -396,7 +423,8 @@ add_action('wp_ajax_cdep_update_preview', function () {
         wp_send_json_error('No hay datos en caché. Seleccione el archivo nuevamente.');
     }
 
-    $result = CDEP_PRODUCTS::validateMapping($cached['all_rows'], $mapping);
+    $headers = isset($cached['headers']) ? $cached['headers'] : array();
+    $result = CDEP_PRODUCTS::validateMapping($cached['all_rows'], $mapping, $headers);
 
     if (is_wp_error($result)) {
         wp_send_json_error($result->get_error_message());
@@ -427,7 +455,8 @@ add_action('wp_ajax_cdep_update_execute', function () {
         wp_send_json_error('No hay datos en caché');
     }
 
-    $result = CDEP_PRODUCTS::executeUpdate($cached['all_rows'], $mapping, $offset, $limit);
+    $headers = isset($cached['headers']) ? $cached['headers'] : array();
+    $result = CDEP_PRODUCTS::executeUpdate($cached['all_rows'], $mapping, $offset, $limit, $headers);
 
     if (is_wp_error($result)) {
         wp_send_json_error($result->get_error_message());
@@ -473,7 +502,8 @@ add_action('wp_ajax_cdep_update_batch_skus', function () {
         wp_send_json_error('No se encontraron filas con los SKUs proporcionados');
     }
 
-    $result = CDEP_PRODUCTS::executeUpdate($rowsToProcess, $mapping, 0, count($rowsToProcess));
+    $headers = isset($cached['headers']) ? $cached['headers'] : array();
+    $result = CDEP_PRODUCTS::executeUpdate($rowsToProcess, $mapping, 0, count($rowsToProcess), $headers);
 
     if (is_wp_error($result)) {
         wp_send_json_error($result->get_error_message());
@@ -517,7 +547,8 @@ add_action('wp_ajax_cdep_update_single', function () {
         wp_send_json_error('SKU no encontrado en el archivo');
     }
 
-    $result = CDEP_PRODUCTS::executeUpdate(array($foundRow), $mapping, 0, 1);
+    $headers = isset($cached['headers']) ? $cached['headers'] : array();
+    $result = CDEP_PRODUCTS::executeUpdate(array($foundRow), $mapping, 0, 1, $headers);
 
     if (is_wp_error($result)) {
         wp_send_json_error($result->get_error_message());
