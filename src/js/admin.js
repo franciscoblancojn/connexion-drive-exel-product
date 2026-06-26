@@ -743,7 +743,7 @@ jQuery(function ($) {
                 if (newProducts.length > 0) {
                     html += renderProductsTable(newProducts, mappedFields, productNameMapped);
                     html += '<hr>';
-                    html += '<p><button id="cdep-start-create" class="button button-primary">Iniciar Actualización Masiva</button></p>';
+                    html += '<p><button id="cdep-start-create" class="button button-primary">Iniciar Creación Masiva</button></p>';
                 } else {
                     html += '<p>No hay productos nuevos para crear.</p>';
                 }
