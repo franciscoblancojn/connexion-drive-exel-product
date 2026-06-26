@@ -127,6 +127,7 @@
 
 .cdep-table-scroll table {
     font-size: 12px;
+    table-layout: auto;
 }
 
 .cdep-table-scroll table th,
