@@ -123,10 +123,15 @@ class CDEP_PRODUCTS
         }
     }
 
-    private static function resolveTemplate($template, $row, $headers)
+    private static function resolveTemplate($template, $row, $headers, $configVars = array())
     {
-        return preg_replace_callback('/\{([^}]+)\}/', function ($matches) use ($row, $headers) {
+        return preg_replace_callback('/\{([^}]+)\}/', function ($matches) use ($row, $headers, $configVars) {
             $placeholder = trim($matches[1]);
+            // Check config variables first (from Configuraciones de Creacion)
+            if (isset($configVars[$placeholder])) {
+                return $configVars[$placeholder];
+            }
+            // Check column headers
             foreach ($headers as $h) {
                 if ($h['name'] === $placeholder) {
                     $idx = intval($h['index']);
@@ -137,7 +142,7 @@ class CDEP_PRODUCTS
         }, $template);
     }
 
-    public static function validateMapping($allRows, $mapping, $headers = array())
+    public static function validateMapping($allRows, $mapping, $headers = array(), $configVars = array())
     {
         $skuIndex = isset($mapping['sku']) && $mapping['sku'] !== '' ? intval($mapping['sku']) : -1;
 
@@ -221,7 +226,7 @@ class CDEP_PRODUCTS
                 $newValue = '';
                 if (is_string($colIndex) && strpos($colIndex, 'custom:') === 0) {
                     $template = substr($colIndex, 7);
-                    $newValue = self::resolveTemplate($template, $row, $headers);
+                    $newValue = self::resolveTemplate($template, $row, $headers, $configVars);
                 } else {
                     $newValue = isset($row[$colIndex]) ? trim($row[$colIndex]) : '';
                 }
@@ -282,7 +287,7 @@ class CDEP_PRODUCTS
         );
     }
 
-    public static function executeUpdate($allRows, $mapping, $offset = 0, $limit = 25, $headers = array())
+    public static function executeUpdate($allRows, $mapping, $offset = 0, $limit = 25, $headers = array(), $configVars = array())
     {
         $skuIndex = isset($mapping['sku']) && $mapping['sku'] !== '' ? intval($mapping['sku']) : -1;
 
@@ -354,7 +359,7 @@ class CDEP_PRODUCTS
                     $value = '';
                     if (is_string($colIndex) && strpos($colIndex, 'custom:') === 0) {
                         $template = substr($colIndex, 7);
-                        $value = self::resolveTemplate($template, $row, $headers);
+                        $value = self::resolveTemplate($template, $row, $headers, $configVars);
                     } else {
                         $value = isset($row[$colIndex]) ? $row[$colIndex] : '';
                     }
@@ -424,7 +429,8 @@ add_action('wp_ajax_cdep_update_preview', function () {
     }
 
     $headers = isset($cached['headers']) ? $cached['headers'] : array();
-    $result = CDEP_PRODUCTS::validateMapping($cached['all_rows'], $mapping, $headers);
+    $configVars = isset($mapping['config_vars']) ? $mapping['config_vars'] : array();
+    $result = CDEP_PRODUCTS::validateMapping($cached['all_rows'], $mapping, $headers, $configVars);
 
     if (is_wp_error($result)) {
         wp_send_json_error($result->get_error_message());
@@ -456,7 +462,8 @@ add_action('wp_ajax_cdep_update_execute', function () {
     }
 
     $headers = isset($cached['headers']) ? $cached['headers'] : array();
-    $result = CDEP_PRODUCTS::executeUpdate($cached['all_rows'], $mapping, $offset, $limit, $headers);
+    $configVars = isset($mapping['config_vars']) ? $mapping['config_vars'] : array();
+    $result = CDEP_PRODUCTS::executeUpdate($cached['all_rows'], $mapping, $offset, $limit, $headers, $configVars);
 
     if (is_wp_error($result)) {
         wp_send_json_error($result->get_error_message());
@@ -503,7 +510,8 @@ add_action('wp_ajax_cdep_update_batch_skus', function () {
     }
 
     $headers = isset($cached['headers']) ? $cached['headers'] : array();
-    $result = CDEP_PRODUCTS::executeUpdate($rowsToProcess, $mapping, 0, count($rowsToProcess), $headers);
+    $configVars = isset($mapping['config_vars']) ? $mapping['config_vars'] : array();
+    $result = CDEP_PRODUCTS::executeUpdate($rowsToProcess, $mapping, 0, count($rowsToProcess), $headers, $configVars);
 
     if (is_wp_error($result)) {
         wp_send_json_error($result->get_error_message());
@@ -548,7 +556,8 @@ add_action('wp_ajax_cdep_update_single', function () {
     }
 
     $headers = isset($cached['headers']) ? $cached['headers'] : array();
-    $result = CDEP_PRODUCTS::executeUpdate(array($foundRow), $mapping, 0, 1, $headers);
+    $configVars = isset($mapping['config_vars']) ? $mapping['config_vars'] : array();
+    $result = CDEP_PRODUCTS::executeUpdate(array($foundRow), $mapping, 0, 1, $headers, $configVars);
 
     if (is_wp_error($result)) {
         wp_send_json_error($result->get_error_message());

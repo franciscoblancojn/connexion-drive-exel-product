@@ -441,6 +441,27 @@ jQuery(function ($) {
             mapping['creation_brand'] = brand;
         }
 
+        // Collect config variables for template resolution
+        var configVars = {};
+        $('#cdep-creation-config-table tbody tr').each(function () {
+            var label = $(this).find('td:first').text().trim().toLowerCase();
+            var $input = $(this).find('input, select');
+            var val = $input.val();
+            if (val && label) {
+                var varName = label.replace(/[^a-z0-9_]/g, '_').replace(/_+/g, '_').replace(/^_|_$/g, '');
+                if (varName) {
+                    configVars[varName] = val;
+                }
+            }
+        });
+        var keys = [];
+        for (var k in configVars) {
+            if (configVars.hasOwnProperty(k)) keys.push(k);
+        }
+        if (keys.length > 0) {
+            mapping['config_vars'] = configVars;
+        }
+
         return mapping;
     }
 
@@ -505,11 +526,29 @@ jQuery(function ($) {
             $list.hide();
             return;
         }
-        var headers = window.cdepParsedData ? window.cdepParsedData.headers : [];
         var html = '';
+
+        // Config variables from Configuraciones de Creacion
+        var hasConfig = false;
+        $('#cdep-creation-config-table tbody tr').each(function () {
+            var label = $(this).find('td:first').text().trim();
+            var varName = label.toLowerCase().replace(/[^a-z0-9_]/g, '_').replace(/_+/g, '_').replace(/^_|_$/g, '');
+            if (varName) {
+                html += '<a href="#" class="cdep-template-variable-item" data-name="' + varName + '">' + escHtml(label) + '</a>';
+                hasConfig = true;
+            }
+        });
+
+        if (hasConfig) {
+            html += '<div class="cdep-template-variable-separator"></div>';
+        }
+
+        // Column variables
+        var headers = window.cdepParsedData ? window.cdepParsedData.headers : [];
         $.each(headers, function (i, h) {
             html += '<a href="#" class="cdep-template-variable-item" data-name="' + escHtml(h.name) + '">' + escHtml(h.name) + '</a>';
         });
+
         $list.html(html).show();
     });
 

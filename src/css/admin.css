@@ -463,3 +463,9 @@
 .cdep-custom-template-wrap {
     position: relative;
 }
+
+.cdep-template-variable-separator {
+    height: 1px;
+    background: #ccd0d4;
+    margin: 4px 0;
+}
