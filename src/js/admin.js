@@ -637,16 +637,25 @@ jQuery(function ($) {
             html += '<td><button class="button button-small cdep-process-single" data-sku="' + escHtml(p.sku) + '">Procesar</button></td>';
             html += '<td class="cdep-status-cell">' + statusBadge + '</td>';
             html += '<td>' + (p.image || imageProductDefualt) + '</td>';
+            var editUrl = p.exists && p.product_id ? cdep.ajaxurl.replace('admin-ajax.php', 'post.php?post=' + p.product_id + '&action=edit') : '';
             if (p.exists && p.product_id) {
-                var editUrl = cdep.ajaxurl.replace('admin-ajax.php', 'post.php?post=' + p.product_id + '&action=edit');
                 html += '<td><strong><a href="' + editUrl + '" target="_blank">' + escHtml(p.sku) + '</a></strong></td>';
             } else {
                 html += '<td><strong>' + escHtml(p.sku) + '</strong></td>';
             }
             if (productNameMapped && p.fields['product_name']) {
-                html += '<td>' + renderFieldCell(p.fields['product_name'], p.exists) + '</td>';
+                var nameHtml = renderFieldCell(p.fields['product_name'], p.exists);
+                if (p.exists && p.product_id) {
+                    html += '<td><a href="' + editUrl + '" target="_blank">' + nameHtml + '</a></td>';
+                } else {
+                    html += '<td>' + nameHtml + '</td>';
+                }
             } else {
-                html += '<td>' + escHtml(p.name) + '</td>';
+                if (p.exists && p.product_id) {
+                    html += '<td><a href="' + editUrl + '" target="_blank">' + escHtml(p.name) + '</a></td>';
+                } else {
+                    html += '<td>' + escHtml(p.name) + '</td>';
+                }
             }
             html += '<td>' + escHtml(p.categories) + '</td>';
             $.each(mappedFields, function (fi, f) {
