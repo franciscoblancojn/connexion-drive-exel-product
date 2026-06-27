@@ -242,6 +242,7 @@ jQuery(function ($) {
             state.headers = data.headers;
             state.totalRows = data.total_rows;
             window.cdepParsedData = data;
+            clearAiCache();
 
             $('#cdep-selected-file-rows').text(data.total_rows);
             $('#cdep-file-list-message').html(
@@ -273,6 +274,7 @@ jQuery(function ($) {
             state.headers = data.headers;
             state.totalRows = data.total_rows;
             state.selectedFileId = fileId;
+            clearAiCache();
 
             $('#cdep-selected-file-name').text(fileName);
             $('#cdep-selected-file-rows').text(data.total_rows);
@@ -303,6 +305,7 @@ jQuery(function ($) {
     // === MAPPING TAB ===
 
     function loadMapping() {
+        loadAiCache();
         if (window.cdepParsedData) {
             renderMapping(window.cdepParsedData);
             return;
@@ -475,6 +478,30 @@ jQuery(function ($) {
     function saveMappingConfig(mapping) {
         try {
             localStorage.setItem('cdep_mapping_config', JSON.stringify(mapping));
+        } catch (e) {}
+    }
+
+    function saveAiCache() {
+        try {
+            if (state.aiGenerated) {
+                localStorage.setItem('cdep_ai_cache', JSON.stringify(state.aiGenerated));
+            }
+        } catch (e) {}
+    }
+
+    function loadAiCache() {
+        try {
+            var saved = localStorage.getItem('cdep_ai_cache');
+            if (saved) {
+                state.aiGenerated = JSON.parse(saved);
+            }
+        } catch (e) {}
+    }
+
+    function clearAiCache() {
+        try {
+            localStorage.removeItem('cdep_ai_cache');
+            state.aiGenerated = null;
         } catch (e) {}
     }
 
@@ -775,6 +802,7 @@ jQuery(function ($) {
             header_row: headerRow,
         }, function (data) {
             window.cdepParsedData = data;
+            clearAiCache();
             $('#cdep-preview-result').html('');
             loadMapping();
             showMessage('#cdep-mapping-container', 'Encabezados actualizados (fila ' + headerRow + ')', 'ok');
@@ -1098,6 +1126,7 @@ jQuery(function ($) {
                 }
                 if (data.data && data.data[sku]) {
                     state.aiGenerated[sku] = data.data[sku];
+                    saveAiCache();
                     processedCount++;
 
                     // Update the row in the table with "Ver contenido" button
@@ -1209,6 +1238,7 @@ jQuery(function ($) {
                     state.aiGenerated = {};
                 }
                 state.aiGenerated[sku] = data.data[sku];
+                saveAiCache();
 
                 // Re-run preview to get updated field data for this SKU
                 ajax('cdep_update_preview', {
