@@ -142,7 +142,7 @@ class CDEP_PRODUCTS
         }, $template);
     }
 
-    public static function validateMapping($allRows, $mapping, $headers = array(), $configVars = array())
+    public static function validateMapping($allRows, $mapping, $headers = array(), $configVars = array(), $aiData = array())
     {
         $skuIndex = isset($mapping['sku']) && $mapping['sku'] !== '' ? intval($mapping['sku']) : -1;
 
@@ -231,16 +231,10 @@ class CDEP_PRODUCTS
             $activeMapping = $exists ? $updateMapping : $createMapping;
 
             foreach ($activeMapping as $field => $colIndex) {
-                if ($colIndex === '__ai__') {
-                    $productData['fields'][$field] = array(
-                        'current' => '',
-                        'new' => '',
-                        'changed' => false,
-                    );
-                    continue;
-                }
                 $newValue = '';
-                if (is_string($colIndex) && strpos($colIndex, 'custom:') === 0) {
+                if ($colIndex === '__ai__') {
+                    $newValue = isset($aiData[$sku][$field]) ? $aiData[$sku][$field] : '';
+                } elseif (is_string($colIndex) && strpos($colIndex, 'custom:') === 0) {
                     $template = substr($colIndex, 7);
                     $newValue = self::resolveTemplate($template, $row, $headers, $configVars);
                 } else {
@@ -314,7 +308,7 @@ class CDEP_PRODUCTS
         );
     }
 
-    public static function executeUpdate($allRows, $mapping, $offset = 0, $limit = 25, $headers = array(), $configVars = array())
+    public static function executeUpdate($allRows, $mapping, $offset = 0, $limit = 25, $headers = array(), $configVars = array(), $aiData = array())
     {
         $skuIndex = isset($mapping['sku']) && $mapping['sku'] !== '' ? intval($mapping['sku']) : -1;
 
@@ -333,7 +327,7 @@ class CDEP_PRODUCTS
                 $realKey = substr($key, 7);
                 if (isset(self::$fields[$realKey])) {
                     if ($colIndex === '__ai__') {
-                        continue;
+                        $createMapping[$realKey] = '__ai__';
                     } elseif (is_string($colIndex) && strpos($colIndex, 'custom:') === 0) {
                         $createMapping[$realKey] = $colIndex;
                     } else {
@@ -390,7 +384,9 @@ class CDEP_PRODUCTS
 
                 foreach ($activeMapping as $field => $colIndex) {
                     $value = '';
-                    if (is_string($colIndex) && strpos($colIndex, 'custom:') === 0) {
+                    if ($colIndex === '__ai__') {
+                        $value = isset($aiData[$sku][$field]) ? $aiData[$sku][$field] : '';
+                    } elseif (is_string($colIndex) && strpos($colIndex, 'custom:') === 0) {
                         $template = substr($colIndex, 7);
                         $value = self::resolveTemplate($template, $row, $headers, $configVars);
                     } else {
@@ -463,7 +459,8 @@ add_action('wp_ajax_cdep_update_preview', function () {
 
     $headers = isset($cached['headers']) ? $cached['headers'] : array();
     $configVars = isset($mapping['config_vars']) ? $mapping['config_vars'] : array();
-    $result = CDEP_PRODUCTS::validateMapping($cached['all_rows'], $mapping, $headers, $configVars);
+    $aiData = isset($_POST['ai_data']) ? $_POST['ai_data'] : array();
+    $result = CDEP_PRODUCTS::validateMapping($cached['all_rows'], $mapping, $headers, $configVars, $aiData);
 
     if (is_wp_error($result)) {
         wp_send_json_error($result->get_error_message());
@@ -472,6 +469,143 @@ add_action('wp_ajax_cdep_update_preview', function () {
     $result['file_name'] = $selected['file_name'];
 
     wp_send_json_success($result);
+});
+
+add_action('wp_ajax_cdep_ai_generate', function () {
+    if (!current_user_can('manage_options')) {
+        wp_send_json_error('Unauthorized');
+    }
+    check_ajax_referer('cdep_nonce', 'nonce');
+
+    if (!defined('IACON_KEY')) {
+        wp_send_json_error('IA Conector no está activo');
+    }
+
+    $mapping = isset($_POST['mapping']) ? $_POST['mapping'] : array();
+    $skus = isset($_POST['skus']) ? $_POST['skus'] : array();
+    $aiProvider = sanitize_text_field($_POST['ai_provider'] ?? '');
+
+    if (empty($skus) || !is_array($skus)) {
+        wp_send_json_error('No se recibieron SKUs');
+    }
+
+    if (empty($aiProvider)) {
+        wp_send_json_error('No se ha seleccionado un proveedor de IA');
+    }
+
+    $skus = array_map('sanitize_text_field', $skus);
+    $cached = CDEP_DRIVE::getCachedData();
+
+    if (empty($cached) || empty($cached['all_rows'])) {
+        wp_send_json_error('No hay datos en caché');
+    }
+
+    $skuIndex = isset($mapping['sku']) && $mapping['sku'] !== '' ? intval($mapping['sku']) : -1;
+    if ($skuIndex < 0) {
+        wp_send_json_error('Mapeo SKU inválido');
+    }
+
+    $headers = isset($cached['headers']) ? $cached['headers'] : array();
+    $configVars = isset($mapping['config_vars']) ? $mapping['config_vars'] : array();
+    $creationBrand = isset($mapping['creation_brand']) ? $mapping['creation_brand'] : '';
+    $allRows = $cached['all_rows'];
+
+    // Build create mapping to know which fields are __ai__
+    $createMapping = array();
+    foreach ($mapping as $key => $colIndex) {
+        if ($key === 'sku' || $colIndex === '') {
+            continue;
+        }
+        if (strpos($key, 'create_') === 0) {
+            $realKey = substr($key, 7);
+            $createMapping[$realKey] = $colIndex;
+        }
+    }
+
+    // Collect AI fields
+    $aiFields = array();
+    foreach ($createMapping as $field => $colIndex) {
+        if ($colIndex === '__ai__') {
+            $aiFields[] = $field;
+        }
+    }
+
+    if (empty($aiFields)) {
+        wp_send_json_error('No hay campos configurados para generar con IA');
+    }
+
+    $fieldLabels = self::$fields;
+    $aiData = array();
+
+    foreach ($allRows as $row) {
+        $sku = isset($row[$skuIndex]) ? trim($row[$skuIndex]) : '';
+        if (empty($sku) || !in_array($sku, $skus)) {
+            continue;
+        }
+
+        // Build context for each AI field
+        foreach ($aiFields as $field) {
+            // Build prompt with product context
+            $contextParts = array();
+            $contextParts[] = 'SKU: ' . $sku;
+
+            if ($creationBrand) {
+                $contextParts[] = 'Marca: ' . $creationBrand;
+            }
+
+            foreach ($configVars as $varName => $varValue) {
+                $contextParts[] = $varName . ': ' . $varValue;
+            }
+
+            // Include other column values for context
+            foreach ($headers as $h) {
+                $idx = intval($h['index']);
+                $val = isset($row[$idx]) ? trim($row[$idx]) : '';
+                if ($val !== '') {
+                    $contextParts[] = $h['name'] . ': ' . $val;
+                }
+            }
+
+            $context = implode("\n", $contextParts);
+            $fieldLabel = isset($fieldLabels[$field]) ? $fieldLabels[$field]['label'] : $field;
+
+            $prompt = "Genera el campo '" . $fieldLabel . "' para un producto WooCommerce con los siguientes datos:\n\n" . $context . "\n\n";
+            $prompt .= "Instrucciones:\n";
+            $prompt .= "- Genera SOLO el texto del campo, sin explicaciones adicionales.\n";
+            $prompt .= "- Responde únicamente con el contenido generado.\n";
+
+            if ($field === 'product_name') {
+                $prompt .= "- Genera un nombre de producto descriptivo y atractivo (máximo 100 caracteres).\n";
+            } elseif ($field === 'short_description') {
+                $prompt .= "- Genera una descripción corta y persuasiva (máximo 200 caracteres).\n";
+            } elseif ($field === 'description') {
+                $prompt .= "- Genera una descripción larga y detallada del producto, en formato HTML básico (párrafos con <p>).\n";
+            }
+
+            $response = array('status' => 'error', 'data' => '');
+
+            try {
+                if ($aiProvider === 'gemini' && class_exists('IACON_AI')) {
+                    $response = IACON_AI::sendPrompt($prompt);
+                } elseif ($aiProvider === 'kodee' && class_exists('IACON_KODEE')) {
+                    $response = IACON_KODEE::sendPrompt($prompt);
+                }
+            } catch (Exception $e) {
+                $response = array('status' => 'error', 'message' => $e->getMessage());
+            }
+
+            if ($response['status'] === 'ok') {
+                $aiData[$sku][$field] = $response['data'];
+            } else {
+                $aiData[$sku][$field] = '';
+                $errorMsg = isset($response['message']) ? $response['message'] : 'Error desconocido al generar con IA';
+            }
+        }
+    }
+
+    wp_send_json_success(array(
+        'data' => $aiData,
+    ));
 });
 
 add_action('wp_ajax_cdep_update_execute', function () {
@@ -544,7 +678,8 @@ add_action('wp_ajax_cdep_update_batch_skus', function () {
 
     $headers = isset($cached['headers']) ? $cached['headers'] : array();
     $configVars = isset($mapping['config_vars']) ? $mapping['config_vars'] : array();
-    $result = CDEP_PRODUCTS::executeUpdate($rowsToProcess, $mapping, 0, count($rowsToProcess), $headers, $configVars);
+    $aiData = isset($_POST['ai_data']) ? $_POST['ai_data'] : array();
+    $result = CDEP_PRODUCTS::executeUpdate($rowsToProcess, $mapping, 0, count($rowsToProcess), $headers, $configVars, $aiData);
 
     if (is_wp_error($result)) {
         wp_send_json_error($result->get_error_message());
@@ -590,7 +725,8 @@ add_action('wp_ajax_cdep_update_single', function () {
 
     $headers = isset($cached['headers']) ? $cached['headers'] : array();
     $configVars = isset($mapping['config_vars']) ? $mapping['config_vars'] : array();
-    $result = CDEP_PRODUCTS::executeUpdate(array($foundRow), $mapping, 0, 1, $headers, $configVars);
+    $aiData = isset($_POST['ai_data']) ? $_POST['ai_data'] : array();
+    $result = CDEP_PRODUCTS::executeUpdate(array($foundRow), $mapping, 0, 1, $headers, $configVars, $aiData);
 
     if (is_wp_error($result)) {
         wp_send_json_error($result->get_error_message());

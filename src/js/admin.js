@@ -7,6 +7,7 @@ jQuery(function ($) {
         mapping: {},
         totalRows: 0,
         selectedFileId: '',
+        aiGenerated: {},
     };
     var cdep = window.cdep;
 
@@ -722,109 +723,9 @@ jQuery(function ($) {
 
         ajax('cdep_update_preview', {
             mapping: mapping,
+            ai_data: state.aiGenerated,
         }, function (data) {
-            var html = '<div class="cdep-preview-summary">';
-            html += '<p><strong>Total filas con SKU:</strong> ' + data.total + ' | ';
-            html += '<strong>Existentes:</strong> ' + data.found + ' | ';
-            html += '<strong>Nuevos:</strong> ' + data.new_count + '</p>';
-            html += '</div>';
-
-            if (data.products && data.products.length > 0) {
-                // Update tab fields (only price/stock)
-                var updateMappedFields = [];
-                var updateProductNameMapped = false;
-                var updateLabels = data.update_field_labels || data.field_labels;
-                if (updateLabels) {
-                    $.each(updateLabels, function (key, label) {
-                        if (key === 'product_name') {
-                            updateProductNameMapped = true;
-                        } else {
-                            updateMappedFields.push({ key: key, label: label });
-                        }
-                    });
-                }
-
-                // Create tab fields (all mapped fields for creation)
-                var createMappedFields = [];
-                var createProductNameMapped = false;
-                var createLabels = data.create_field_labels || data.field_labels;
-                if (createLabels) {
-                    $.each(createLabels, function (key, label) {
-                        if (key === 'product_name') {
-                            createProductNameMapped = true;
-                        } else {
-                            createMappedFields.push({ key: key, label: label });
-                        }
-                    });
-                }
-
-                // Detect AI fields
-                var aiFields = data.ai_fields || [];
-
-                // Split products into existing and new
-                var existingProducts = [];
-                var newProducts = [];
-                $.each(data.products, function (i, p) {
-                    if (p.exists) {
-                        existingProducts.push(p);
-                    } else {
-                        newProducts.push(p);
-                    }
-                });
-
-                var hasAiFields = aiFields.length > 0;
-
-                html += '<h3>Productos a procesar</h3>';
-                html += '<div class="cdep-preview-tabs-wrapper">';
-                html += '<div class="cdep-preview-tabs">';
-                html += '<a href="#" class="cdep-preview-tab active" data-tab="update">Productos a actualizar (' + existingProducts.length + ')</a>';
-                html += '<a href="#" class="cdep-preview-tab" data-tab="create">Productos a crear (' + newProducts.length + ')</a>';
-                html += '</div>';
-
-                // Update tab
-                html += '<div class="cdep-preview-tab-content active" id="cdep-preview-update-content" data-tab="update">';
-                if (existingProducts.length > 0) {
-                    html += renderProductsTable(existingProducts, updateMappedFields, updateProductNameMapped, []);
-                    html += '<hr>';
-                    html += '<p><button id="cdep-start-update" class="button button-primary">Iniciar Actualización Masiva</button></p>';
-                } else {
-                    html += '<p>No hay productos existentes para actualizar.</p>';
-                }
-                html += '<div id="cdep-update-progress" style="display:none">';
-                html += '<div class="cdep-progress-bar"><div class="cdep-progress-fill" style="width:0%"></div></div>';
-                html += '<p class="cdep-progress-text">0 / ' + existingProducts.length + ' productos procesados</p>';
-                html += '</div>';
-                html += '<div id="cdep-update-result"></div>';
-                html += '</div>';
-
-                // Create tab
-                html += '<div class="cdep-preview-tab-content" id="cdep-preview-create-content" data-tab="create">';
-                if (newProducts.length > 0) {
-                    html += renderProductsTable(newProducts, createMappedFields, createProductNameMapped, aiFields);
-                    html += '<hr>';
-                    html += '<p><button id="cdep-start-create" class="button button-primary">Iniciar Creación Masiva</button>';
-                    if (hasAiFields) {
-                        html += ' <button id="cdep-ai-generate-create" class="button cdep-ai-generate-btn">Generar contenido con IA</button>';
-                    }
-                    html += '</p>';
-                } else {
-                    html += '<p>No hay productos nuevos para crear.</p>';
-                }
-                html += '<div id="cdep-create-progress" style="display:none">';
-                html += '<div class="cdep-progress-bar"><div class="cdep-progress-fill" style="width:0%"></div></div>';
-                html += '<p class="cdep-progress-text">0 / ' + newProducts.length + ' productos procesados</p>';
-                html += '</div>';
-                html += '<div id="cdep-create-result"></div>';
-                html += '</div>';
-
-                html += '</div>'; // .cdep-preview-tabs-wrapper
-            }
-
-            html += '<p>Archivo: <strong>' + escHtml(data.file_name) + '</strong></p>';
-
-            state.products = data.products;
-
-            $('#cdep-preview-result').html(html);
+            renderPreviewResult(data);
             $('#cdep-preview-update').prop('disabled', false).text('Vista Previa de Actualización');
         }, function (msg) {
             showMessage('#cdep-preview-result', msg, 'error');
@@ -893,7 +794,7 @@ jQuery(function ($) {
         return match;
     }
 
-    function runBatchUpdate(containerId, buttonId, progressId, resultId, mapping) {
+    function runBatchUpdate(containerId, buttonId, progressId, resultId, mapping, aiData) {
         var $container = $('#' + containerId);
         var btn = $('#' + buttonId);
         var checkedSkus = [];
@@ -953,9 +854,18 @@ jQuery(function ($) {
                 return;
             }
 
+            var batchAiData = {};
+            if (aiData) {
+                $.each(batches[idx], function (i, sku) {
+                    if (aiData[sku]) {
+                        batchAiData[sku] = aiData[sku];
+                    }
+                });
+            }
             ajax('cdep_update_batch_skus', {
                 skus: batches[idx],
                 mapping: mapping,
+                ai_data: batchAiData,
             }, function (data) {
                 totalUpdated += data.updated;
                 totalCreated += data.created;
@@ -1001,16 +911,163 @@ jQuery(function ($) {
     }
 
     $(document).on('click', '#cdep-start-update', function () {
-        runBatchUpdate('cdep-preview-update-content', 'cdep-start-update', 'cdep-update-progress', 'cdep-update-result', state.mapping);
+        runBatchUpdate('cdep-preview-update-content', 'cdep-start-update', 'cdep-update-progress', 'cdep-update-result', state.mapping, state.aiGenerated);
     });
 
     $(document).on('click', '#cdep-start-create', function () {
-        runBatchUpdate('cdep-preview-create-content', 'cdep-start-create', 'cdep-create-progress', 'cdep-create-result', state.mapping);
+        runBatchUpdate('cdep-preview-create-content', 'cdep-start-create', 'cdep-create-progress', 'cdep-create-result', state.mapping, state.aiGenerated);
     });
 
-    // === AI GENERATE BUTTON (placeholder) ===
+    function renderPreviewResult(data) {
+        var html = '<div class="cdep-preview-summary">';
+        html += '<p><strong>Total filas con SKU:</strong> ' + data.total + ' | ';
+        html += '<strong>Existentes:</strong> ' + data.found + ' | ';
+        html += '<strong>Nuevos:</strong> ' + data.new_count + '</p>';
+        html += '</div>';
+
+        if (data.products && data.products.length > 0) {
+            var updateMappedFields = [];
+            var updateProductNameMapped = false;
+            var updateLabels = data.update_field_labels || data.field_labels;
+            if (updateLabels) {
+                $.each(updateLabels, function (key, label) {
+                    if (key === 'product_name') {
+                        updateProductNameMapped = true;
+                    } else {
+                        updateMappedFields.push({ key: key, label: label });
+                    }
+                });
+            }
+
+            var createMappedFields = [];
+            var createProductNameMapped = false;
+            var createLabels = data.create_field_labels || data.field_labels;
+            if (createLabels) {
+                $.each(createLabels, function (key, label) {
+                    if (key === 'product_name') {
+                        createProductNameMapped = true;
+                    } else {
+                        createMappedFields.push({ key: key, label: label });
+                    }
+                });
+            }
+
+            var aiFields = data.ai_fields || [];
+            var existingProducts = [];
+            var newProducts = [];
+            $.each(data.products, function (i, p) {
+                if (p.exists) {
+                    existingProducts.push(p);
+                } else {
+                    newProducts.push(p);
+                }
+            });
+
+            var hasAiFields = aiFields.length > 0;
+
+            html += '<h3>Productos a procesar</h3>';
+            html += '<div class="cdep-preview-tabs-wrapper">';
+            html += '<div class="cdep-preview-tabs">';
+            html += '<a href="#" class="cdep-preview-tab active" data-tab="update">Productos a actualizar (' + existingProducts.length + ')</a>';
+            html += '<a href="#" class="cdep-preview-tab" data-tab="create">Productos a crear (' + newProducts.length + ')</a>';
+            html += '</div>';
+
+            // Update tab
+            html += '<div class="cdep-preview-tab-content active" id="cdep-preview-update-content" data-tab="update">';
+            if (existingProducts.length > 0) {
+                html += renderProductsTable(existingProducts, updateMappedFields, updateProductNameMapped, []);
+                html += '<hr>';
+                html += '<p><button id="cdep-start-update" class="button button-primary">Iniciar Actualización Masiva</button></p>';
+            } else {
+                html += '<p>No hay productos existentes para actualizar.</p>';
+            }
+            html += '<div id="cdep-update-progress" style="display:none">';
+            html += '<div class="cdep-progress-bar"><div class="cdep-progress-fill" style="width:0%"></div></div>';
+            html += '<p class="cdep-progress-text">0 / ' + existingProducts.length + ' productos procesados</p>';
+            html += '</div>';
+            html += '<div id="cdep-update-result"></div>';
+            html += '</div>';
+
+            // Create tab
+            html += '<div class="cdep-preview-tab-content" id="cdep-preview-create-content" data-tab="create">';
+            if (newProducts.length > 0) {
+                html += renderProductsTable(newProducts, createMappedFields, createProductNameMapped, aiFields);
+                html += '<hr>';
+                html += '<p><button id="cdep-start-create" class="button button-primary">Iniciar Creación Masiva</button>';
+                if (hasAiFields) {
+                    html += ' <button id="cdep-ai-generate-create" class="button cdep-ai-generate-btn">Generar contenido con IA</button>';
+                }
+                html += '</p>';
+            } else {
+                html += '<p>No hay productos nuevos para crear.</p>';
+            }
+            html += '<div id="cdep-create-progress" style="display:none">';
+            html += '<div class="cdep-progress-bar"><div class="cdep-progress-fill" style="width:0%"></div></div>';
+            html += '<p class="cdep-progress-text">0 / ' + newProducts.length + ' productos procesados</p>';
+            html += '</div>';
+            html += '<div id="cdep-create-result"></div>';
+            html += '</div>';
+
+            html += '</div>';
+        }
+
+        html += '<p>Archivo: <strong>' + escHtml(data.file_name) + '</strong></p>';
+
+        state.products = data.products;
+
+        $('#cdep-preview-result').html(html);
+    }
+
+    // === AI GENERATE BUTTON ===
     $(document).on('click', '.cdep-ai-generate-btn', function () {
-        showMessage('#cdep-preview-result', 'Funcionalidad de IA próximamente disponible.', 'ok');
+        var $container = $(this).closest('.cdep-preview-tab-content');
+        var checkedSkus = [];
+        $container.find('.cdep-row-checkbox:checked').each(function () {
+            checkedSkus.push($(this).val());
+        });
+
+        if (checkedSkus.length === 0) {
+            showMessage('#cdep-preview-result', 'Selecciona al menos un producto', 'error');
+            return;
+        }
+
+        var btn = $(this);
+        btn.prop('disabled', true).text('Generando...');
+
+        ajax('cdep_ai_generate', {
+            mapping: state.mapping,
+            skus: checkedSkus,
+            ai_provider: cdep.ai_provider,
+        }, function (data) {
+            state.aiGenerated = data.data || {};
+
+            // Re-run preview with AI data to show generated values
+            $('#cdep-preview-update').prop('disabled', true).text('Procesando...');
+
+            ajax('cdep_update_preview', {
+                mapping: state.mapping,
+                ai_data: state.aiGenerated,
+            }, function (previewData) {
+                state.products = previewData.products;
+
+                // Re-render preview result
+                var previewHtml = $('#cdep-preview-result').html();
+                // Replace the table content by re-running the render logic
+                // Simple approach: trigger preview click again with ai_data
+                renderPreviewResult(previewData);
+
+                btn.prop('disabled', false).text('Generar contenido con IA');
+                $('#cdep-preview-update').prop('disabled', false).text('Vista Previa de Actualización');
+                showMessage('#cdep-preview-result', 'Contenido generado correctamente.', 'ok');
+            }, function (msg) {
+                btn.prop('disabled', false).text('Generar contenido con IA');
+                $('#cdep-preview-update').prop('disabled', false).text('Vista Previa de Actualización');
+                showMessage('#cdep-preview-result', msg, 'error');
+            });
+        }, function (msg) {
+            btn.prop('disabled', false).text('Generar contenido con IA');
+            showMessage('#cdep-preview-result', msg, 'error');
+        });
     });
 
     // === SINGLE PRODUCT PROCESS ===
@@ -1031,6 +1088,7 @@ jQuery(function ($) {
         ajax('cdep_update_single', {
             sku: sku,
             mapping: mapping,
+            ai_data: state.aiGenerated,
         }, function (data) {
             if (data.processed_skus && data.processed_skus.length > 0) {
                 var status = data.processed_skus[0].status;
