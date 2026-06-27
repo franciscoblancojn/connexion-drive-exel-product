@@ -479,3 +479,9 @@
 .cdep-ai-generate-btn {
     margin-left: 8px;
 }
+
+.cdep-badge-ai {
+    background: #e8f4f8;
+    color: #0a7b9e;
+    border: 1px solid #b8e0ed;
+}

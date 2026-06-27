@@ -403,6 +403,11 @@ jQuery(function ($) {
         $('#cdep-preview-update').prop('disabled', false);
 
         restoreMappingConfig();
+
+        // Sync AI options visibility
+        if (cdep.ai_enabled === '1') {
+            toggleAiOptions(true);
+        }
     }
 
     function buildMapping() {
@@ -511,6 +516,26 @@ jQuery(function ($) {
                 $('#creation-brand').val(mapping['creation_brand']);
             }
         } catch (e) {}
+    }
+
+    // === AI CONFIG UI ===
+
+    function toggleAiOptions(enabled) {
+        $('.cdep-field-select-create').each(function () {
+            var $sel = $(this);
+            var $aiOpt = $sel.find('option[value="__ai__"]');
+            if (enabled) {
+                if ($aiOpt.length === 0) {
+                    var $customOpt = $sel.find('option[value="__custom__"]');
+                    $customOpt.after('<option value="__ai__">Generar con IA</option>');
+                }
+            } else {
+                $aiOpt.remove();
+                if ($sel.val() === '__ai__') {
+                    $sel.val('');
+                }
+            }
+        });
     }
 
     // === CUSTOM TEMPLATE UI ===

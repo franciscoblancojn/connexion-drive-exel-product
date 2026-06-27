@@ -26,6 +26,9 @@ add_action('admin_enqueue_scripts', function ($hook) {
         $productFields[$key] = $info['label'];
     }
 
+    $aiEnabled = defined('IACON_KEY') ? get_option(CDEP_KEY . '_AI_ENABLED', '0') : '0';
+    $aiProvider = defined('IACON_KEY') ? get_option(CDEP_KEY . '_AI_PROVIDER', '') : '';
+
     wp_localize_script('cdep-admin', 'cdep', array(
         'ajaxurl' => admin_url('admin-ajax.php'),
         'nonce' => wp_create_nonce('cdep_nonce'),
@@ -34,6 +37,8 @@ add_action('admin_enqueue_scripts', function ($hook) {
         'selected_file' => CDEP_DRIVE::getSelectedFile(),
         'oauth_url' => admin_url('admin.php?page=' . CDEP_KEY),
         'productFields' => $productFields,
+        'ai_enabled' => $aiEnabled,
+        'ai_provider' => $aiProvider,
     ));
 });
 
@@ -49,6 +54,10 @@ function CDEP_render_page() {
         ['key' => 'browse', 'title' => 'Explorar'],
         ['key' => 'mapping', 'title' => 'Mapear'],
     ];
+
+    if (defined('IACON_KEY')) {
+        $tabs[] = ['key' => 'ia', 'title' => 'Configuraciones IA'];
+    }
 
     echo FWUPage::css();
 ?>
