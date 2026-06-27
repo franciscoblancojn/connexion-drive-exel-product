@@ -534,7 +534,7 @@ add_action('wp_ajax_cdep_ai_generate', function () {
         wp_send_json_error('No hay campos configurados para generar con IA');
     }
 
-    $fieldLabels = self::$fields;
+    $fieldLabels = CDEP_PRODUCTS::getFields();
     $aiData = array();
 
     foreach ($allRows as $row) {
