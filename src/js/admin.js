@@ -445,27 +445,51 @@ jQuery(function ($) {
             }
         });
 
-        // Creation config
-        var $brand = $('#creation-brand');
-        var brand = $brand.is('select') ? $brand.find('option:selected').text() : $brand.val();
-        if (brand) {
-            mapping['creation_brand'] = brand;
-        }
-
-        // Collect config variables for template resolution
+        // Creation config — collect values and conditions
         var configVars = {};
+        var conditions = {};
+
         $('#cdep-creation-config-table tbody tr').each(function () {
             var label = $(this).find('td:first').text().trim().toLowerCase();
             var $input = $(this).find('.cdep-config-main-select');
             if ($input.length === 0) return;
-            var val = $input.is('select') ? $input.find('option:selected').text() : $input.val();
-            if (val && label) {
-                var varName = label.replace(/[^a-z0-9_]/g, '_').replace(/_+/g, '_').replace(/^_|_$/g, '');
-                if (varName) {
-                    configVars[varName] = val;
+            var selectedVal = $input.val();
+            var selectedText = $input.find('option:selected').text();
+
+            if (selectedVal === '__condicionar__') {
+                var target = $(this).find('.cdep-condition-row').data('condition');
+                var $row = $(this).find('.cdep-condition-row');
+                var colVal = $row.find('.cdep-condition-column').val();
+                var opVal = $row.find('.cdep-condition-operator').val();
+                var condVal = $row.find('.cdep-condition-value').val();
+                var applyVal = $row.find('.cdep-condition-apply').val();
+                if (colVal && condVal && applyVal) {
+                    conditions[target] = {
+                        column: colVal,
+                        operator: opVal || '=',
+                        value: condVal,
+                        apply: applyVal
+                    };
+                }
+                // Do NOT add to config_vars since it's conditional
+            } else if (selectedVal) {
+                // Map brand/category fields to mapping keys
+                if (label === 'marca') {
+                    mapping['creation_brand'] = selectedText;
+                } else if (label === 'categoría') {
+                    mapping['creation_category'] = selectedText;
+                }
+
+                // Config vars for templates (use text, not value)
+                if (selectedText && label) {
+                    var varName = label.replace(/[^a-z0-9_]/g, '_').replace(/_+/g, '_').replace(/^_|_$/g, '');
+                    if (varName) {
+                        configVars[varName] = selectedText;
+                    }
                 }
             }
         });
+
         var keys = [];
         for (var k in configVars) {
             if (configVars.hasOwnProperty(k)) keys.push(k);
@@ -474,25 +498,11 @@ jQuery(function ($) {
             mapping['config_vars'] = configVars;
         }
 
-        // Categoría
-        var $cat = $('#creation-category');
-        var catVal = $cat.is('select') ? $cat.find('option:selected').text() : $cat.val();
-        if (catVal) {
-            mapping['creation_category'] = catVal;
+        var condKeys = [];
+        for (var ck in conditions) {
+            if (conditions.hasOwnProperty(ck)) condKeys.push(ck);
         }
-
-        // Conditions for brand and category
-        var conditions = {};
-        $('.cdep-condition-checkbox:checked').each(function () {
-            var target = $(this).data('target');
-            var $row = $('.cdep-condition-row[data-condition="' + target + '"]');
-            var colVal = $row.find('.cdep-condition-column').val();
-            var condVal = $row.find('.cdep-condition-value').val();
-            if (colVal && condVal) {
-                conditions[target] = { column: colVal, value: condVal };
-            }
-        });
-        if (Object.keys(conditions).length > 0) {
+        if (condKeys.length > 0) {
             mapping['conditions'] = conditions;
         }
 
@@ -575,14 +585,21 @@ jQuery(function ($) {
                 for (var target in conds) {
                     if (conds.hasOwnProperty(target)) {
                         var condition = conds[target];
-                        $('.cdep-condition-checkbox[data-target="' + target + '"]').prop('checked', true);
+                        var $select = target === 'marca' ? $('#creation-brand') : $('#creation-category');
+                        $select.val('__condicionar__');
                         var $row = $('.cdep-condition-row[data-condition="' + target + '"]');
                         $row.show();
                         if (condition.column) {
                             $row.find('.cdep-condition-column').val(condition.column);
                         }
+                        if (condition.operator) {
+                            $row.find('.cdep-condition-operator').val(condition.operator);
+                        }
                         if (condition.value) {
                             $row.find('.cdep-condition-value').val(condition.value);
+                        }
+                        if (condition.apply) {
+                            $row.find('.cdep-condition-apply').val(condition.apply);
                         }
                     }
                 }
@@ -677,15 +694,16 @@ jQuery(function ($) {
 
     // === CONDITION UI ===
 
-    $(document).on('change', '.cdep-condition-checkbox', function () {
-        var target = $(this).data('target');
-        var $row = $('.cdep-condition-row[data-condition="' + target + '"]');
-        if ($(this).is(':checked')) {
+    $(document).on('change', '.cdep-config-condicionable', function () {
+        var $row = $(this).closest('td').find('.cdep-condition-row');
+        if ($(this).val() === '__condicionar__') {
             $row.show();
         } else {
             $row.hide();
             $row.find('.cdep-condition-column').val('');
+            $row.find('.cdep-condition-operator').val('=');
             $row.find('.cdep-condition-value').val('');
+            $row.find('.cdep-condition-apply').val('');
         }
     });
 

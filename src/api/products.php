@@ -146,11 +146,22 @@ class CDEP_PRODUCTS
     {
         $colIndex = isset($condition['column']) ? intval($condition['column']) : -1;
         $condValue = isset($condition['value']) ? trim($condition['value']) : '';
+        $operator = isset($condition['operator']) ? $condition['operator'] : '=';
         if ($colIndex < 0 || $condValue === '') {
             return true;
         }
         $rowValue = isset($row[$colIndex]) ? trim($row[$colIndex]) : '';
-        return strcasecmp($rowValue, $condValue) === 0;
+        switch ($operator) {
+            case '!=':
+                return strcasecmp($rowValue, $condValue) !== 0;
+            case '<':
+                return floatval($rowValue) < floatval($condValue);
+            case '>':
+                return floatval($rowValue) > floatval($condValue);
+            case '=':
+            default:
+                return strcasecmp($rowValue, $condValue) === 0;
+        }
     }
 
     public static function validateMapping($allRows, $mapping, $headers = array(), $configVars = array(), $aiData = array())
@@ -410,20 +421,28 @@ class CDEP_PRODUCTS
                     }
                 }
 
+                // Determine effective brand and category values (unconditional or conditional)
+                $effectiveBrand = $creationBrand;
+                $effectiveCategory = $creationCategory;
+
                 if ($isNew) {
-                    // Evaluate conditions for brand
-                    $applyBrand = !empty($creationBrand);
-                    if ($applyBrand && isset($conditions['marca'])) {
-                        $applyBrand = self::evaluateCondition($conditions['marca'], $row);
+                    // Check conditional brand
+                    if (isset($conditions['marca'])) {
+                        $cond = $conditions['marca'];
+                        if (self::evaluateCondition($cond, $row)) {
+                            $effectiveBrand = isset($cond['apply']) ? sanitize_text_field($cond['apply']) : '';
+                        } else {
+                            $effectiveBrand = '';
+                        }
                     }
-                    if ($applyBrand && !empty($creationBrand)) {
+                    if (!empty($effectiveBrand)) {
                         $attrs = $product->get_attributes();
                         if (!is_array($attrs)) {
                             $attrs = array();
                         }
                         $attrs['brand'] = array(
                             'name' => 'Brand',
-                            'value' => $creationBrand,
+                            'value' => $effectiveBrand,
                             'position' => 0,
                             'is_visible' => 1,
                             'is_variation' => 0,
@@ -431,23 +450,24 @@ class CDEP_PRODUCTS
                         );
                         $product->set_attributes($attrs);
                     }
-
-                    // Evaluate conditions for category
                 }
 
                 $product->save();
 
                 if ($isNew) {
-                    // Evaluate conditions for category (after save to have product ID)
-                    $applyCat = !empty($creationCategory);
-                    if ($applyCat && isset($conditions['categoria'])) {
-                        $applyCat = self::evaluateCondition($conditions['categoria'], $row);
+                    // Check conditional category (after save to have product ID)
+                    if (isset($conditions['categoria'])) {
+                        $cond = $conditions['categoria'];
+                        if (self::evaluateCondition($cond, $row)) {
+                            $effectiveCategory = isset($cond['apply']) ? sanitize_text_field($cond['apply']) : '';
+                        } else {
+                            $effectiveCategory = '';
+                        }
                     }
-                    if ($applyCat && !empty($creationCategory)) {
-                        $catName = $creationCategory;
-                        $catTerm = get_term_by('name', $catName, 'product_cat');
+                    if (!empty($effectiveCategory)) {
+                        $catTerm = get_term_by('name', $effectiveCategory, 'product_cat');
                         if (!$catTerm) {
-                            $catTerm = get_term_by('slug', $catName, 'product_cat');
+                            $catTerm = get_term_by('slug', $effectiveCategory, 'product_cat');
                         }
                         if ($catTerm) {
                             wp_set_object_terms($product->get_id(), array(intval($catTerm->term_id)), 'product_cat', true);
