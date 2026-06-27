@@ -663,7 +663,12 @@ jQuery(function ($) {
             var statusBadge = renderStatusBadge(p.status);
             html += '<tr class="cdep-product-row" data-sku="' + escHtml(p.sku) + '" data-status="' + p.status + '">';
             html += '<td><input type="checkbox" class="cdep-row-checkbox" value="' + escHtml(p.sku) + '" checked></td>';
-            html += '<td><button class="button button-small cdep-process-single" data-sku="' + escHtml(p.sku) + '">Procesar</button></td>';
+            html += '<td>';
+            html += '<button class="button button-small cdep-process-single" data-sku="' + escHtml(p.sku) + '">Procesar</button>';
+            if (aiFields && aiFields.length > 0) {
+                html += ' <button class="button button-small cdep-ai-generate-row" data-sku="' + escHtml(p.sku) + '">Generar con IA</button>';
+            }
+            html += '</td>';
             html += '<td class="cdep-status-cell">' + statusBadge + '</td>';
             html += '<td>' + (p.image || imageProductDefualt) + '</td>';
             var editUrl = p.exists && p.product_id ? cdep.ajaxurl.replace('admin-ajax.php', 'post.php?post=' + p.product_id + '&action=edit') : '';
@@ -674,14 +679,15 @@ jQuery(function ($) {
             }
             if (productNameMapped && p.fields['product_name']) {
                 var isAiName = aiFields && aiFields.indexOf('product_name') !== -1;
-                if (isAiName) {
-                    html += '<td><span class="cdep-badge cdep-badge-ai">Pendiente de generar</span></td>';
+                var nameFd = p.fields['product_name'];
+                if (isAiName && (!nameFd || !nameFd.new)) {
+                    html += '<td class="cdep-field-cell-product_name"><span class="cdep-badge cdep-badge-ai">Pendiente de generar</span></td>';
                 } else {
-                    var nameHtml = renderFieldCell(p.fields['product_name'], p.exists);
+                    var nameHtml = renderFieldCell(nameFd, p.exists);
                     if (p.exists && p.product_id) {
-                        html += '<td><a href="' + editUrl + '" target="_blank">' + nameHtml + '</a></td>';
+                        html += '<td class="cdep-field-cell-product_name"><a href="' + editUrl + '" target="_blank">' + nameHtml + '</a></td>';
                     } else {
-                        html += '<td>' + nameHtml + '</td>';
+                        html += '<td class="cdep-field-cell-product_name">' + nameHtml + '</td>';
                     }
                 }
             } else {
@@ -695,10 +701,10 @@ jQuery(function ($) {
             $.each(mappedFields, function (fi, f) {
                 var fd = p.fields[f.key];
                 var isAi = aiFields && aiFields.indexOf(f.key) !== -1;
-                if (isAi) {
-                    html += '<td><span class="cdep-badge cdep-badge-ai">Pendiente de generar</span></td>';
+                if (isAi && (!fd || !fd.new)) {
+                    html += '<td class="cdep-field-cell-' + f.key + '"><span class="cdep-badge cdep-badge-ai">Pendiente de generar</span></td>';
                 } else {
-                    html += '<td>' + (fd ? renderFieldCell(fd, p.exists) : '') + '</td>';
+                    html += '<td class="cdep-field-cell-' + f.key + '">' + (fd ? renderFieldCell(fd, p.exists) : '') + '</td>';
                 }
             });
             html += '</tr>';
@@ -1053,6 +1059,12 @@ jQuery(function ($) {
                 // Re-render preview result with AI data
                 renderPreviewResult(previewData);
 
+                // Switch to "Productos a crear" tab since AI data is for new products
+                $('.cdep-preview-tab').removeClass('active');
+                $('.cdep-preview-tab[data-tab="create"]').addClass('active');
+                $('.cdep-preview-tab-content').removeClass('active');
+                $('.cdep-preview-tab-content[data-tab="create"]').addClass('active');
+
                 btn.prop('disabled', false).text('Generar contenido con IA');
                 $('#cdep-preview-update').prop('disabled', false).text('Vista Previa de Actualización');
                 // Show success message without destroying the preview table
@@ -1110,6 +1122,81 @@ jQuery(function ($) {
             btn.prop('disabled', false).text('Procesar');
         }, function (msg) {
             btn.prop('disabled', false).text('Procesar');
+        });
+    });
+
+    // === SINGLE PRODUCT AI GENERATE ===
+    $(document).on('click', '.cdep-ai-generate-row', function () {
+        var btn = $(this);
+        var sku = btn.attr('data-sku');
+        var $row = btn.closest('.cdep-product-row');
+
+        if (!state.mapping || !state.mapping.sku) {
+            var $msg = $('<p class="fwue-message error">Primero haz una vista previa</p>');
+            $('#cdep-preview-result').prepend($msg);
+            setTimeout(function () { $msg.remove(); }, 8000);
+            return;
+        }
+
+        btn.prop('disabled', true).text('Generando...');
+
+        ajax('cdep_ai_generate', {
+            mapping: state.mapping,
+            skus: [sku],
+            ai_provider: cdep.ai_provider,
+        }, function (data) {
+            if (data.data && data.data[sku]) {
+                if (!state.aiGenerated) {
+                    state.aiGenerated = {};
+                }
+                state.aiGenerated[sku] = data.data[sku];
+
+                // Re-run preview to get updated field data for this SKU
+                ajax('cdep_update_preview', {
+                    mapping: state.mapping,
+                    ai_data: state.aiGenerated,
+                }, function (previewData) {
+                    state.products = previewData.products;
+
+                    // Update the specific row cells with AI content
+                    $.each(previewData.products, function (i, p) {
+                        if (p.sku === sku) {
+                            $.each(p.fields, function (fieldKey, fd) {
+                                var isAi = previewData.ai_fields && previewData.ai_fields.indexOf(fieldKey) !== -1;
+                                if (isAi && fd && fd.new) {
+                                    var $cell = $row.find('.cdep-field-cell-' + fieldKey);
+                                    if ($cell.length) {
+                                        $cell.html(renderFieldCell(fd, p.exists));
+                                    }
+                                }
+                            });
+
+                            // Also update product_name if it was AI
+                            if (p.fields['product_name']) {
+                                var isAiName = previewData.ai_fields && previewData.ai_fields.indexOf('product_name') !== -1;
+                                if (isAiName && p.fields['product_name'].new) {
+                                    $row.find('td').eq(5).html(renderFieldCell(p.fields['product_name'], p.exists));
+                                }
+                            }
+                        }
+                    });
+
+                    btn.prop('disabled', false).text('Generar con IA');
+                    var $msg = $('<p class="fwue-message ok">Contenido generado para ' + sku + '</p>');
+                    $('#cdep-preview-result').prepend($msg);
+                    setTimeout(function () { $msg.remove(); }, 8000);
+                }, function (msg) {
+                    btn.prop('disabled', false).text('Generar con IA');
+                    var $msg = $('<p class="fwue-message error">' + msg + '</p>');
+                    $('#cdep-preview-result').prepend($msg);
+                    setTimeout(function () { $msg.remove(); }, 8000);
+                });
+            }
+        }, function (msg) {
+            btn.prop('disabled', false).text('Generar con IA');
+            var $msg = $('<p class="fwue-message error">' + msg + '</p>');
+            $('#cdep-preview-result').prepend($msg);
+            setTimeout(function () { $msg.remove(); }, 8000);
         });
     });
 
