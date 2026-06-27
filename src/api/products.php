@@ -172,6 +172,9 @@ class CDEP_PRODUCTS
             return new WP_Error('missing_sku', 'Debe seleccionar la columna SKU');
         }
 
+        $creationCategory = isset($mapping['creation_category']) ? sanitize_text_field($mapping['creation_category']) : '';
+        $conditions = isset($mapping['conditions']) ? $mapping['conditions'] : array();
+
         // Split mapping: update fields for existing products, create fields for new products
         $updateFields = array('regular_price', 'sale_price', 'stock_quantity');
         $updateMapping = array();
@@ -247,6 +250,17 @@ class CDEP_PRODUCTS
 
                 $terms = wp_get_post_terms($productId, 'product_cat', array('fields' => 'names'));
                 $productData['categories'] = !empty($terms) ? implode(', ', $terms) : '';
+            } elseif (isset($conditions['categoria'])) {
+                // Preview: show what category would be applied if condition matches
+                $cond = $conditions['categoria'];
+                if (self::evaluateCondition($cond, $row)) {
+                    $effectiveCategory = isset($cond['apply']) ? sanitize_text_field($cond['apply']) : '';
+                    if (!empty($effectiveCategory)) {
+                        $productData['categories'] = $effectiveCategory;
+                    }
+                }
+            } elseif (!empty($creationCategory)) {
+                $productData['categories'] = $creationCategory;
             }
 
             // Use appropriate mapping: only update fields for existing, all fields for new
