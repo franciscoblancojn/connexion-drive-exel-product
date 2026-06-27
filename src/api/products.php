@@ -569,34 +569,14 @@ add_action('wp_ajax_cdep_ai_generate', function () {
             $context = implode("\n", $contextParts);
             $fieldLabel = isset($fieldLabels[$field]) ? $fieldLabels[$field]['label'] : $field;
 
-            // Build prompt: constraints FIRST, then context
-            $prompt = "Eres un redactor experto en ecommerce. Genera ÚNICAMENTE el contenido para el campo '" . $fieldLabel . "' del producto.\n\n";
-            $prompt .= "REGLAS ESTRICTAS:\n";
-            $prompt .= "- Genera SOLO el texto del campo, sin explicaciones adicionales, sin metadatos, sin etiquetas.\n";
-            $prompt .= "- Responde ÚNICAMENTE con el contenido generado, nada más antes ni después.\n";
-
+            // Build prompt
             if ($field === 'product_name') {
-                $prompt .= "- NOMBRE DEL PRODUCTO: texto plano, descriptivo y atractivo.\n";
-                $prompt .= "- MÁXIMO 100 caracteres.\n";
-                $prompt .= "- NO incluyas HTML, comillas, ni puntuación excesiva.\n";
-                $prompt .= "- Ejemplo: 'Bolso Michael Kors Once Original'.\n";
+                $prompt = "Genera SOLO el nombre del producto, descriptivo y atractivo. Máximo 100 caracteres. Sin HTML. Ejemplo: Bolso Michael Kors Once Original\n\nDatos:\n" . $context . "\n";
             } elseif ($field === 'short_description') {
-                $prompt .= "- DESCRIPCIÓN CORTA: texto plano, un párrafo persuasivo.\n";
-                $prompt .= "- MÁXIMO 200 caracteres. Cuenta cada caracter.\n";
-                $prompt .= "- PROHIBIDO usar HTML (<p>, <h2>, <b>, <br>, etc.).\n";
-                $prompt .= "- PROHIBIDO incluir títulos, encabezados o separadores.\n";
-                $prompt .= "- NO repitas el nombre del producto ni la marca.\n";
-                $prompt .= "- Ejemplo válido: 'Elegante bolso de la colección Originals, confeccionado en piel de alta calidad con acabados dorados.'\n";
+                $prompt = "Escribe UNA SOLA FRASE persuasiva de máximo 200 caracteres describiendo el producto. Sin HTML, sin títulos, sin etiquetas. Texto plano.\n\nDatos del producto:\n" . $context . "\n";
             } elseif ($field === 'description') {
-                $prompt .= "- DESCRIPCIÓN LARGA: solo párrafos con <p>.</p>.\n";
-                $prompt .= "- MÁXIMO 4 párrafos.\n";
-                $prompt .= "- PROHIBIDO usar <h2>, <h3>, <b>, <ul>, <li> u otras etiquetas.\n";
-                $prompt .= "- PROHIBIDO incluir títulos, secciones, ni 'Introducción', 'Características', etc.\n";
-                $prompt .= "- Cada párrafo debe comenzar con <p> y terminar con </p>.\n";
-                $prompt .= "- Describe características, materiales y beneficios de forma natural.\n";
+                $prompt = "Escribe 3-4 párrafos describiendo el producto. Usa SOLO <p> para cada párrafo. NO uses <h2>, <h3> ni otros encabezados. Describe materiales, diseño y beneficios.\n\nDatos del producto:\n" . $context . "\n";
             }
-
-            $prompt .= "\nDatos del producto:\n" . $context . "\n";
 
             $response = array('status' => 'error', 'data' => '');
 
@@ -604,14 +584,44 @@ add_action('wp_ajax_cdep_ai_generate', function () {
                 if ($aiProvider === 'gemini' && class_exists('IACON_AI')) {
                     $response = IACON_AI::sendPrompt($prompt);
                 } elseif ($aiProvider === 'kodee' && class_exists('IACON_KODEE')) {
-                    $response = IACON_KODEE::sendPrompt($prompt);
+                    $kodeeConfig = array();
+                    if ($field === 'short_description') {
+                        $kodeeConfig = array('length' => '50-200');
+                    } elseif ($field === 'product_name') {
+                        $kodeeConfig = array('length' => '10-100');
+                    } elseif ($field === 'description') {
+                        $kodeeConfig = array('length' => '400-800');
+                    }
+                    $response = IACON_KODEE::sendPrompt($prompt, $kodeeConfig);
                 }
             } catch (Exception $e) {
                 $response = array('status' => 'error', 'message' => $e->getMessage());
             }
 
             if ($response['status'] === 'ok') {
-                $aiData[$sku][$field] = $response['data'];
+                $content = $response['data'];
+                // Post-process Kodee output (always returns blog_post format)
+                if ($field === 'short_description') {
+                    $content = strip_tags($content);
+                    $content = preg_replace('/\s+/', ' ', $content);
+                    $content = trim($content);
+                    if (strlen($content) > 200) {
+                        $content = substr($content, 0, 197) . '...';
+                    }
+                } elseif ($field === 'product_name') {
+                    $content = strip_tags($content);
+                    $content = trim(preg_replace('/\s+/', ' ', $content));
+                    if (strlen($content) > 100) {
+                        $content = substr($content, 0, 97) . '...';
+                    }
+                } elseif ($field === 'description') {
+                    // Remove h2/h3 headings and their content titles (multiline safe)
+                    $content = preg_replace('/<h[23][^>]*>.*?<\/h[23]>/is', '', $content);
+                    // Remove empty <p> tags
+                    $content = preg_replace('/<p>\s*<\/p>/is', '', $content);
+                    $content = trim($content);
+                }
+                $aiData[$sku][$field] = $content;
             } else {
                 $aiData[$sku][$field] = '';
                 $errorMsg = isset($response['message']) ? $response['message'] : 'Error desconocido al generar con IA';
