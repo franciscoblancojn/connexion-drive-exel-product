@@ -569,18 +569,34 @@ add_action('wp_ajax_cdep_ai_generate', function () {
             $context = implode("\n", $contextParts);
             $fieldLabel = isset($fieldLabels[$field]) ? $fieldLabels[$field]['label'] : $field;
 
-            $prompt = "Genera el campo '" . $fieldLabel . "' para un producto WooCommerce con los siguientes datos:\n\n" . $context . "\n\n";
-            $prompt .= "Instrucciones:\n";
-            $prompt .= "- Genera SOLO el texto del campo, sin explicaciones adicionales.\n";
-            $prompt .= "- Responde únicamente con el contenido generado.\n";
+            // Build prompt: constraints FIRST, then context
+            $prompt = "Eres un redactor experto en ecommerce. Genera ÚNICAMENTE el contenido para el campo '" . $fieldLabel . "' del producto.\n\n";
+            $prompt .= "REGLAS ESTRICTAS:\n";
+            $prompt .= "- Genera SOLO el texto del campo, sin explicaciones adicionales, sin metadatos, sin etiquetas.\n";
+            $prompt .= "- Responde ÚNICAMENTE con el contenido generado, nada más antes ni después.\n";
 
             if ($field === 'product_name') {
-                $prompt .= "- Genera un nombre de producto descriptivo y atractivo (máximo 100 caracteres).\n";
+                $prompt .= "- NOMBRE DEL PRODUCTO: texto plano, descriptivo y atractivo.\n";
+                $prompt .= "- MÁXIMO 100 caracteres.\n";
+                $prompt .= "- NO incluyas HTML, comillas, ni puntuación excesiva.\n";
+                $prompt .= "- Ejemplo: 'Bolso Michael Kors Once Original'.\n";
             } elseif ($field === 'short_description') {
-                $prompt .= "- Genera una descripción corta y persuasiva (máximo 200 caracteres).\n";
+                $prompt .= "- DESCRIPCIÓN CORTA: texto plano, un párrafo persuasivo.\n";
+                $prompt .= "- MÁXIMO 200 caracteres. Cuenta cada caracter.\n";
+                $prompt .= "- PROHIBIDO usar HTML (<p>, <h2>, <b>, <br>, etc.).\n";
+                $prompt .= "- PROHIBIDO incluir títulos, encabezados o separadores.\n";
+                $prompt .= "- NO repitas el nombre del producto ni la marca.\n";
+                $prompt .= "- Ejemplo válido: 'Elegante bolso de la colección Originals, confeccionado en piel de alta calidad con acabados dorados.'\n";
             } elseif ($field === 'description') {
-                $prompt .= "- Genera una descripción larga y detallada del producto, en formato HTML básico (párrafos con <p>).\n";
+                $prompt .= "- DESCRIPCIÓN LARGA: solo párrafos con <p>.</p>.\n";
+                $prompt .= "- MÁXIMO 4 párrafos.\n";
+                $prompt .= "- PROHIBIDO usar <h2>, <h3>, <b>, <ul>, <li> u otras etiquetas.\n";
+                $prompt .= "- PROHIBIDO incluir títulos, secciones, ni 'Introducción', 'Características', etc.\n";
+                $prompt .= "- Cada párrafo debe comenzar con <p> y terminar con </p>.\n";
+                $prompt .= "- Describe características, materiales y beneficios de forma natural.\n";
             }
+
+            $prompt .= "\nDatos del producto:\n" . $context . "\n";
 
             $response = array('status' => 'error', 'data' => '');
 
