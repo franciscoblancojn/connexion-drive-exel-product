@@ -574,8 +574,8 @@ add_action('wp_ajax_cdep_ai_generate', function () {
                 $prompt = "Genera SOLO el nombre del producto, descriptivo y atractivo. Máximo 100 caracteres. Sin HTML. Ejemplo: Bolso Michael Kors Once Original\n\nDatos:\n" . $context . "\n";
             } elseif ($field === 'short_description') {
                 $prompt = "Escribe UNA SOLA FRASE persuasiva de máximo 200 caracteres describiendo el producto. Sin HTML, sin títulos, sin etiquetas. Texto plano.\n\nDatos del producto:\n" . $context . "\n";
-            } elseif ($field === 'description') {
-                $prompt = "Escribe 3-4 párrafos describiendo el producto. Usa SOLO <p> para cada párrafo. NO uses <h2>, <h3> ni otros encabezados. Describe materiales, diseño y beneficios.\n\nDatos del producto:\n" . $context . "\n";
+                } elseif ($field === 'description') {
+                    $prompt = "Escribe una descripción completa del producto con 3-4 secciones. Usa <h2> para títulos de sección y <p> para párrafos. Describe materiales, diseño, características y beneficios.\n\nDatos del producto:\n" . $context . "\n";
             }
 
             $response = array('status' => 'error', 'data' => '');
@@ -615,10 +615,6 @@ add_action('wp_ajax_cdep_ai_generate', function () {
                         $content = substr($content, 0, 97) . '...';
                     }
                 } elseif ($field === 'description') {
-                    // Remove h2/h3 headings and their content titles (multiline safe)
-                    $content = preg_replace('/<h[23][^>]*>.*?<\/h[23]>/is', '', $content);
-                    // Remove empty <p> tags
-                    $content = preg_replace('/<p>\s*<\/p>/is', '', $content);
                     $content = trim($content);
                 }
                 $aiData[$sku][$field] = $content;
