@@ -125,7 +125,7 @@ $productFields = CDEP_PRODUCTS::getFields();
                             <tr>
                                 <td><strong>Marca</strong></td>
                                 <td>
-                                    <select id="creation-brand" style="width:100%">
+                                    <select id="creation-brand" class="cdep-config-main-select" style="width:100%">
                                         <option value="">— Sin marca —</option>
                                         <?php
                                         $brandTerms = taxonomy_exists('product_brand') ? get_terms(array(
@@ -135,13 +135,55 @@ $productFields = CDEP_PRODUCTS::getFields();
                                         if (!empty($brandTerms) && !is_wp_error($brandTerms)):
                                             foreach ($brandTerms as $term):
                                         ?>
-                                        <option value="<?= esc_attr($term->slug) ?>"><?= esc_html($term->name) ?></option>
+                                        <option value="<?= esc_attr($term->name) ?>"><?= esc_html($term->name) ?></option>
                                         <?php
                                             endforeach;
                                         endif;
                                         ?>
                                     </select>
                                     <p class="description">Marca que se asignará a todos los productos nuevos.</p>
+                                    <div class="cdep-condition-toggle">
+                                        <label><input type="checkbox" class="cdep-condition-checkbox" data-target="marca"> Condicionar</label>
+                                    </div>
+                                    <div class="cdep-condition-row" data-condition="marca" style="display:none;margin-top:6px">
+                                        <select class="cdep-condition-column" style="width:100%;margin-bottom:4px">
+                                            <option value="">— Seleccionar columna —</option>
+                                        </select>
+                                        <input type="text" class="cdep-condition-value" placeholder="Valor a coincidir" style="width:100%">
+                                        <p class="description">Solo aplicar cuando la columna seleccionada tenga exactamente este valor.</p>
+                                    </div>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td><strong>Categoría</strong></td>
+                                <td>
+                                    <select id="creation-category" class="cdep-config-main-select" style="width:100%">
+                                        <option value="">— Sin categoría —</option>
+                                        <?php
+                                        $catTerms = taxonomy_exists('product_cat') ? get_terms(array(
+                                            'taxonomy' => 'product_cat',
+                                            'hide_empty' => false,
+                                        )) : array();
+                                        if (!empty($catTerms) && !is_wp_error($catTerms)):
+                                            foreach ($catTerms as $term):
+                                        ?>
+                                        <option value="<?= esc_attr($term->name) ?>"><?= esc_html($term->name) ?></option>
+                                        <?php
+                                            endforeach;
+                                        endif;
+                                        ?>
+                                    </select>
+                                    <p class="description">Categoría que se asignará a todos los productos nuevos.</p>
+                                    <div class="cdep-condition-toggle">
+                                        <label><input type="checkbox" class="cdep-condition-checkbox" data-target="categoria"> Condicionar</label>
+                                    </div>
+                                    <div class="cdep-condition-row" data-condition="categoria" style="display:none;margin-top:6px">
+                                        <select class="cdep-condition-column" style="width:100%;margin-bottom:4px">
+                                            <option value="">— Seleccionar columna —</option>
+                                        </select>
+                                        <input type="text" class="cdep-condition-value" placeholder="Valor a coincidir" style="width:100%">
+                                        <p class="description">Solo aplicar cuando la columna seleccionada tenga exactamente este valor.</p>
+                                    </div>
                                 </td>
                             </tr>
                         </tbody>

@@ -142,6 +142,17 @@ class CDEP_PRODUCTS
         }, $template);
     }
 
+    private static function evaluateCondition($condition, $row)
+    {
+        $colIndex = isset($condition['column']) ? intval($condition['column']) : -1;
+        $condValue = isset($condition['value']) ? trim($condition['value']) : '';
+        if ($colIndex < 0 || $condValue === '') {
+            return true;
+        }
+        $rowValue = isset($row[$colIndex]) ? trim($row[$colIndex]) : '';
+        return strcasecmp($rowValue, $condValue) === 0;
+    }
+
     public static function validateMapping($allRows, $mapping, $headers = array(), $configVars = array(), $aiData = array())
     {
         $skuIndex = isset($mapping['sku']) && $mapping['sku'] !== '' ? intval($mapping['sku']) : -1;
@@ -341,6 +352,8 @@ class CDEP_PRODUCTS
         }
 
         $creationBrand = isset($mapping['creation_brand']) ? sanitize_text_field($mapping['creation_brand']) : '';
+        $creationCategory = isset($mapping['creation_category']) ? sanitize_text_field($mapping['creation_category']) : '';
+        $conditions = isset($mapping['conditions']) ? $mapping['conditions'] : array();
 
         $batch = array_slice($allRows, $offset, $limit);
         $results = array(
@@ -397,23 +410,50 @@ class CDEP_PRODUCTS
                     }
                 }
 
-                if ($isNew && !empty($creationBrand)) {
-                    $attrs = $product->get_attributes();
-                    if (!is_array($attrs)) {
-                        $attrs = array();
+                if ($isNew) {
+                    // Evaluate conditions for brand
+                    $applyBrand = !empty($creationBrand);
+                    if ($applyBrand && isset($conditions['marca'])) {
+                        $applyBrand = self::evaluateCondition($conditions['marca'], $row);
                     }
-                    $attrs['brand'] = array(
-                        'name' => 'Brand',
-                        'value' => $creationBrand,
-                        'position' => 0,
-                        'is_visible' => 1,
-                        'is_variation' => 0,
-                        'is_taxonomy' => 0,
-                    );
-                    $product->set_attributes($attrs);
+                    if ($applyBrand && !empty($creationBrand)) {
+                        $attrs = $product->get_attributes();
+                        if (!is_array($attrs)) {
+                            $attrs = array();
+                        }
+                        $attrs['brand'] = array(
+                            'name' => 'Brand',
+                            'value' => $creationBrand,
+                            'position' => 0,
+                            'is_visible' => 1,
+                            'is_variation' => 0,
+                            'is_taxonomy' => 0,
+                        );
+                        $product->set_attributes($attrs);
+                    }
+
+                    // Evaluate conditions for category
                 }
 
                 $product->save();
+
+                if ($isNew) {
+                    // Evaluate conditions for category (after save to have product ID)
+                    $applyCat = !empty($creationCategory);
+                    if ($applyCat && isset($conditions['categoria'])) {
+                        $applyCat = self::evaluateCondition($conditions['categoria'], $row);
+                    }
+                    if ($applyCat && !empty($creationCategory)) {
+                        $catName = $creationCategory;
+                        $catTerm = get_term_by('name', $catName, 'product_cat');
+                        if (!$catTerm) {
+                            $catTerm = get_term_by('slug', $catName, 'product_cat');
+                        }
+                        if ($catTerm) {
+                            wp_set_object_terms($product->get_id(), array(intval($catTerm->term_id)), 'product_cat', true);
+                        }
+                    }
+                }
 
                 if ($isNew) {
                     $results['created']++;

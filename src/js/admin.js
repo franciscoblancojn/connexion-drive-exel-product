@@ -406,6 +406,7 @@ jQuery(function ($) {
         $('#cdep-mapping-form').show();
         $('#cdep-preview-update').prop('disabled', false);
 
+        populateConditionColumns();
         restoreMappingConfig();
 
         // Sync AI options visibility
@@ -455,7 +456,8 @@ jQuery(function ($) {
         var configVars = {};
         $('#cdep-creation-config-table tbody tr').each(function () {
             var label = $(this).find('td:first').text().trim().toLowerCase();
-            var $input = $(this).find('input, select');
+            var $input = $(this).find('.cdep-config-main-select');
+            if ($input.length === 0) return;
             var val = $input.is('select') ? $input.find('option:selected').text() : $input.val();
             if (val && label) {
                 var varName = label.replace(/[^a-z0-9_]/g, '_').replace(/_+/g, '_').replace(/^_|_$/g, '');
@@ -470,6 +472,28 @@ jQuery(function ($) {
         }
         if (keys.length > 0) {
             mapping['config_vars'] = configVars;
+        }
+
+        // Categoría
+        var $cat = $('#creation-category');
+        var catVal = $cat.is('select') ? $cat.find('option:selected').text() : $cat.val();
+        if (catVal) {
+            mapping['creation_category'] = catVal;
+        }
+
+        // Conditions for brand and category
+        var conditions = {};
+        $('.cdep-condition-checkbox:checked').each(function () {
+            var target = $(this).data('target');
+            var $row = $('.cdep-condition-row[data-condition="' + target + '"]');
+            var colVal = $row.find('.cdep-condition-column').val();
+            var condVal = $row.find('.cdep-condition-value').val();
+            if (colVal && condVal) {
+                conditions[target] = { column: colVal, value: condVal };
+            }
+        });
+        if (Object.keys(conditions).length > 0) {
+            mapping['conditions'] = conditions;
         }
 
         return mapping;
@@ -540,6 +564,28 @@ jQuery(function ($) {
             // Restore creation config
             if (mapping['creation_brand']) {
                 $('#creation-brand').val(mapping['creation_brand']);
+            }
+            if (mapping['creation_category']) {
+                $('#creation-category').val(mapping['creation_category']);
+            }
+
+            // Restore conditions
+            if (mapping['conditions']) {
+                var conds = mapping['conditions'];
+                for (var target in conds) {
+                    if (conds.hasOwnProperty(target)) {
+                        var condition = conds[target];
+                        $('.cdep-condition-checkbox[data-target="' + target + '"]').prop('checked', true);
+                        var $row = $('.cdep-condition-row[data-condition="' + target + '"]');
+                        $row.show();
+                        if (condition.column) {
+                            $row.find('.cdep-condition-column').val(condition.column);
+                        }
+                        if (condition.value) {
+                            $row.find('.cdep-condition-value').val(condition.value);
+                        }
+                    }
+                }
             }
         } catch (e) {}
     }
@@ -628,6 +674,35 @@ jQuery(function ($) {
             $('.cdep-template-variables-list').hide();
         }
     });
+
+    // === CONDITION UI ===
+
+    $(document).on('change', '.cdep-condition-checkbox', function () {
+        var target = $(this).data('target');
+        var $row = $('.cdep-condition-row[data-condition="' + target + '"]');
+        if ($(this).is(':checked')) {
+            $row.show();
+        } else {
+            $row.hide();
+            $row.find('.cdep-condition-column').val('');
+            $row.find('.cdep-condition-value').val('');
+        }
+    });
+
+    function populateConditionColumns() {
+        var headers = window.cdepParsedData ? window.cdepParsedData.headers : [];
+        $('.cdep-condition-column').each(function () {
+            var $sel = $(this);
+            var currentVal = $sel.val();
+            $sel.find('option:not(:first)').remove();
+            $.each(headers, function (i, h) {
+                $sel.append('<option value="' + h.index + '">' + escHtml(h.name) + '</option>');
+            });
+            if (currentVal) {
+                $sel.val(currentVal);
+            }
+        });
+    }
 
     function renderStatusBadge(status) {
         var labels = {
