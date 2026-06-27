@@ -1050,23 +1050,27 @@ jQuery(function ($) {
             }, function (previewData) {
                 state.products = previewData.products;
 
-                // Re-render preview result
-                var previewHtml = $('#cdep-preview-result').html();
-                // Replace the table content by re-running the render logic
-                // Simple approach: trigger preview click again with ai_data
+                // Re-render preview result with AI data
                 renderPreviewResult(previewData);
 
                 btn.prop('disabled', false).text('Generar contenido con IA');
                 $('#cdep-preview-update').prop('disabled', false).text('Vista Previa de Actualización');
-                showMessage('#cdep-preview-result', 'Contenido generado correctamente.', 'ok');
+                // Show success message without destroying the preview table
+                var $msg = $('<p class="fwue-message ok">Contenido generado correctamente.</p>');
+                $('#cdep-preview-result').prepend($msg);
+                setTimeout(function () { $msg.remove(); }, 8000);
             }, function (msg) {
                 btn.prop('disabled', false).text('Generar contenido con IA');
                 $('#cdep-preview-update').prop('disabled', false).text('Vista Previa de Actualización');
-                showMessage('#cdep-preview-result', msg, 'error');
+                var $msg = $('<p class="fwue-message error">' + msg + '</p>');
+                $('#cdep-preview-result').prepend($msg);
+                setTimeout(function () { $msg.remove(); }, 8000);
             });
         }, function (msg) {
             btn.prop('disabled', false).text('Generar contenido con IA');
-            showMessage('#cdep-preview-result', msg, 'error');
+            var $msg = $('<p class="fwue-message error">' + msg + '</p>');
+            $('#cdep-preview-result').prepend($msg);
+            setTimeout(function () { $msg.remove(); }, 8000);
         });
     });
 
