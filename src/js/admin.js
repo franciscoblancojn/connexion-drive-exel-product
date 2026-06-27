@@ -684,6 +684,8 @@ jQuery(function ($) {
                 var nameFd = p.fields['product_name'];
                 if (isAiName && (!nameFd || !nameFd.new)) {
                     html += '<td class="cdep-field-cell-product_name"><span class="cdep-badge cdep-badge-ai">Pendiente de generar</span></td>';
+                } else if (isAiName) {
+                    html += '<td class="cdep-field-cell-product_name"><button class="button button-small cdep-view-ai-content" data-sku="' + escHtml(p.sku) + '" data-field="product_name">Ver contenido generado con IA</button></td>';
                 } else {
                     var nameHtml = renderFieldCell(nameFd, p.exists);
                     if (p.exists && p.product_id) {
@@ -705,6 +707,8 @@ jQuery(function ($) {
                 var isAi = aiFields && aiFields.indexOf(f.key) !== -1;
                 if (isAi && (!fd || !fd.new)) {
                     html += '<td class="cdep-field-cell-' + f.key + '"><span class="cdep-badge cdep-badge-ai">Pendiente de generar</span></td>';
+                } else if (isAi) {
+                    html += '<td class="cdep-field-cell-' + f.key + '"><button class="button button-small cdep-view-ai-content" data-sku="' + escHtml(p.sku) + '" data-field="' + f.key + '">Ver contenido generado con IA</button></td>';
                 } else {
                     html += '<td class="cdep-field-cell-' + f.key + '">' + (fd ? renderFieldCell(fd, p.exists) : '') + '</td>';
                 }
@@ -1160,7 +1164,7 @@ jQuery(function ($) {
                 }, function (previewData) {
                     state.products = previewData.products;
 
-                    // Update the specific row cells with AI content
+                    // Update the specific row cells with AI content buttons
                     $.each(previewData.products, function (i, p) {
                         if (p.sku === sku) {
                             $.each(p.fields, function (fieldKey, fd) {
@@ -1168,7 +1172,7 @@ jQuery(function ($) {
                                 if (isAi && fd && fd.new) {
                                     var $cell = $row.find('.cdep-field-cell-' + fieldKey);
                                     if ($cell.length) {
-                                        $cell.html(renderFieldCell(fd, p.exists));
+                                        $cell.html('<button class="button button-small cdep-view-ai-content" data-sku="' + escHtml(sku) + '" data-field="' + fieldKey + '">Ver contenido generado con IA</button>');
                                     }
                                 }
                             });
@@ -1177,7 +1181,7 @@ jQuery(function ($) {
                             if (p.fields['product_name']) {
                                 var isAiName = previewData.ai_fields && previewData.ai_fields.indexOf('product_name') !== -1;
                                 if (isAiName && p.fields['product_name'].new) {
-                                    $row.find('td').eq(5).html(renderFieldCell(p.fields['product_name'], p.exists));
+                                    $row.find('td').eq(5).html('<button class="button button-small cdep-view-ai-content" data-sku="' + escHtml(sku) + '" data-field="product_name">Ver contenido generado con IA</button>');
                                 }
                             }
                         }
@@ -1226,7 +1230,53 @@ jQuery(function ($) {
         }
     });
 
-    var currentQueryString = window.location.search;
-    if (currentQueryString.indexOf('code=') !== -1 || currentQueryString.indexOf('tab=connect') !== -1) {
-    }
+    // === AI CONTENT MODAL ===
+    $('body').append(
+        '<div id="cdep-ai-modal" class="cdep-modal-overlay" style="display:none">' +
+            '<div class="cdep-modal-content">' +
+                '<div class="cdep-modal-header">' +
+                    '<h3 id="cdep-ai-modal-title">Contenido generado con IA</h3>' +
+                    '<button class="cdep-modal-close">&times;</button>' +
+                '</div>' +
+                '<div id="cdep-ai-modal-body" class="cdep-modal-body"></div>' +
+            '</div>' +
+        '</div>'
+    );
+
+    $(document).on('click', '.cdep-view-ai-content', function () {
+        var sku = $(this).data('sku');
+        var field = $(this).data('field');
+        var content = '';
+        if (state.aiGenerated && state.aiGenerated[sku] && state.aiGenerated[sku][field]) {
+            content = state.aiGenerated[sku][field];
+        } else if (state.products) {
+            $.each(state.products, function (i, p) {
+                if (p.sku === sku && p.fields[field]) {
+                    content = p.fields[field].new || '';
+                }
+            });
+        }
+
+        var fieldLabels = {
+            'product_name': 'Nombre del producto',
+            'short_description': 'Descripción corta',
+            'description': 'Descripción',
+        };
+        var label = fieldLabels[field] || field;
+        $('#cdep-ai-modal-title').text(label + ' - SKU: ' + sku);
+        $('#cdep-ai-modal-body').html(content);
+        $('#cdep-ai-modal').show();
+    });
+
+    $(document).on('click', '.cdep-modal-close, .cdep-modal-overlay', function (e) {
+        if (e.target === this || $(e.target).hasClass('cdep-modal-close')) {
+            $('#cdep-ai-modal').hide();
+        }
+    });
+
+    $(document).on('keydown', function (e) {
+        if (e.key === 'Escape' && $('#cdep-ai-modal').is(':visible')) {
+            $('#cdep-ai-modal').hide();
+        }
+    });
 });
