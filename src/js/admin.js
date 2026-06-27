@@ -1030,7 +1030,7 @@ jQuery(function ($) {
         $('#cdep-preview-result').html(html);
     }
 
-    // === AI GENERATE BUTTON ===
+    // === AI GENERATE BUTTON (batch one-by-one) ===
     $(document).on('click', '.cdep-ai-generate-btn', function () {
         var $container = $(this).closest('.cdep-preview-tab-content');
         var checkedSkus = [];
@@ -1044,52 +1044,105 @@ jQuery(function ($) {
         }
 
         var btn = $(this);
+        var totalSkus = checkedSkus.length;
+        var processedCount = 0;
+        var allErrors = [];
+
         btn.prop('disabled', true).text('Generando...');
+        $('#cdep-start-create').prop('disabled', true);
+        $('#cdep-create-progress').show();
+        $('#cdep-create-progress .cdep-progress-fill').css('width', '0%');
+        $('#cdep-create-progress .cdep-progress-text').text('0 / ' + totalSkus + ' productos generados');
 
-        ajax('cdep_ai_generate', {
-            mapping: state.mapping,
-            skus: checkedSkus,
-            ai_provider: cdep.ai_provider,
-        }, function (data) {
-            state.aiGenerated = data.data || {};
+        function processNext(idx) {
+            if (idx >= checkedSkus.length) {
+                btn.prop('disabled', false).text('Generar contenido con IA');
+                $('#cdep-start-create').prop('disabled', false);
+                $('#cdep-create-progress .cdep-progress-text').text('Completado: ' + processedCount + ' generados');
 
-            // Re-run preview with AI data to show generated values
-            $('#cdep-preview-update').prop('disabled', true).text('Procesando...');
+                // Re-run preview to consolidate AI data
+                $('#cdep-preview-update').prop('disabled', true).text('Procesando...');
+                ajax('cdep_update_preview', {
+                    mapping: state.mapping,
+                    ai_data: state.aiGenerated,
+                }, function (previewData) {
+                    state.products = previewData.products;
+                    renderPreviewResult(previewData);
+                    $('.cdep-preview-tab').removeClass('active');
+                    $('.cdep-preview-tab[data-tab="create"]').addClass('active');
+                    $('.cdep-preview-tab-content').removeClass('active');
+                    $('.cdep-preview-tab-content[data-tab="create"]').addClass('active');
+                    $('#cdep-preview-update').prop('disabled', false).text('Vista Previa de Actualización');
+                    var $msg = $('<p class="fwue-message ok">Contenido generado correctamente para ' + processedCount + ' productos.</p>');
+                    $('#cdep-preview-result').prepend($msg);
+                    setTimeout(function () { $msg.remove(); }, 8000);
+                }, function (msg) {
+                    $('#cdep-preview-update').prop('disabled', false).text('Vista Previa de Actualización');
+                    var $msg = $('<p class="fwue-message error">' + msg + '</p>');
+                    $('#cdep-preview-result').prepend($msg);
+                    setTimeout(function () { $msg.remove(); }, 8000);
+                });
+                return;
+            }
 
-            ajax('cdep_update_preview', {
+            var sku = checkedSkus[idx];
+            btn.text('Generando... (' + (idx + 1) + '/' + totalSkus + ')');
+
+            ajax('cdep_ai_generate', {
                 mapping: state.mapping,
-                ai_data: state.aiGenerated,
-            }, function (previewData) {
-                state.products = previewData.products;
+                skus: [sku],
+                ai_provider: cdep.ai_provider,
+            }, function (data) {
+                if (!state.aiGenerated) {
+                    state.aiGenerated = {};
+                }
+                if (data.data && data.data[sku]) {
+                    state.aiGenerated[sku] = data.data[sku];
+                    processedCount++;
 
-                // Re-render preview result with AI data
-                renderPreviewResult(previewData);
+                    // Update the row in the table with "Ver contenido" button
+                    var $row = findRowBySku(sku);
+                    if ($row) {
+                        var aiFields = [];
+                        if (state.mapping) {
+                            $.each(state.mapping, function (key, val) {
+                                if (key.indexOf('create_') === 0 && val === '__ai__') {
+                                    aiFields.push(key.replace('create_', ''));
+                                }
+                            });
+                        }
+                        $.each(aiFields, function (i, fk) {
+                            var $cell = $row.find('.cdep-field-cell-' + fk);
+                            if ($cell.length) {
+                                $cell.html('<button class="button button-small cdep-view-ai-content" data-sku="' + escHtml(sku) + '" data-field="' + fk + '">Ver contenido generado con IA</button>');
+                            }
+                        });
+                        var isAiName = aiFields.indexOf('product_name') !== -1;
+                        if (isAiName && state.aiGenerated[sku] && state.aiGenerated[sku]['product_name']) {
+                            $row.find('td').eq(5).html('<button class="button button-small cdep-view-ai-content" data-sku="' + escHtml(sku) + '" data-field="product_name">Ver contenido generado con IA</button>');
+                        }
+                    }
+                }
 
-                // Switch to "Productos a crear" tab since AI data is for new products
-                $('.cdep-preview-tab').removeClass('active');
-                $('.cdep-preview-tab[data-tab="create"]').addClass('active');
-                $('.cdep-preview-tab-content').removeClass('active');
-                $('.cdep-preview-tab-content[data-tab="create"]').addClass('active');
+                var progress = Math.min(100, Math.round((idx + 1) / totalSkus * 100));
+                $('#cdep-create-progress .cdep-progress-fill').css('width', progress + '%');
+                $('#cdep-create-progress .cdep-progress-text').text((idx + 1) + ' / ' + totalSkus + ' productos generados');
 
-                btn.prop('disabled', false).text('Generar contenido con IA');
-                $('#cdep-preview-update').prop('disabled', false).text('Vista Previa de Actualización');
-                // Show success message without destroying the preview table
-                var $msg = $('<p class="fwue-message ok">Contenido generado correctamente.</p>');
-                $('#cdep-preview-result').prepend($msg);
-                setTimeout(function () { $msg.remove(); }, 8000);
+                processNext(idx + 1);
             }, function (msg) {
-                btn.prop('disabled', false).text('Generar contenido con IA');
-                $('#cdep-preview-update').prop('disabled', false).text('Vista Previa de Actualización');
-                var $msg = $('<p class="fwue-message error">' + msg + '</p>');
-                $('#cdep-preview-result').prepend($msg);
-                setTimeout(function () { $msg.remove(); }, 8000);
+                allErrors.push({ sku: sku, error: msg });
+                var $row = findRowBySku(sku);
+                if ($row) {
+                    $row.attr('data-status', 'error');
+                }
+                var progress = Math.min(100, Math.round((idx + 1) / totalSkus * 100));
+                $('#cdep-create-progress .cdep-progress-fill').css('width', progress + '%');
+                $('#cdep-create-progress .cdep-progress-text').text((idx + 1) + ' / ' + totalSkus + ' productos generados');
+                processNext(idx + 1);
             });
-        }, function (msg) {
-            btn.prop('disabled', false).text('Generar contenido con IA');
-            var $msg = $('<p class="fwue-message error">' + msg + '</p>');
-            $('#cdep-preview-result').prepend($msg);
-            setTimeout(function () { $msg.remove(); }, 8000);
-        });
+        }
+
+        processNext(0);
     });
 
     // === SINGLE PRODUCT PROCESS ===
