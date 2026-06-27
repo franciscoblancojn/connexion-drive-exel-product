@@ -638,10 +638,10 @@ jQuery(function ($) {
 
     function renderProductsTable(products, mappedFields, productNameMapped, aiFields) {
         var html = '<div class="cdep-table-wrapper">';
-        html += '<table class="wp-list-table widefat fixed striped">';
+        html += '<table class="wp-list-table widefat striped">';
         html += '<colgroup>';
         html += '<col style="width: 40px;">';
-        html += '<col style="width: 90px;">';
+        html += '<col style="width: 110px;">';
         html += '<col style="width: 110px;">';
         html += '<col style="width: 70px;">';
         html += '<col style="width: auto;">';
@@ -664,10 +664,12 @@ jQuery(function ($) {
             html += '<tr class="cdep-product-row" data-sku="' + escHtml(p.sku) + '" data-status="' + p.status + '">';
             html += '<td><input type="checkbox" class="cdep-row-checkbox" value="' + escHtml(p.sku) + '" checked></td>';
             html += '<td>';
+            html += '<div class="content-btn-procesing-in-table">';
             html += '<button class="button button-small cdep-process-single" data-sku="' + escHtml(p.sku) + '">Procesar</button>';
             if (aiFields && aiFields.length > 0) {
                 html += ' <button class="button button-small cdep-ai-generate-row" data-sku="' + escHtml(p.sku) + '">Generar con IA</button>';
             }
+            html += '</div>';
             html += '</td>';
             html += '<td class="cdep-status-cell">' + statusBadge + '</td>';
             html += '<td>' + (p.image || imageProductDefualt) + '</td>';
@@ -844,7 +846,7 @@ jQuery(function ($) {
 
                 if (allErrors.length > 0) {
                     resultHtml += '<h4>Errores</h4>';
-                    resultHtml += '<div class="cdep-table-scroll"><table class="wp-list-table widefat fixed striped">';
+                    resultHtml += '<div class="cdep-table-scroll"><table class="wp-list-table widefat striped">';
                     resultHtml += '<thead><tr><th>SKU</th><th>Error</th></tr></thead><tbody>';
                     $.each(allErrors.slice(0, 50), function (i, err) {
                         resultHtml += '<tr><td>' + escHtml(err.sku) + '</td><td>' + escHtml(err.error) + '</td></tr>';
