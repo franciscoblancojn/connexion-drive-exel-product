@@ -405,9 +405,7 @@ jQuery(function ($) {
         restoreMappingConfig();
 
         // Sync AI options visibility
-        if (cdep.ai_enabled === '1') {
-            toggleAiOptions(true);
-        }
+        toggleAiOptions(cdep.ai_enabled === '1');
     }
 
     function buildMapping() {
