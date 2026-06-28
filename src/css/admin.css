@@ -599,17 +599,6 @@
     gap: 4px;
     align-items: start;
 }
-.cdep-attribute-cond-toggle {
-    margin-top: 4px;
-    font-size: 12px;
-}
-.cdep-attribute-cond-toggle label {
-    cursor: pointer;
-    color: #555;
-}
-.cdep-attribute-cond-toggle input[type="checkbox"] {
-    margin-right: 3px;
-}
 .cdep-attribute-remove {
     font-weight: 700;
     font-size: 14px;

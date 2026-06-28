@@ -666,16 +666,19 @@ jQuery(function ($) {
                         $item.find('.cdep-attribute-term-select').val(attr.term);
                     }
                     if (attr.conditions && attr.conditions.length > 0) {
-                        $item.find('.cdep-attribute-cond-checkbox').prop('checked', true);
+                        $item.find('.cdep-attribute-term-select').val('__condicionar__');
                         var $condRow = $item.find('.cdep-attribute-condition-row');
                         $condRow.show();
                         var $condContainer = $condRow.find('.cdep-condition-items');
+                        $condContainer.empty();
+                        var taxonomy = attr.taxonomy;
                         $.each(attr.conditions, function (ci, cond) {
-                            var $condItem = createConditionItem('attribute');
+                            var $condItem = createAttributeCondItem(taxonomy);
                             populateItemColumns($condItem);
                             if (cond.column) $condItem.find('.cdep-condition-column').val(cond.column);
                             if (cond.operator) $condItem.find('.cdep-condition-operator').val(cond.operator);
                             if (cond.value) $condItem.find('.cdep-condition-value').val(cond.value);
+                            if (cond.apply) $condItem.find('.cdep-condition-apply').val(cond.apply);
                             $condContainer.append($condItem);
                         });
                     }
@@ -872,11 +875,8 @@ jQuery(function ($) {
         });
         var html = '<div class="cdep-attribute-fields">'
             + '<select class="cdep-attribute-select" style="width:100%">' + taxOptions + '</select>'
-            + '<select class="cdep-attribute-term-select" style="width:100%"><option value="">— Término —</option></select>'
+            + '<select class="cdep-attribute-term-select" style="width:100%"><option value="">— Término —</option><option value="__condicionar__">Condicionar</option></select>'
             + '<button type="button" class="button button-small cdep-attribute-remove">×</button>'
-            + '</div>'
-            + '<div class="cdep-attribute-cond-toggle">'
-            + '<label><input type="checkbox" class="cdep-attribute-cond-checkbox"> Condicionar</label>'
             + '</div>'
             + '<div class="cdep-attribute-condition-row cdep-condition-row" style="display:none;margin-top:4px">'
             + '<div class="cdep-condition-items"></div>'
@@ -886,10 +886,41 @@ jQuery(function ($) {
         return $item;
     }
 
+    function createAttributeCondItem(taxonomy) {
+        var $item = $('<div class="cdep-condition-item">');
+        var fieldsHtml = '<div class="cdep-condition-item-fields">'
+            + '<select class="cdep-condition-column" style="width:100%"><option value="">— Columna —</option></select>'
+            + '<select class="cdep-condition-operator" style="width:100%">'
+            + '<option value="=">=</option><option value="!=">!=</option><option value="<">&lt;</option><option value=">">&gt;</option>'
+            + '</select>'
+            + '<input type="text" class="cdep-condition-value" placeholder="Valor" style="width:100%">'
+            + '<select class="cdep-condition-apply" style="width:100%"><option value="">— Término a aplicar —</option>';
+        // Populate apply with terms of this attribute taxonomy
+        var taxonomies = getAttributeTaxonomies();
+        var found = null;
+        $.each(taxonomies, function (i, attr) {
+            if (attr.attribute_name === taxonomy) {
+                found = attr;
+                return false;
+            }
+        });
+        if (found && found.terms) {
+            $.each(found.terms, function (i, term) {
+                fieldsHtml += '<option value="' + escHtml(term.name) + '">' + escHtml(term.name) + '</option>';
+            });
+        }
+        fieldsHtml += '</select></div>';
+        $item.append(fieldsHtml);
+        var $removeBtn = $('<button type="button" class="button button-small cdep-condition-remove">×</button>');
+        $item.append($removeBtn);
+        return $item;
+    }
+
     function populateAttributeTerms($item, taxonomy) {
         var $termSel = $item.find('.cdep-attribute-term-select');
         $termSel.find('option:not(:first)').remove();
         if (!taxonomy) return;
+        // Keep only empty, condicionar, and fresh terms
         var taxonomies = getAttributeTaxonomies();
         var found = null;
         $.each(taxonomies, function (i, attr) {
@@ -903,7 +934,6 @@ jQuery(function ($) {
         $.each(terms, function (i, term) {
             $termSel.append('<option value="' + escHtml(term.name) + '">' + escHtml(term.name) + '</option>');
         });
-        // Manually trigger the change to restore value
         $termSel.trigger('change');
     }
 
@@ -912,12 +942,43 @@ jQuery(function ($) {
         var $item = $(this).closest('.cdep-attribute-item');
         var taxonomy = $(this).val();
         populateAttributeTerms($item, taxonomy);
+        // Also update apply selects in existing condition items
+        $item.find('.cdep-condition-apply').each(function () {
+            var $apply = $(this);
+            var currentVal = $apply.val();
+            $apply.find('option:not(:first)').remove();
+            var taxonomies = getAttributeTaxonomies();
+            var found = null;
+            $.each(taxonomies, function (i, attr) {
+                if (attr.attribute_name === taxonomy) {
+                    found = attr;
+                    return false;
+                }
+            });
+            if (found && found.terms) {
+                $.each(found.terms, function (i, term) {
+                    $apply.append('<option value="' + escHtml(term.name) + '">' + escHtml(term.name) + '</option>');
+                });
+            }
+            if (currentVal) $apply.val(currentVal);
+        });
     });
 
-    $(document).on('change', '.cdep-attribute-cond-checkbox', function () {
-        var $row = $(this).closest('.cdep-attribute-item').find('.cdep-attribute-condition-row');
-        if ($(this).is(':checked')) {
+    // Condicionar toggle for attribute term select
+    $(document).on('change', '.cdep-attribute-term-select', function () {
+        var $item = $(this).closest('.cdep-attribute-item');
+        var $row = $item.find('.cdep-attribute-condition-row');
+        if ($(this).val() === '__condicionar__') {
             $row.show();
+            // Auto-add first condition item if empty
+            if ($row.find('.cdep-condition-item').length === 0) {
+                var taxonomy = $item.find('.cdep-attribute-select').val();
+                if (taxonomy) {
+                    var $condItem = createAttributeCondItem(taxonomy);
+                    populateItemColumns($condItem);
+                    $row.find('.cdep-condition-items').append($condItem);
+                }
+            }
         } else {
             $row.hide();
             $row.find('.cdep-condition-items').empty();
@@ -926,15 +987,22 @@ jQuery(function ($) {
 
     $(document).on('click', '.cdep-attribute-add', function () {
         var $item = createAttributeItem();
-        // Auto-populate columns for the condition builder inside
-        var $condItem = createConditionItem('attribute');
-        populateItemColumns($condItem);
-        $item.find('.cdep-attribute-condition-row .cdep-condition-items').append($condItem);
         $('#cdep-attributes-container').append($item);
     });
 
     $(document).on('click', '.cdep-attribute-remove', function () {
         $(this).closest('.cdep-attribute-item').remove();
+    });
+
+    // Override the condition-add inside attribute condition rows to use attribute-specific items
+    $(document).on('click', '.cdep-attribute-condition-row .cdep-condition-add', function () {
+        var $row = $(this).closest('.cdep-attribute-condition-row');
+        var $item = $(this).closest('.cdep-attribute-item');
+        var taxonomy = $item.find('.cdep-attribute-select').val();
+        if (!taxonomy) return;
+        var $condItem = createAttributeCondItem(taxonomy);
+        populateItemColumns($condItem);
+        $row.find('.cdep-condition-items').append($condItem);
     });
 
     function renderStatusBadge(status) {
