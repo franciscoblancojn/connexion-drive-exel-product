@@ -557,3 +557,30 @@
 .cdep-condition-row input[type="text"] {
     font-size: 12px;
 }
+.cdep-condition-item {
+    background: #fff;
+    border: 1px solid #e5e5e5;
+    border-radius: 3px;
+    padding: 6px 8px;
+    margin-bottom: 6px;
+    display: flex;
+    gap: 6px;
+    align-items: flex-start;
+}
+.cdep-condition-item-fields {
+    flex: 1;
+    display: grid;
+    grid-template-columns: 1fr 60px 1fr 1fr;
+    gap: 4px;
+}
+.cdep-condition-remove {
+    flex-shrink: 0;
+    font-weight: 700;
+    font-size: 14px;
+    line-height: 1;
+    color: #d63638;
+    cursor: pointer;
+}
+.cdep-condition-add {
+    margin-top: 4px;
+}

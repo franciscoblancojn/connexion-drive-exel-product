@@ -458,18 +458,24 @@ jQuery(function ($) {
 
             if (selectedVal === '__condicionar__') {
                 var target = $(this).find('.cdep-condition-row').data('condition');
-                var $row = $(this).find('.cdep-condition-row');
-                var colVal = $row.find('.cdep-condition-column').val();
-                var opVal = $row.find('.cdep-condition-operator').val();
-                var condVal = $row.find('.cdep-condition-value').val();
-                var applyVal = $row.find('.cdep-condition-apply').val();
-                if (colVal && condVal && applyVal) {
-                    conditions[target] = {
-                        column: colVal,
-                        operator: opVal || '=',
-                        value: condVal,
-                        apply: applyVal
-                    };
+                var $items = $(this).find('.cdep-condition-items .cdep-condition-item');
+                var condList = [];
+                $items.each(function () {
+                    var colVal = $(this).find('.cdep-condition-column').val();
+                    var opVal = $(this).find('.cdep-condition-operator').val();
+                    var condVal = $(this).find('.cdep-condition-value').val();
+                    var applyVal = $(this).find('.cdep-condition-apply').val();
+                    if (colVal && condVal && applyVal) {
+                        condList.push({
+                            column: colVal,
+                            operator: opVal || '=',
+                            value: condVal,
+                            apply: applyVal
+                        });
+                    }
+                });
+                if (condList.length > 0) {
+                    conditions[target] = condList;
                 }
                 // Do NOT add to config_vars since it's conditional
             } else if (selectedVal) {
@@ -584,23 +590,34 @@ jQuery(function ($) {
                 var conds = mapping['conditions'];
                 for (var target in conds) {
                     if (conds.hasOwnProperty(target)) {
-                        var condition = conds[target];
+                        var condList = conds[target];
+                        // Support both single object and array format
+                        if (!$.isArray(condList)) {
+                            condList = [condList];
+                        }
                         var $select = target === 'marca' ? $('#creation-brand') : $('#creation-category');
                         $select.val('__condicionar__');
                         var $row = $('.cdep-condition-row[data-condition="' + target + '"]');
                         $row.show();
-                        if (condition.column) {
-                            $row.find('.cdep-condition-column').val(condition.column);
-                        }
-                        if (condition.operator) {
-                            $row.find('.cdep-condition-operator').val(condition.operator);
-                        }
-                        if (condition.value) {
-                            $row.find('.cdep-condition-value').val(condition.value);
-                        }
-                        if (condition.apply) {
-                            $row.find('.cdep-condition-apply').val(condition.apply);
-                        }
+                        var $container = $row.find('.cdep-condition-items');
+                        $container.empty();
+                        $.each(condList, function (i, condition) {
+                            var $item = createConditionItem(target);
+                            populateItemColumns($item);
+                            if (condition.column) {
+                                $item.find('.cdep-condition-column').val(condition.column);
+                            }
+                            if (condition.operator) {
+                                $item.find('.cdep-condition-operator').val(condition.operator);
+                            }
+                            if (condition.value) {
+                                $item.find('.cdep-condition-value').val(condition.value);
+                            }
+                            if (condition.apply) {
+                                $item.find('.cdep-condition-apply').val(condition.apply);
+                            }
+                            $container.append($item);
+                        });
                     }
                 }
             }
@@ -694,17 +711,73 @@ jQuery(function ($) {
 
     // === CONDITION UI ===
 
+    function createConditionItem(target) {
+        var $item = $('<div class="cdep-condition-item">');
+        var fieldsHtml = '<div class="cdep-condition-item-fields">'
+            + '<select class="cdep-condition-column" style="width:100%"><option value="">— Columna —</option></select>'
+            + '<select class="cdep-condition-operator" style="width:100%">'
+            + '<option value="=">=</option><option value="!=">!=</option><option value="<">&lt;</option><option value=">">&gt;</option>'
+            + '</select>'
+            + '<input type="text" class="cdep-condition-value" placeholder="Valor" style="width:100%">';
+        if (target === 'marca') {
+            fieldsHtml += '<select class="cdep-condition-apply" style="width:100%">'
+                + '<option value="">— Marca a aplicar —</option>';
+            var brandOptions = $('#creation-brand option').not('[value=""], [value="__condicionar__"]');
+            brandOptions.each(function () {
+                fieldsHtml += '<option value="' + $(this).val() + '">' + $(this).text() + '</option>';
+            });
+            fieldsHtml += '</select>';
+        } else {
+            fieldsHtml += '<select class="cdep-condition-apply" style="width:100%">'
+                + '<option value="">— Categoría a aplicar —</option>';
+            var catOptions = $('#creation-category option').not('[value=""], [value="__condicionar__"]');
+            catOptions.each(function () {
+                fieldsHtml += '<option value="' + $(this).val() + '">' + $(this).text() + '</option>';
+            });
+            fieldsHtml += '</select>';
+        }
+        fieldsHtml += '</div>';
+        $item.append(fieldsHtml);
+        var $removeBtn = $('<button type="button" class="button button-small cdep-condition-remove">×</button>');
+        $item.append($removeBtn);
+        return $item;
+    }
+
+    function populateItemColumns($item) {
+        var headers = window.cdepParsedData ? window.cdepParsedData.headers : [];
+        var $sel = $item.find('.cdep-condition-column');
+        $sel.find('option:not(:first)').remove();
+        $.each(headers, function (i, h) {
+            $sel.append('<option value="' + h.index + '">' + escHtml(h.name) + '</option>');
+        });
+    }
+
     $(document).on('change', '.cdep-config-condicionable', function () {
         var $row = $(this).closest('td').find('.cdep-condition-row');
         if ($(this).val() === '__condicionar__') {
             $row.show();
+            if ($row.find('.cdep-condition-item').length === 0) {
+                var target = $row.data('condition');
+                var $item = createConditionItem(target);
+                populateItemColumns($item);
+                $row.find('.cdep-condition-items').append($item);
+            }
         } else {
             $row.hide();
-            $row.find('.cdep-condition-column').val('');
-            $row.find('.cdep-condition-operator').val('=');
-            $row.find('.cdep-condition-value').val('');
-            $row.find('.cdep-condition-apply').val('');
+            $row.find('.cdep-condition-items').empty();
         }
+    });
+
+    $(document).on('click', '.cdep-condition-add', function () {
+        var $row = $(this).closest('.cdep-condition-row');
+        var target = $row.data('condition');
+        var $item = createConditionItem(target);
+        populateItemColumns($item);
+        $row.find('.cdep-condition-items').append($item);
+    });
+
+    $(document).on('click', '.cdep-condition-remove', function () {
+        $(this).closest('.cdep-condition-item').remove();
     });
 
     function populateConditionColumns() {

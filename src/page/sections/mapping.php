@@ -142,35 +142,11 @@ $productFields = CDEP_PRODUCTS::getFields();
                                         endif;
                                         ?>
                                     </select>
-                                    <p class="description">Marca que se asignará a todos los productos nuevos. Selecciona "Condicionar" para aplicar según una condición.</p>
+                                    <p class="description">Marca que se asignará a todos los productos nuevos. Selecciona "Condicionar" para aplicar según condiciones.</p>
                                     <div class="cdep-condition-row" data-condition="marca" style="display:none;margin-top:6px">
-                                        <div style="display:grid;grid-template-columns:1fr 60px 1fr;gap:4px;margin-bottom:4px">
-                                            <select class="cdep-condition-column" style="width:100%">
-                                                <option value="">— Columna —</option>
-                                            </select>
-                                            <select class="cdep-condition-operator" style="width:100%">
-                                                <option value="=">=</option>
-                                                <option value="!=">!=</option>
-                                                <option value="&lt;">&lt;</option>
-                                                <option value="&gt;">&gt;</option>
-                                            </select>
-                                            <input type="text" class="cdep-condition-value" placeholder="Valor" style="width:100%">
-                                        </div>
-                                        <div style="margin-top:4px">
-                                            <select class="cdep-condition-apply" style="width:100%">
-                                                <option value="">— Seleccionar marca a aplicar —</option>
-                                                <?php
-                                                if (!empty($brandTerms) && !is_wp_error($brandTerms)):
-                                                    foreach ($brandTerms as $term):
-                                                ?>
-                                                <option value="<?= esc_attr($term->name) ?>"><?= esc_html($term->name) ?></option>
-                                                <?php
-                                                    endforeach;
-                                                endif;
-                                                ?>
-                                            </select>
-                                        </div>
-                                        <p class="description" style="margin-top:4px">Si la columna [operador] valor, aplicar esta marca.</p>
+                                        <div class="cdep-condition-items"></div>
+                                        <button type="button" class="button button-small cdep-condition-add">+ Agregar otra condición</button>
+                                        <p class="description" style="margin-top:4px">Cada condición evaluada en orden. Primera coincidencia aplica.</p>
                                     </div>
                                 </td>
                             </tr>
@@ -194,35 +170,11 @@ $productFields = CDEP_PRODUCTS::getFields();
                                         endif;
                                         ?>
                                     </select>
-                                    <p class="description">Categoría que se asignará a todos los productos nuevos. Selecciona "Condicionar" para aplicar según una condición.</p>
+                                    <p class="description">Categoría que se asignará a todos los productos nuevos. Selecciona "Condicionar" para aplicar según condiciones.</p>
                                     <div class="cdep-condition-row" data-condition="categoria" style="display:none;margin-top:6px">
-                                        <div style="display:grid;grid-template-columns:1fr 60px 1fr;gap:4px;margin-bottom:4px">
-                                            <select class="cdep-condition-column" style="width:100%">
-                                                <option value="">— Columna —</option>
-                                            </select>
-                                            <select class="cdep-condition-operator" style="width:100%">
-                                                <option value="=">=</option>
-                                                <option value="!=">!=</option>
-                                                <option value="&lt;">&lt;</option>
-                                                <option value="&gt;">&gt;</option>
-                                            </select>
-                                            <input type="text" class="cdep-condition-value" placeholder="Valor" style="width:100%">
-                                        </div>
-                                        <div style="margin-top:4px">
-                                            <select class="cdep-condition-apply" style="width:100%">
-                                                <option value="">— Seleccionar categoría a aplicar —</option>
-                                                <?php
-                                                if (!empty($catTerms) && !is_wp_error($catTerms)):
-                                                    foreach ($catTerms as $term):
-                                                ?>
-                                                <option value="<?= esc_attr($term->name) ?>"><?= esc_html($term->name) ?></option>
-                                                <?php
-                                                    endforeach;
-                                                endif;
-                                                ?>
-                                            </select>
-                                        </div>
-                                        <p class="description" style="margin-top:4px">Si la columna [operador] valor, aplicar esta categoría.</p>
+                                        <div class="cdep-condition-items"></div>
+                                        <button type="button" class="button button-small cdep-condition-add">+ Agregar otra condición</button>
+                                        <p class="description" style="margin-top:4px">Cada condición evaluada en orden. Primera coincidencia aplica.</p>
                                     </div>
                                 </td>
                             </tr>

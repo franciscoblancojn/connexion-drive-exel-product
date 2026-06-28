@@ -252,11 +252,17 @@ class CDEP_PRODUCTS
                 $productData['categories'] = !empty($terms) ? implode(', ', $terms) : '';
             } elseif (isset($conditions['categoria'])) {
                 // Preview: show what category would be applied if condition matches
-                $cond = $conditions['categoria'];
-                if (self::evaluateCondition($cond, $row)) {
-                    $effectiveCategory = isset($cond['apply']) ? sanitize_text_field($cond['apply']) : '';
-                    if (!empty($effectiveCategory)) {
-                        $productData['categories'] = $effectiveCategory;
+                $condList = $conditions['categoria'];
+                if (isset($condList['column'])) {
+                    $condList = array($condList);
+                }
+                foreach ($condList as $cond) {
+                    if (self::evaluateCondition($cond, $row)) {
+                        $effectiveCategory = isset($cond['apply']) ? sanitize_text_field($cond['apply']) : '';
+                        if (!empty($effectiveCategory)) {
+                            $productData['categories'] = $effectiveCategory;
+                        }
+                        break;
                     }
                 }
             } elseif (!empty($creationCategory)) {
@@ -442,10 +448,15 @@ class CDEP_PRODUCTS
                 if ($isNew) {
                     // Check conditional brand
                     if (isset($conditions['marca'])) {
-                        $cond = $conditions['marca'];
-                        if (self::evaluateCondition($cond, $row)) {
-                            $effectiveBrand = isset($cond['apply']) ? sanitize_text_field($cond['apply']) : '';
-                        } else {
+                        $condList = $conditions['marca'];
+                        if (isset($condList['column'])) {
+                            $condList = array($condList);
+                        }
+                        foreach ($condList as $cond) {
+                            if (self::evaluateCondition($cond, $row)) {
+                                $effectiveBrand = isset($cond['apply']) ? sanitize_text_field($cond['apply']) : '';
+                                break;
+                            }
                             $effectiveBrand = '';
                         }
                     }
@@ -471,10 +482,15 @@ class CDEP_PRODUCTS
                 if ($isNew) {
                     // Check conditional category (after save to have product ID)
                     if (isset($conditions['categoria'])) {
-                        $cond = $conditions['categoria'];
-                        if (self::evaluateCondition($cond, $row)) {
-                            $effectiveCategory = isset($cond['apply']) ? sanitize_text_field($cond['apply']) : '';
-                        } else {
+                        $condList = $conditions['categoria'];
+                        if (isset($condList['column'])) {
+                            $condList = array($condList);
+                        }
+                        foreach ($condList as $cond) {
+                            if (self::evaluateCondition($cond, $row)) {
+                                $effectiveCategory = isset($cond['apply']) ? sanitize_text_field($cond['apply']) : '';
+                                break;
+                            }
                             $effectiveCategory = '';
                         }
                     }
