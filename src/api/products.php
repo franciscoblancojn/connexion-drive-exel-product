@@ -505,6 +505,44 @@ class CDEP_PRODUCTS
                     }
                 }
 
+                // Process attributes
+                if ($isNew && isset($mapping['attributes'])) {
+                    $attrList = $mapping['attributes'];
+                    if (is_array($attrList) && isset($attrList[0])) {
+                        foreach ($attrList as $attrItem) {
+                            $taxonomyName = isset($attrItem['taxonomy']) ? sanitize_text_field($attrItem['taxonomy']) : '';
+                            $termName = isset($attrItem['term']) ? sanitize_text_field($attrItem['term']) : '';
+                            if (empty($taxonomyName) || empty($termName)) {
+                                continue;
+                            }
+                            $attrConditions = isset($attrItem['conditions']) ? $attrItem['conditions'] : null;
+                            $applyAttr = true;
+                            if (!empty($attrConditions) && is_array($attrConditions)) {
+                                $applyAttr = false;
+                                foreach ($attrConditions as $cond) {
+                                    if (self::evaluateCondition($cond, $row)) {
+                                        $applyAttr = true;
+                                        break;
+                                    }
+                                }
+                            }
+                            if (!$applyAttr) {
+                                continue;
+                            }
+                            $fullTaxonomy = 'pa_' . $taxonomyName;
+                            if (taxonomy_exists($fullTaxonomy)) {
+                                $term = get_term_by('name', $termName, $fullTaxonomy);
+                                if (!$term) {
+                                    $term = get_term_by('slug', $termName, $fullTaxonomy);
+                                }
+                                if ($term) {
+                                    wp_set_object_terms($product->get_id(), array(intval($term->term_id)), $fullTaxonomy, true);
+                                }
+                            }
+                        }
+                    }
+                }
+
                 if ($isNew) {
                     $results['created']++;
                     $results['processed_skus'][] = array('sku' => $sku, 'status' => 'created');

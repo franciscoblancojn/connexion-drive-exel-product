@@ -512,6 +512,39 @@ jQuery(function ($) {
             mapping['conditions'] = conditions;
         }
 
+        // Attributes
+        var attrs = [];
+        $('#cdep-attributes-container .cdep-attribute-item').each(function () {
+            var $item = $(this);
+            var taxonomy = $item.find('.cdep-attribute-select').val();
+            var term = $item.find('.cdep-attribute-term-select').val();
+            if (!taxonomy || !term) return;
+            var hasCond = $item.find('.cdep-attribute-cond-checkbox').is(':checked');
+            var attrCondList = [];
+            if (hasCond) {
+                $item.find('.cdep-attribute-condition-items .cdep-condition-item').each(function () {
+                    var colVal = $(this).find('.cdep-condition-column').val();
+                    var opVal = $(this).find('.cdep-condition-operator').val();
+                    var condVal = $(this).find('.cdep-condition-value').val();
+                    if (colVal && condVal) {
+                        attrCondList.push({
+                            column: colVal,
+                            operator: opVal || '=',
+                            value: condVal
+                        });
+                    }
+                });
+            }
+            attrs.push({
+                taxonomy: taxonomy,
+                term: term,
+                conditions: attrCondList.length > 0 ? attrCondList : null
+            });
+        });
+        if (attrs.length > 0) {
+            mapping['attributes'] = attrs;
+        }
+
         return mapping;
     }
 
@@ -620,6 +653,34 @@ jQuery(function ($) {
                         });
                     }
                 }
+            }
+
+            // Restore attributes
+            if (mapping['attributes']) {
+                var attrs = mapping['attributes'];
+                $.each(attrs, function (i, attr) {
+                    var $item = createAttributeItem();
+                    $item.find('.cdep-attribute-select').val(attr.taxonomy);
+                    populateAttributeTerms($item, attr.taxonomy);
+                    if (attr.term) {
+                        $item.find('.cdep-attribute-term-select').val(attr.term);
+                    }
+                    if (attr.conditions && attr.conditions.length > 0) {
+                        $item.find('.cdep-attribute-cond-checkbox').prop('checked', true);
+                        var $condRow = $item.find('.cdep-attribute-condition-row');
+                        $condRow.show();
+                        var $condContainer = $condRow.find('.cdep-condition-items');
+                        $.each(attr.conditions, function (ci, cond) {
+                            var $condItem = createConditionItem('attribute');
+                            populateItemColumns($condItem);
+                            if (cond.column) $condItem.find('.cdep-condition-column').val(cond.column);
+                            if (cond.operator) $condItem.find('.cdep-condition-operator').val(cond.operator);
+                            if (cond.value) $condItem.find('.cdep-condition-value').val(cond.value);
+                            $condContainer.append($condItem);
+                        });
+                    }
+                    $('#cdep-attributes-container').append($item);
+                });
             }
         } catch (e) {}
     }
@@ -794,6 +855,87 @@ jQuery(function ($) {
             }
         });
     }
+
+    // === ATTRIBUTES UI ===
+
+    function getAttributeTaxonomies() {
+        if (cdep.attributeTaxonomies) return cdep.attributeTaxonomies;
+        return [];
+    }
+
+    function createAttributeItem() {
+        var $item = $('<div class="cdep-attribute-item">');
+        var taxOptions = '<option value="">— Seleccionar atributo —</option>';
+        var taxonomies = getAttributeTaxonomies();
+        $.each(taxonomies, function (i, attr) {
+            taxOptions += '<option value="' + attr.attribute_name + '">' + attr.attribute_label + '</option>';
+        });
+        var html = '<div class="cdep-attribute-fields">'
+            + '<select class="cdep-attribute-select" style="width:100%">' + taxOptions + '</select>'
+            + '<select class="cdep-attribute-term-select" style="width:100%"><option value="">— Término —</option></select>'
+            + '<button type="button" class="button button-small cdep-attribute-remove">×</button>'
+            + '</div>'
+            + '<div class="cdep-attribute-cond-toggle">'
+            + '<label><input type="checkbox" class="cdep-attribute-cond-checkbox"> Condicionar</label>'
+            + '</div>'
+            + '<div class="cdep-attribute-condition-row cdep-condition-row" style="display:none;margin-top:4px">'
+            + '<div class="cdep-condition-items"></div>'
+            + '<button type="button" class="button button-small cdep-condition-add">+ Agregar otra condición</button>'
+            + '</div>';
+        $item.append(html);
+        return $item;
+    }
+
+    function populateAttributeTerms($item, taxonomy) {
+        var $termSel = $item.find('.cdep-attribute-term-select');
+        $termSel.find('option:not(:first)').remove();
+        if (!taxonomy) return;
+        var taxonomies = getAttributeTaxonomies();
+        var found = null;
+        $.each(taxonomies, function (i, attr) {
+            if (attr.attribute_name === taxonomy) {
+                found = attr;
+                return false;
+            }
+        });
+        if (!found) return;
+        var terms = found.terms || [];
+        $.each(terms, function (i, term) {
+            $termSel.append('<option value="' + escHtml(term.name) + '">' + escHtml(term.name) + '</option>');
+        });
+        // Manually trigger the change to restore value
+        $termSel.trigger('change');
+    }
+
+    // When attribute taxonomy changes, populate its terms
+    $(document).on('change', '.cdep-attribute-select', function () {
+        var $item = $(this).closest('.cdep-attribute-item');
+        var taxonomy = $(this).val();
+        populateAttributeTerms($item, taxonomy);
+    });
+
+    $(document).on('change', '.cdep-attribute-cond-checkbox', function () {
+        var $row = $(this).closest('.cdep-attribute-item').find('.cdep-attribute-condition-row');
+        if ($(this).is(':checked')) {
+            $row.show();
+        } else {
+            $row.hide();
+            $row.find('.cdep-condition-items').empty();
+        }
+    });
+
+    $(document).on('click', '.cdep-attribute-add', function () {
+        var $item = createAttributeItem();
+        // Auto-populate columns for the condition builder inside
+        var $condItem = createConditionItem('attribute');
+        populateItemColumns($condItem);
+        $item.find('.cdep-attribute-condition-row .cdep-condition-items').append($condItem);
+        $('#cdep-attributes-container').append($item);
+    });
+
+    $(document).on('click', '.cdep-attribute-remove', function () {
+        $(this).closest('.cdep-attribute-item').remove();
+    });
 
     function renderStatusBadge(status) {
         var labels = {

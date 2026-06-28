@@ -178,6 +178,14 @@ $productFields = CDEP_PRODUCTS::getFields();
                                     </div>
                                 </td>
                             </tr>
+                            <tr>
+                                <td><strong>Atributos</strong></td>
+                                <td>
+                                    <div id="cdep-attributes-container" style="margin-bottom:6px"></div>
+                                    <button type="button" class="button button-small cdep-attribute-add">+ Agregar atributo</button>
+                                    <p class="description">Atributos que se asignarán a todos los productos nuevos. Cada atributo puede tener condiciones.</p>
+                                </td>
+                            </tr>
                         </tbody>
                     </table>
                 </div>

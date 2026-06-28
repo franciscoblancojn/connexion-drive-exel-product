@@ -29,6 +29,30 @@ add_action('admin_enqueue_scripts', function ($hook) {
     $aiEnabled = defined('IACON_KEY') ? get_option(CDEP_KEY . '_AI_ENABLED', '0') : '0';
     $aiProvider = defined('IACON_KEY') ? get_option(CDEP_KEY . '_AI_PROVIDER', '') : '';
 
+    $attributeTaxonomies = array();
+    if (function_exists('wc_get_attribute_taxonomies')) {
+        $attrs = wc_get_attribute_taxonomies();
+        foreach ($attrs as $attr) {
+            $taxonomyName = wc_attribute_taxonomy_name($attr->attribute_name);
+            $terms = taxonomy_exists($taxonomyName) ? get_terms(array(
+                'taxonomy' => $taxonomyName,
+                'hide_empty' => false,
+                'fields' => 'id=>name',
+            )) : array();
+            $termList = array();
+            if (!empty($terms) && !is_wp_error($terms)) {
+                foreach ($terms as $termId => $termName) {
+                    $termList[] = array('id' => $termId, 'name' => $termName);
+                }
+            }
+            $attributeTaxonomies[] = array(
+                'attribute_name' => $attr->attribute_name,
+                'attribute_label' => $attr->attribute_label,
+                'terms' => $termList,
+            );
+        }
+    }
+
     wp_localize_script('cdep-admin', 'cdep', array(
         'ajaxurl' => admin_url('admin-ajax.php'),
         'nonce' => wp_create_nonce('cdep_nonce'),
@@ -39,6 +63,7 @@ add_action('admin_enqueue_scripts', function ($hook) {
         'productFields' => $productFields,
         'ai_enabled' => $aiEnabled,
         'ai_provider' => $aiProvider,
+        'attributeTaxonomies' => $attributeTaxonomies,
     ));
 });
 

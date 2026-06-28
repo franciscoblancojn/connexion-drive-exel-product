@@ -584,3 +584,36 @@
 .cdep-condition-add {
     margin-top: 4px;
 }
+
+/* Attribute Builder UI */
+.cdep-attribute-item {
+    background: #fff;
+    border: 1px solid #e5e5e5;
+    border-radius: 3px;
+    padding: 8px;
+    margin-bottom: 6px;
+}
+.cdep-attribute-fields {
+    display: grid;
+    grid-template-columns: 1fr 1fr 30px;
+    gap: 4px;
+    align-items: start;
+}
+.cdep-attribute-cond-toggle {
+    margin-top: 4px;
+    font-size: 12px;
+}
+.cdep-attribute-cond-toggle label {
+    cursor: pointer;
+    color: #555;
+}
+.cdep-attribute-cond-toggle input[type="checkbox"] {
+    margin-right: 3px;
+}
+.cdep-attribute-remove {
+    font-weight: 700;
+    font-size: 14px;
+    line-height: 1;
+    color: #d63638;
+    cursor: pointer;
+}
