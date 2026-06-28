@@ -918,9 +918,11 @@ jQuery(function ($) {
 
     function populateAttributeTerms($item, taxonomy) {
         var $termSel = $item.find('.cdep-attribute-term-select');
-        $termSel.find('option:not(:first)').remove();
+        // Keep empty option and __condicionar__, remove old terms
+        $termSel.find('option').filter(function () {
+            return $(this).val() !== '' && $(this).val() !== '__condicionar__';
+        }).remove();
         if (!taxonomy) return;
-        // Keep only empty, condicionar, and fresh terms
         var taxonomies = getAttributeTaxonomies();
         var found = null;
         $.each(taxonomies, function (i, attr) {
