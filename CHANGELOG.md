@@ -4,6 +4,39 @@ All notable changes to **Connexion Drive Excel Product** are documented here.
 
 ---
 
+## [1.1.46] - 2026-06-27
+
+### Added
+- AI content generation via Kodee/Gemini API: generate product name, short description, and description per SKU
+- Batch AI generation: processes SKUs one-by-one with progress bar (avoids 503 errors)
+- AI content cache persisted in `localStorage` (`cdep_ai_cache`), restored on mapping tab load
+- AI content modal: "Ver contenido generado con IA" button opens modal with full content instead of rendering inline
+- Per-field AI length configuration: name (10-100), short_description (50-200), description (400-800)
+- Kodee `sendPrompt($PROMPT, $config)` extended with optional `$config` parameter for per-field overrides
+- "Iniciar Creación Masiva" button disabled during AI generation
+- Categoría field (`product_cat`) in Configuraciones de Creación with conditional support
+- Atributos section: select taxonomy + term with conditional support (multiple conditions per attribute)
+- Condicionar redesigned: `__condicionar__` option in main select (brand, category, attributes) replaces checkbox toggle
+- Multi-condition support per config row: arrays of `{column, operator, value, apply}` with operators `<`, `=`, `>`, `!=`
+- Condition operators: case-insensitive string compare for `=`/`!=`, float compare for `<`/`>`
+- Backward compatibility: `buildMapping()` and `restoreMappingConfig()` handle legacy single-object condition format
+- Preview evaluates conditions for categories and attributes — shows effective values per product row
+- "Atributos" column in preview table for new products
+- `attributeTaxonomies` passed to JS via `window.cdep` (`wp_localize_script`) with taxonomy names, labels, and term lists
+- `evaluateCondition()` in PHP resolves `{var}` placeholders in condition values via config_vars + columns
+- CSS: `.cdep-attr-list` for attribute display in preview table
+
+### Fixed
+- AI field display: shows "Ver contenido generado con IA" button only when content exists; "Pendiente de generar" when empty
+- AI tab reset: auto-switch to "Productos a crear" tab after generation
+- AI content stored in `state.aiGenerated` (JS) and `$aiData` (PHP) — persists across tab switches
+- `populateAttributeTerms()` preserves `__condicionar__` option via `.filter()` instead of broken `[value!="__condicionar__"]` selector
+- Duplicate `.cdep-condition-add` handlers for attribute condition rows: generic handler skips buttons inside `.cdep-attribute-condition-row`
+- `buildMapping()` no longer stores `term: '__condicionar__'` for conditional attributes — uses empty string with conditions array
+- `validateMapping()` and `executeUpdate()` use condition's `apply` value when conditions exist instead of raw `__condicionar__` term
+
+---
+
 ## [1.1.15] - 2026-06-25
 
 ### Added

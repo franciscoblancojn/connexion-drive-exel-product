@@ -17,10 +17,10 @@ Este archivo contiene las reglas, validaciones y convenciones que toda IA debe s
 ### JavaScript
 - **ES5**: Usa ES5 (`var`, `function`, no arrow functions, no `let`/`const`, no template literals). Excepción conocida: `URLSearchParams` se usa en el callback OAuth (admin.js).
 - **jQuery**: Usa `jQuery(function($){ ... })` para DOM ready.
-- **Objeto global**: Usa `window.cdep` (localizado via `wp_localize_script`) para `ajaxurl`, `nonce`, `config`, `is_connected`, `selected_file`, `oauth_url`, `productFields`.
+- **Objeto global**: Usa `window.cdep` (localizado via `wp_localize_script`) para `ajaxurl`, `nonce`, `config`, `is_connected`, `selected_file`, `oauth_url`, `productFields`, `attributeTaxonomies`, `aiFields`.
 - **AJAX**: Toda llamada AJAX usa la función helper `ajax(action, data, success, error)` definida en admin.js.
 - **Respuestas**: Espera `resp.success` + `resp.data` (estándar WordPress AJAX).
-- **localStorage**: Se usan dos keys: `cdep_folder` (estado de navegación) y `cdep_mapping_config` (mapeo de columnas).
+- **localStorage**: Se usan tres keys: `cdep_folder` (estado de navegación), `cdep_mapping_config` (mapeo de columnas) y `cdep_ai_cache` (contenido generado por IA).
 
 ### CSS
 - **Prefijo**: Todas las clases CSS deben llevar prefijo `cdep-`.
@@ -104,7 +104,7 @@ Usa las constantes definidas en `index.php`:
 - `buildMapping()` retorna un objeto con tres grupos:
   - **Update**: keys directas `regular_price`, `sale_price`, `stock_quantity` (índices de columna)
   - **Create**: keys con prefijo `create_` (ej: `create_product_name`, `create_regular_price`) — valor = índice de columna o `custom:template`
-  - **Config**: `creation_brand` (nombre del término, no slug), `config_vars` (objeto `{varname: value}` para templates)
+  - **Config**: `creation_brand` (nombre del término, no slug), `creation_category` (nombre de categoría), `creation_brand` (nombre del término), `attributes` (array `[{taxonomy, term, conditions}]`), `conditions` (objeto `{target: [{column, operator, value, apply}]}` para condicionar marca/categoría), `config_vars` (objeto `{varname: value}` para templates)
 
 ### Custom Templates
 - Opción "Personalizar" en selects de creación guarda el template con prefijo `custom:`
@@ -117,8 +117,24 @@ Usa las constantes definidas en `index.php`:
 - Valor enviado: **nombre** del término (`$term->name`), no el slug (`$term->slug`)
 - Se usa tanto en `creation_brand` (atributo del producto) como en `config_vars.marca` (templates)
 
-### Producto existente: nombre como link
-- Cuando `product_id > 0`, tanto SKU como Nombre son links a `post.php?action=edit&post={product_id}` con `target="_blank"`
+### Categoría
+- `<select>` poblado desde taxonomy `product_cat`
+- Valor enviado: **nombre** de la categoría
+- Soporta `__condicionar__` para asignación condicional
+
+### Atributos
+- Sección en Configuraciones de Creación para asignar atributos WooCommerce a productos nuevos
+- Cada atributo: taxonomy → término (directo o condicional via `__condicionar__`)
+- `conditions` como array de `{column, operator, value, apply}` (apply = término a asignar si coincide)
+- `populateAttributeTerms()` preserva opción `__condicionar__` al filtrar términos
+
+### Condiciones (brand, category, attributes)
+- Activadas via opción `__condicionar__` en el select principal
+- Múltiples condiciones por regla: primera coincidencia gana
+- Operadores: `=` (string case-insensitive), `!=`, `<` (float), `>` (float)
+- `apply` = valor a asignar cuando la condición coincide
+- `{var}` en `value` se resuelve via `config_vars` primero, luego columnas del archivo
+- Retrocompatible: formato legacy `{column, operator, value}` se convierte automáticamente
 
 ---
 
@@ -136,6 +152,7 @@ La respuesta de `cdep_update_preview` devuelve por cada producto (`products[]`):
 | `name` | string | Nombre actual del producto |
 | `image` | string | HTML de la imagen thumbnail |
 | `categories` | string | Categorías del producto |
+| `attributes` | array | Atributos del producto evaluados (solo productos nuevos) |
 | `fields` | object | Mapa de campo → `{current, new, changed}` |
 
 ---

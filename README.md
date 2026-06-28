@@ -1,18 +1,20 @@
 # Connexion Drive Excel Product 🚀
 
-**Version:** 1.1.45 | **License:** GPL2+
+**Version:** 1.1.46 | **License:** GPL2+
 
-Conecta Google Drive, selecciona archivos Excel/CSV, mapea columnas a 16 campos de producto y actualiza productos WooCommerce de forma masiva.
+Conecta Google Drive, selecciona archivos Excel/CSV, mapea columnas a 16 campos de producto y actualiza productos WooCommerce de forma masiva. Incluye generación de contenido con IA (Kodee/Gemini) y asignación condicional de marca/categoría/atributos.
 
 ---
 
 ## ✨ Caracteristicas
 
+- 🤖 **Generación con IA** — Genera nombres, descripciones cortas y descripciones largas mediante Kodee API (Gemini), con carga por lote uno-por-uno y barra de progreso.
 - 🔌 **Conexion Google Drive** — Autenticacion OAuth 2.0 con refresh token y renovacion automatica.
 - 📂 **Explorador de Archivos** — Navega carpetas de Drive, soporta Excel (.xlsx, .xls), Google Sheets y CSV.
 - 🗺️ **Mapeo de Columnas** — Detecta automaticamente columnas SKU, precio, precio oferta y cantidad. Mapeo separado para actualizar existentes (3 campos) y crear nuevos (16 campos).
 - 🎨 **Templates Personalizados** — Crea nombres y descripciones combinando texto fijo con variables de columna y configuracion (ej: `"Reloj {marca} {name}"`).
-- 👁️ **Vista Previa** — Validacion con diffs (antes/despues), imagenes, badges de estado. Resultados en tabs independientes por tipo.
+- 🏷️ **Asignación Condicional** — Marca, categoría y atributos con condiciones lógicas por fila: operadores `=`, `!=`, `<`, `>` y múltiples condiciones por regla (primera coincidencia gana).
+- 👁️ **Vista Previa** — Validacion con diffs (antes/despues), imagenes, badges de estado. Resultados en tabs independientes por tipo. Vista previa de categorías y atributos evaluados.
 - ⚡ **Actualizacion Masiva** — Procesa en lotes de 25 con barra de progreso. Actualiza existentes y crea nuevos productos simultaneamente.
 - 🎯 **Actualizacion Individual** — Boton "Procesar" por fila para actualizar un solo producto.
 - 🔗 **Enlace a Edicion** — SKUs y nombres existentes abren el editor de WooCommerce en nueva pestana.
@@ -91,7 +93,7 @@ connexion-drive-exel-product/
 |---|---|
 | 🔌 **Conectar** | Configuracion de credenciales OAuth 2.0, conectar/desconectar Google Drive |
 | 📂 **Explorar** | Navegacion por carpetas de Drive y seleccion de archivo |
-| 🗺️ **Mapear** | Seleccion de fila de encabezados, mapeo de columnas (actualizar existentes / crear nuevos), configuracion de creacion (marca), templates personalizados, vista previa con diffs |
+| 🗺️ **Mapear** | Seleccion de fila de encabezados, mapeo de columnas (actualizar existentes / crear nuevos), configuracion de creacion (marca, categoría, atributos), condiciones lógicas por fila, templates personalizados, generación con IA, vista previa con diffs |
 
 ---
 
@@ -108,6 +110,7 @@ connexion-drive-exel-product/
 | `cdep_refresh_cache` | Closure en `drive.php:375` | Redescarga archivo y re-parsea |
 | `cdep_reparse_file` | Closure en `drive.php:444` | Re-parsea archivo temporal con nueva fila de encabezados |
 | `cdep_drive_select_file` | Closure en `drive.php:486` | Descarga, parsea y cachea archivo seleccionado |
+| `cdep_ai_generate` | Closure en `products.php:611` | Genera contenido IA para un SKU (name/description/short_description) |
 | `cdep_update_preview` | Closure en `products.php:413` | Valida mapeo y genera vista previa |
 | `cdep_update_execute` | Closure en `products.php:443` | Ejecuta actualizacion por lotes (offset) |
 | `cdep_update_batch_skus` | Closure en `products.php:473` | Actualiza SKUs especificos por lote |
@@ -136,7 +139,7 @@ connexion-drive-exel-product/
 | `short_description` | string | `set_short_description()` |
 | `description` | string | `set_description()` |
 
-> **Nota:** Para productos existentes solo se mapean 3 campos (`regular_price`, `sale_price`, `stock_quantity`). Para productos nuevos se mapean los 16 campos completos.
+> **Nota:** Para productos existentes solo se mapean 3 campos (`regular_price`, `sale_price`, `stock_quantity`). Para productos nuevos se mapean los 16 campos completos más la asignación de marca, categoría y atributos WooCommerce (con soporte de condiciones lógicas).
 
 ---
 
