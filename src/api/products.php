@@ -173,6 +173,7 @@ class CDEP_PRODUCTS
         }
 
         $creationCategory = isset($mapping['creation_category']) ? sanitize_text_field($mapping['creation_category']) : '';
+        $creationAttributes = isset($mapping['attributes']) ? $mapping['attributes'] : array();
         $conditions = isset($mapping['conditions']) ? $mapping['conditions'] : array();
 
         // Split mapping: update fields for existing products, create fields for new products
@@ -267,6 +268,34 @@ class CDEP_PRODUCTS
                 }
             } elseif (!empty($creationCategory)) {
                 $productData['categories'] = $creationCategory;
+            }
+
+            // Evaluate attributes for new products (preview)
+            if (!$exists && !empty($creationAttributes) && is_array($creationAttributes)) {
+                $effectiveAttrs = array();
+                foreach ($creationAttributes as $attrItem) {
+                    $taxName = isset($attrItem['taxonomy']) ? sanitize_text_field($attrItem['taxonomy']) : '';
+                    $termName = isset($attrItem['term']) ? sanitize_text_field($attrItem['term']) : '';
+                    if (empty($taxName) || empty($termName)) {
+                        continue;
+                    }
+                    $attrConditions = isset($attrItem['conditions']) ? $attrItem['conditions'] : null;
+                    $applyAttr = true;
+                    if (!empty($attrConditions) && is_array($attrConditions)) {
+                        $applyAttr = false;
+                        foreach ($attrConditions as $cond) {
+                            if (self::evaluateCondition($cond, $row)) {
+                                $applyAttr = true;
+                                break;
+                            }
+                        }
+                    }
+                    if ($applyAttr) {
+                        $label = wc_attribute_label('pa_' . $taxName);
+                        $effectiveAttrs[] = $label . ': ' . $termName;
+                    }
+                }
+                $productData['attributes'] = $effectiveAttrs;
             }
 
             // Use appropriate mapping: only update fields for existing, all fields for new

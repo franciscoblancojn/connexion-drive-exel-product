@@ -585,6 +585,12 @@
     margin-top: 4px;
 }
 
+.cdep-attr-list {
+    font-size: 11px;
+    line-height: 1.5;
+    color: #555;
+}
+
 /* Attribute Builder UI */
 .cdep-attribute-item {
     background: #fff;

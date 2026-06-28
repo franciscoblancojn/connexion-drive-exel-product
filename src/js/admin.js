@@ -833,6 +833,8 @@ jQuery(function ($) {
     });
 
     $(document).on('click', '.cdep-condition-add', function () {
+        // Skip if inside an attribute condition row (handled separately)
+        if ($(this).closest('.cdep-attribute-condition-row').length > 0) return;
         var $row = $(this).closest('.cdep-condition-row');
         var target = $row.data('condition');
         var $item = createConditionItem(target);
@@ -1058,7 +1060,7 @@ jQuery(function ($) {
         html += '</colgroup>';
         html += '<thead><tr>';
         html += '<th style="width:40px"><input type="checkbox" class="cdep-select-all" checked></th>';
-        html += '<th>Acción</th><th>Estado</th><th>Imagen</th><th>SKU</th><th>Nombre</th><th>Categorías</th>';
+        html += '<th>Acción</th><th>Estado</th><th>Imagen</th><th>SKU</th><th>Nombre</th><th>Categorías</th><th>Atributos</th>';
         $.each(mappedFields, function (i, f) {
             html += '<th>' + escHtml(f.label) + '</th>';
         });
@@ -1107,6 +1109,11 @@ jQuery(function ($) {
                 }
             }
             html += '<td>' + escHtml(p.categories) + '</td>';
+            var attrsHtml = '';
+            if (p.attributes && p.attributes.length > 0) {
+                attrsHtml = '<span class="cdep-attr-list">' + p.attributes.join('<br>') + '</span>';
+            }
+            html += '<td>' + attrsHtml + '</td>';
             $.each(mappedFields, function (fi, f) {
                 var fd = p.fields[f.key];
                 var isAi = aiFields && aiFields.indexOf(f.key) !== -1;
