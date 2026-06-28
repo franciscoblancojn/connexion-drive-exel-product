@@ -517,27 +517,31 @@ jQuery(function ($) {
         $('#cdep-attributes-container .cdep-attribute-item').each(function () {
             var $item = $(this);
             var taxonomy = $item.find('.cdep-attribute-select').val();
+            if (!taxonomy) return;
             var term = $item.find('.cdep-attribute-term-select').val();
-            if (!taxonomy || !term) return;
-            var hasCond = $item.find('.cdep-attribute-cond-checkbox').is(':checked');
+            var isCond = term === '__condicionar__';
+            if (!isCond && !term) return;
             var attrCondList = [];
-            if (hasCond) {
-                $item.find('.cdep-attribute-condition-items .cdep-condition-item').each(function () {
+            if (isCond) {
+                $item.find('.cdep-attribute-condition-row .cdep-condition-item').each(function () {
                     var colVal = $(this).find('.cdep-condition-column').val();
                     var opVal = $(this).find('.cdep-condition-operator').val();
                     var condVal = $(this).find('.cdep-condition-value').val();
-                    if (colVal && condVal) {
+                    var applyVal = $(this).find('.cdep-condition-apply').val();
+                    if (colVal && condVal && applyVal) {
                         attrCondList.push({
                             column: colVal,
                             operator: opVal || '=',
-                            value: condVal
+                            value: condVal,
+                            apply: applyVal
                         });
                     }
                 });
+                if (attrCondList.length === 0) return;
             }
             attrs.push({
                 taxonomy: taxonomy,
-                term: term,
+                term: isCond ? '' : term,
                 conditions: attrCondList.length > 0 ? attrCondList : null
             });
         });

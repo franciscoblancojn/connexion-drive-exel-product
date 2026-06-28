@@ -276,24 +276,26 @@ class CDEP_PRODUCTS
                 foreach ($creationAttributes as $attrItem) {
                     $taxName = isset($attrItem['taxonomy']) ? sanitize_text_field($attrItem['taxonomy']) : '';
                     $termName = isset($attrItem['term']) ? sanitize_text_field($attrItem['term']) : '';
-                    if (empty($taxName) || empty($termName)) {
+                    $attrConditions = isset($attrItem['conditions']) ? $attrItem['conditions'] : null;
+                    if (empty($taxName)) {
                         continue;
                     }
-                    $attrConditions = isset($attrItem['conditions']) ? $attrItem['conditions'] : null;
-                    $applyAttr = true;
+                    // If conditions exist, use first matching condition's apply as term
                     if (!empty($attrConditions) && is_array($attrConditions)) {
-                        $applyAttr = false;
                         foreach ($attrConditions as $cond) {
                             if (self::evaluateCondition($cond, $row)) {
-                                $applyAttr = true;
+                                $termName = isset($cond['apply']) ? sanitize_text_field($cond['apply']) : '';
                                 break;
                             }
                         }
+                        if (empty($termName)) {
+                            continue;
+                        }
+                    } elseif (empty($termName)) {
+                        continue;
                     }
-                    if ($applyAttr) {
-                        $label = wc_attribute_label('pa_' . $taxName);
-                        $effectiveAttrs[] = $label . ': ' . $termName;
-                    }
+                    $label = wc_attribute_label('pa_' . $taxName);
+                    $effectiveAttrs[] = $label . ': ' . $termName;
                 }
                 $productData['attributes'] = $effectiveAttrs;
             }
@@ -541,21 +543,24 @@ class CDEP_PRODUCTS
                         foreach ($attrList as $attrItem) {
                             $taxonomyName = isset($attrItem['taxonomy']) ? sanitize_text_field($attrItem['taxonomy']) : '';
                             $termName = isset($attrItem['term']) ? sanitize_text_field($attrItem['term']) : '';
-                            if (empty($taxonomyName) || empty($termName)) {
+                            $attrConditions = isset($attrItem['conditions']) ? $attrItem['conditions'] : null;
+                            if (empty($taxonomyName)) {
                                 continue;
                             }
-                            $attrConditions = isset($attrItem['conditions']) ? $attrItem['conditions'] : null;
-                            $applyAttr = true;
+                            // If conditions exist, use first matching condition's apply as term
                             if (!empty($attrConditions) && is_array($attrConditions)) {
-                                $applyAttr = false;
+                                $matchedTerm = '';
                                 foreach ($attrConditions as $cond) {
                                     if (self::evaluateCondition($cond, $row)) {
-                                        $applyAttr = true;
+                                        $matchedTerm = isset($cond['apply']) ? sanitize_text_field($cond['apply']) : '';
                                         break;
                                     }
                                 }
-                            }
-                            if (!$applyAttr) {
+                                if (empty($matchedTerm)) {
+                                    continue;
+                                }
+                                $termName = $matchedTerm;
+                            } elseif (empty($termName)) {
                                 continue;
                             }
                             $fullTaxonomy = 'pa_' . $taxonomyName;
