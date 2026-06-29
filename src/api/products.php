@@ -164,7 +164,7 @@ class CDEP_PRODUCTS
         }
     }
 
-    public static function validateMapping($allRows, $mapping, $headers = array(), $configVars = array(), $aiData = array())
+    public static function validateMapping($allRows, $mapping, $headers = array(), $configVars = array(), $aiData = array(), $manualData = array())
     {
         $skuIndex = isset($mapping['sku']) && $mapping['sku'] !== '' ? intval($mapping['sku']) : -1;
 
@@ -172,9 +172,16 @@ class CDEP_PRODUCTS
             return new WP_Error('missing_sku', 'Debe seleccionar la columna SKU');
         }
 
+        $creationBrand = isset($mapping['creation_brand']) ? sanitize_text_field($mapping['creation_brand']) : '';
         $creationCategory = isset($mapping['creation_category']) ? sanitize_text_field($mapping['creation_category']) : '';
         $creationAttributes = isset($mapping['attributes']) ? $mapping['attributes'] : array();
         $conditions = isset($mapping['conditions']) ? $mapping['conditions'] : array();
+
+        // Handle manual brand/category
+        $brandManual = ($creationBrand === '__manual__');
+        $categoryManual = ($creationCategory === '__manual__');
+        if ($brandManual) $creationBrand = '';
+        if ($categoryManual) $creationCategory = '';
 
         // Split mapping: update fields for existing products, create fields for new products
         $updateFields = array('regular_price', 'sale_price', 'stock_quantity');
@@ -191,6 +198,8 @@ class CDEP_PRODUCTS
                     if ($colIndex === '__ai__') {
                         $createMapping[$realKey] = '__ai__';
                         $aiFields[] = $realKey;
+                    } elseif ($colIndex === '__manual__') {
+                        $createMapping[$realKey] = '__manual__';
                     } elseif (is_string($colIndex) && strpos($colIndex, 'custom:') === 0) {
                         $createMapping[$realKey] = $colIndex;
                     } else {
@@ -307,6 +316,8 @@ class CDEP_PRODUCTS
                 $newValue = '';
                 if ($colIndex === '__ai__') {
                     $newValue = isset($aiData[$sku][$field]) ? $aiData[$sku][$field] : '';
+                } elseif ($colIndex === '__manual__') {
+                    $newValue = isset($manualData[$sku][$field]) ? $manualData[$sku][$field] : '';
                 } elseif (is_string($colIndex) && strpos($colIndex, 'custom:') === 0) {
                     $template = substr($colIndex, 7);
                     $newValue = self::resolveTemplate($template, $row, $headers, $configVars);
@@ -381,7 +392,7 @@ class CDEP_PRODUCTS
         );
     }
 
-    public static function executeUpdate($allRows, $mapping, $offset = 0, $limit = 25, $headers = array(), $configVars = array(), $aiData = array())
+    public static function executeUpdate($allRows, $mapping, $offset = 0, $limit = 25, $headers = array(), $configVars = array(), $aiData = array(), $manualData = array())
     {
         $skuIndex = isset($mapping['sku']) && $mapping['sku'] !== '' ? intval($mapping['sku']) : -1;
 
@@ -401,6 +412,8 @@ class CDEP_PRODUCTS
                 if (isset(self::$fields[$realKey])) {
                     if ($colIndex === '__ai__') {
                         $createMapping[$realKey] = '__ai__';
+                    } elseif ($colIndex === '__manual__') {
+                        $createMapping[$realKey] = '__manual__';
                     } elseif (is_string($colIndex) && strpos($colIndex, 'custom:') === 0) {
                         $createMapping[$realKey] = $colIndex;
                     } else {
@@ -416,6 +429,11 @@ class CDEP_PRODUCTS
         $creationBrand = isset($mapping['creation_brand']) ? sanitize_text_field($mapping['creation_brand']) : '';
         $creationCategory = isset($mapping['creation_category']) ? sanitize_text_field($mapping['creation_category']) : '';
         $conditions = isset($mapping['conditions']) ? $mapping['conditions'] : array();
+
+        $brandManual = ($creationBrand === '__manual__');
+        $categoryManual = ($creationCategory === '__manual__');
+        if ($brandManual) $creationBrand = '';
+        if ($categoryManual) $creationCategory = '';
 
         $batch = array_slice($allRows, $offset, $limit);
         $results = array(
@@ -461,6 +479,8 @@ class CDEP_PRODUCTS
                     $value = '';
                     if ($colIndex === '__ai__') {
                         $value = isset($aiData[$sku][$field]) ? $aiData[$sku][$field] : '';
+                    } elseif ($colIndex === '__manual__') {
+                        $value = isset($manualData[$sku][$field]) ? $manualData[$sku][$field] : '';
                     } elseif (is_string($colIndex) && strpos($colIndex, 'custom:') === 0) {
                         $template = substr($colIndex, 7);
                         $value = self::resolveTemplate($template, $row, $headers, $configVars);
@@ -472,9 +492,17 @@ class CDEP_PRODUCTS
                     }
                 }
 
-                // Determine effective brand and category values (unconditional or conditional)
+                // Determine effective brand and category values (unconditional, conditional, or manual)
                 $effectiveBrand = $creationBrand;
                 $effectiveCategory = $creationCategory;
+
+                // Manual brand/category override
+                if ($brandManual && isset($manualData[$sku]['__brand__'])) {
+                    $effectiveBrand = sanitize_text_field($manualData[$sku]['__brand__']);
+                }
+                if ($categoryManual && isset($manualData[$sku]['__category__'])) {
+                    $effectiveCategory = sanitize_text_field($manualData[$sku]['__category__']);
+                }
 
                 if ($isNew) {
                     // Check conditional brand
@@ -622,7 +650,8 @@ add_action('wp_ajax_cdep_update_preview', function () {
     $headers = isset($cached['headers']) ? $cached['headers'] : array();
     $configVars = isset($mapping['config_vars']) ? $mapping['config_vars'] : array();
     $aiData = isset($_POST['ai_data']) ? $_POST['ai_data'] : array();
-    $result = CDEP_PRODUCTS::validateMapping($cached['all_rows'], $mapping, $headers, $configVars, $aiData);
+    $manualData = isset($_POST['manual_data']) ? $_POST['manual_data'] : array();
+    $result = CDEP_PRODUCTS::validateMapping($cached['all_rows'], $mapping, $headers, $configVars, $aiData, $manualData);
 
     if (is_wp_error($result)) {
         wp_send_json_error($result->get_error_message());
@@ -814,7 +843,8 @@ add_action('wp_ajax_cdep_update_execute', function () {
 
     $headers = isset($cached['headers']) ? $cached['headers'] : array();
     $configVars = isset($mapping['config_vars']) ? $mapping['config_vars'] : array();
-    $result = CDEP_PRODUCTS::executeUpdate($cached['all_rows'], $mapping, $offset, $limit, $headers, $configVars);
+    $manualData = isset($_POST['manual_data']) ? $_POST['manual_data'] : array();
+    $result = CDEP_PRODUCTS::executeUpdate($cached['all_rows'], $mapping, $offset, $limit, $headers, $configVars, array(), $manualData);
 
     if (is_wp_error($result)) {
         wp_send_json_error($result->get_error_message());
@@ -863,7 +893,8 @@ add_action('wp_ajax_cdep_update_batch_skus', function () {
     $headers = isset($cached['headers']) ? $cached['headers'] : array();
     $configVars = isset($mapping['config_vars']) ? $mapping['config_vars'] : array();
     $aiData = isset($_POST['ai_data']) ? $_POST['ai_data'] : array();
-    $result = CDEP_PRODUCTS::executeUpdate($rowsToProcess, $mapping, 0, count($rowsToProcess), $headers, $configVars, $aiData);
+    $manualData = isset($_POST['manual_data']) ? $_POST['manual_data'] : array();
+    $result = CDEP_PRODUCTS::executeUpdate($rowsToProcess, $mapping, 0, count($rowsToProcess), $headers, $configVars, $aiData, $manualData);
 
     if (is_wp_error($result)) {
         wp_send_json_error($result->get_error_message());
@@ -910,7 +941,8 @@ add_action('wp_ajax_cdep_update_single', function () {
     $headers = isset($cached['headers']) ? $cached['headers'] : array();
     $configVars = isset($mapping['config_vars']) ? $mapping['config_vars'] : array();
     $aiData = isset($_POST['ai_data']) ? $_POST['ai_data'] : array();
-    $result = CDEP_PRODUCTS::executeUpdate(array($foundRow), $mapping, 0, 1, $headers, $configVars, $aiData);
+    $manualData = isset($_POST['manual_data']) ? $_POST['manual_data'] : array();
+    $result = CDEP_PRODUCTS::executeUpdate(array($foundRow), $mapping, 0, 1, $headers, $configVars, $aiData, $manualData);
 
     if (is_wp_error($result)) {
         wp_send_json_error($result->get_error_message());

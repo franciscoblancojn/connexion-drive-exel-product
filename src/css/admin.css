@@ -546,6 +546,22 @@
     margin: 0 0 12px;
 }
 
+/* Manual Edicion inputs */
+.cdep-manual-input {
+    box-sizing: border-box;
+    padding: 4px 6px;
+    border: 1px solid #ddd;
+    border-radius: 3px;
+    font-size: 12px;
+    background: #fffdf5;
+}
+.cdep-manual-input:focus {
+    border-color: #2271b1;
+    box-shadow: 0 0 0 1px #2271b1;
+    outline: none;
+    background: #fff;
+}
+
 /* Condition Builder UI */
 .cdep-condition-row {
     background: #f9f9f9;

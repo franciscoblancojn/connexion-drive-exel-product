@@ -96,6 +96,7 @@ $productFields = CDEP_PRODUCTS::getFields();
                                     <select class="cdep-field-select-create" data-field="<?= esc_attr($fieldKey) ?>" style="width:100%;max-width:400px">
                                         <option value="">— No mapear —</option>
                                         <option value="__custom__">Personalizar</option>
+                                        <option value="__manual__">Edición Manual</option>
                                         <option value="__ai__">Generar con IA</option>
                                     </select>
                                     <div class="cdep-custom-template-wrap" style="display:none;margin-top:4px">
@@ -128,6 +129,7 @@ $productFields = CDEP_PRODUCTS::getFields();
                                     <select id="creation-brand" class="cdep-config-main-select cdep-config-condicionable" style="width:100%">
                                         <option value="">— Sin marca —</option>
                                         <option value="__condicionar__">Condicionar</option>
+                                        <option value="__manual__">Edición Manual</option>
                                         <?php
                                         $brandTerms = taxonomy_exists('product_brand') ? get_terms(array(
                                             'taxonomy' => 'product_brand',
@@ -156,6 +158,7 @@ $productFields = CDEP_PRODUCTS::getFields();
                                     <select id="creation-category" class="cdep-config-main-select cdep-config-condicionable" style="width:100%">
                                         <option value="">— Sin categoría —</option>
                                         <option value="__condicionar__">Condicionar</option>
+                                        <option value="__manual__">Edición Manual</option>
                                         <?php
                                         $catTerms = taxonomy_exists('product_cat') ? get_terms(array(
                                             'taxonomy' => 'product_cat',

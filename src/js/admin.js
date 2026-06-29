@@ -8,6 +8,7 @@ jQuery(function ($) {
         totalRows: 0,
         selectedFileId: '',
         aiGenerated: {},
+        manualData: {},
     };
     var cdep = window.cdep;
 
@@ -243,6 +244,7 @@ jQuery(function ($) {
             state.totalRows = data.total_rows;
             window.cdepParsedData = data;
             clearAiCache();
+            clearManualData();
 
             $('#cdep-selected-file-rows').text(data.total_rows);
             $('#cdep-file-list-message').html(
@@ -275,6 +277,7 @@ jQuery(function ($) {
             state.totalRows = data.total_rows;
             state.selectedFileId = fileId;
             clearAiCache();
+            clearManualData();
 
             $('#cdep-selected-file-name').text(fileName);
             $('#cdep-selected-file-rows').text(data.total_rows);
@@ -305,6 +308,7 @@ jQuery(function ($) {
     // === MAPPING TAB ===
 
     function loadMapping() {
+        loadManualData();
         loadAiCache();
         if (window.cdepParsedData) {
             renderMapping(window.cdepParsedData);
@@ -365,10 +369,14 @@ jQuery(function ($) {
         // Populate create field mapping selects (new products)
         $('.cdep-field-select-create').each(function () {
             var $sel = $(this);
-            // Keep first options: "— No mapear —", "Personalizar" and "Generar con IA"
-            while ($sel.find('option').length > 3) {
-                $sel.find('option:last').remove();
-            }
+            // Keep base options: "No mapear", "Personalizar", "Edicion Manual", "Generar con IA"
+            var baseVals = ['', '__custom__', '__manual__', '__ai__'];
+            $sel.find('option').each(function () {
+                var v = $(this).val();
+                if (v && baseVals.indexOf(v) === -1) {
+                    $(this).remove();
+                }
+            });
             $.each(data.headers, function (i, h) {
                 $sel.append('<option value="' + h.index + '">' + escHtml(h.name) + '</option>');
             });
@@ -439,6 +447,8 @@ jQuery(function ($) {
                     }
                 } else if (val === '__ai__') {
                     mapping['create_' + field] = '__ai__';
+                } else if (val === '__manual__') {
+                    mapping['create_' + field] = '__manual__';
                 } else {
                     mapping['create_' + field] = val;
                 }
@@ -478,6 +488,13 @@ jQuery(function ($) {
                     conditions[target] = condList;
                 }
                 // Do NOT add to config_vars since it's conditional
+            } else if (selectedVal === '__manual__') {
+                // Edicion Manual: set marker in mapping for per-row manual input
+                if (label === 'marca') {
+                    mapping['creation_brand'] = '__manual__';
+                } else if (label === 'categoría') {
+                    mapping['creation_category'] = '__manual__';
+                }
             } else if (selectedVal) {
                 // Map brand/category fields to mapping keys
                 if (label === 'marca') {
@@ -582,6 +599,28 @@ jQuery(function ($) {
         } catch (e) {}
     }
 
+    function saveManualData() {
+        try {
+            localStorage.setItem('cdep_manual_data', JSON.stringify(state.manualData));
+        } catch (e) {}
+    }
+
+    function loadManualData() {
+        try {
+            var saved = localStorage.getItem('cdep_manual_data');
+            if (saved) {
+                state.manualData = JSON.parse(saved);
+            }
+        } catch (e) {}
+    }
+
+    function clearManualData() {
+        try {
+            localStorage.removeItem('cdep_manual_data');
+            state.manualData = {};
+        } catch (e) {}
+    }
+
     function restoreMappingConfig() {
         try {
             var saved = localStorage.getItem('cdep_mapping_config');
@@ -604,6 +643,8 @@ jQuery(function ($) {
                     var val = mapping['create_' + field];
                     if (val === '__ai__') {
                         $(this).val('__ai__');
+                    } else if (val === '__manual__') {
+                        $(this).val('__manual__');
                     } else if (val.indexOf('custom:') === 0) {
                         $(this).val('__custom__');
                         var $td = $(this).closest('td');
@@ -700,8 +741,8 @@ jQuery(function ($) {
             var $aiOpt = $sel.find('option[value="__ai__"]');
             if (enabled) {
                 if ($aiOpt.length === 0) {
-                    var $customOpt = $sel.find('option[value="__custom__"]');
-                    $customOpt.after('<option value="__ai__">Generar con IA</option>');
+                    var $manualOpt = $sel.find('option[value="__manual__"]');
+                    $manualOpt.after('<option value="__ai__">Generar con IA</option>');
                 }
             } else {
                 $aiOpt.remove();
@@ -1047,7 +1088,7 @@ jQuery(function ($) {
             + '</div>';
     }
 
-    function renderProductsTable(products, mappedFields, productNameMapped, aiFields) {
+    function renderProductsTable(products, mappedFields, productNameMapped, aiFields, manualFields, brandManual, categoryManual) {
         var html = '<div class="cdep-table-wrapper">';
         html += '<table class="wp-list-table widefat striped">';
         html += '<colgroup>';
@@ -1058,6 +1099,10 @@ jQuery(function ($) {
         html += '<col style="width: auto;">';
         html += '<col style="width: auto;">';
         html += '<col style="width: auto;">';
+        html += '<col style="width: auto;">';
+        if (brandManual) {
+            html += '<col style="width: auto;">';
+        }
         $.each(mappedFields, function (i, f) {
             html += '<col style="width: auto;">';
         });
@@ -1065,6 +1110,9 @@ jQuery(function ($) {
         html += '<thead><tr>';
         html += '<th style="width:40px"><input type="checkbox" class="cdep-select-all" checked></th>';
         html += '<th>Acción</th><th>Estado</th><th>Imagen</th><th>SKU</th><th>Nombre</th><th>Categorías</th><th>Atributos</th>';
+        if (brandManual) {
+            html += '<th>Marca</th>';
+        }
         $.each(mappedFields, function (i, f) {
             html += '<th>' + escHtml(f.label) + '</th>';
         });
@@ -1112,19 +1160,43 @@ jQuery(function ($) {
                     html += '<td>' + escHtml(p.name) + '</td>';
                 }
             }
-            html += '<td>' + escHtml(p.categories) + '</td>';
+            if (categoryManual) {
+                var savedCat = '';
+                if (state.manualData && state.manualData[p.sku] && state.manualData[p.sku]['__category__'] !== undefined) {
+                    savedCat = state.manualData[p.sku]['__category__'];
+                }
+                html += '<td><input type="text" class="cdep-manual-input" data-sku="' + escHtml(p.sku) + '" data-field="__category__" value="' + escHtml(savedCat) + '" style="width:100%" placeholder="Categoría"></td>';
+            } else {
+                html += '<td>' + escHtml(p.categories) + '</td>';
+            }
             var attrsHtml = '';
             if (p.attributes && p.attributes.length > 0) {
                 attrsHtml = '<span class="cdep-attr-list">' + p.attributes.join('<br>') + '</span>';
             }
             html += '<td>' + attrsHtml + '</td>';
+            if (brandManual) {
+                var savedBrand = '';
+                if (state.manualData && state.manualData[p.sku] && state.manualData[p.sku]['__brand__'] !== undefined) {
+                    savedBrand = state.manualData[p.sku]['__brand__'];
+                }
+                html += '<td><input type="text" class="cdep-manual-input cdep-manual-brand" data-sku="' + escHtml(p.sku) + '" data-field="__brand__" value="' + escHtml(savedBrand) + '" style="width:100%" placeholder="Marca"></td>';
+            }
             $.each(mappedFields, function (fi, f) {
                 var fd = p.fields[f.key];
                 var isAi = aiFields && aiFields.indexOf(f.key) !== -1;
+                var isManual = manualFields && manualFields.indexOf(f.key) !== -1;
                 if (isAi && (!fd || !fd.new)) {
                     html += '<td class="cdep-field-cell-' + f.key + '"><span class="cdep-badge cdep-badge-ai">Pendiente de generar</span></td>';
                 } else if (isAi) {
                     html += '<td class="cdep-field-cell-' + f.key + '"><button class="button button-small cdep-view-ai-content" data-sku="' + escHtml(p.sku) + '" data-field="' + f.key + '">Ver contenido generado con IA</button></td>';
+                } else if (isManual) {
+                    var savedVal = '';
+                    if (state.manualData && state.manualData[p.sku] && state.manualData[p.sku][f.key] !== undefined) {
+                        savedVal = state.manualData[p.sku][f.key];
+                    } else if (fd && fd.new) {
+                        savedVal = fd.new;
+                    }
+                    html += '<td class="cdep-field-cell-' + f.key + '"><input type="text" class="cdep-manual-input" data-sku="' + escHtml(p.sku) + '" data-field="' + f.key + '" value="' + escHtml(savedVal) + '" style="width:100%"></td>';
                 } else {
                     html += '<td class="cdep-field-cell-' + f.key + '">' + (fd ? renderFieldCell(fd, p.exists) : '') + '</td>';
                 }
@@ -1152,6 +1224,7 @@ jQuery(function ($) {
         ajax('cdep_update_preview', {
             mapping: mapping,
             ai_data: state.aiGenerated,
+            manual_data: state.manualData,
         }, function (data) {
             renderPreviewResult(data);
             $('#cdep-preview-update').prop('disabled', false).text('Vista Previa de Actualización');
@@ -1192,6 +1265,7 @@ jQuery(function ($) {
         }, function (data) {
             window.cdepParsedData = data;
             clearAiCache();
+            clearManualData();
             $('#cdep-preview-result').html('');
             loadMapping();
             showMessage('#cdep-mapping-container', 'Encabezados actualizados (fila ' + headerRow + ')', 'ok');
@@ -1223,6 +1297,20 @@ jQuery(function ($) {
         return match;
     }
 
+    function collectManualData(containerId) {
+        var data = {};
+        $('#' + containerId + ' .cdep-manual-input').each(function () {
+            var sku = $(this).data('sku');
+            var field = $(this).data('field');
+            var value = $(this).val();
+            if (!data[sku]) {
+                data[sku] = {};
+            }
+            data[sku][field] = value;
+        });
+        return data;
+    }
+
     function runBatchUpdate(containerId, buttonId, progressId, resultId, mapping, aiData) {
         var $container = $('#' + containerId);
         var btn = $('#' + buttonId);
@@ -1247,6 +1335,7 @@ jQuery(function ($) {
         var allErrors = [];
         var processedCount = 0;
         var batchSize = 25;
+        var manualData = collectManualData(containerId);
 
         var batches = [];
         for (var i = 0; i < totalSkus; i += batchSize) {
@@ -1295,6 +1384,7 @@ jQuery(function ($) {
                 skus: batches[idx],
                 mapping: mapping,
                 ai_data: batchAiData,
+                manual_data: manualData,
             }, function (data) {
                 totalUpdated += data.updated;
                 totalCreated += data.created;
@@ -1347,6 +1437,17 @@ jQuery(function ($) {
         runBatchUpdate('cdep-preview-create-content', 'cdep-start-create', 'cdep-create-progress', 'cdep-create-result', state.mapping, state.aiGenerated);
     });
 
+    function getManualFieldsFromMapping() {
+        var manualFields = [];
+        if (!state.mapping) return manualFields;
+        for (var key in state.mapping) {
+            if (state.mapping.hasOwnProperty(key) && key.indexOf('create_') === 0 && state.mapping[key] === '__manual__') {
+                manualFields.push(key.replace('create_', ''));
+            }
+        }
+        return manualFields;
+    }
+
     function renderPreviewResult(data) {
         var html = '<div class="cdep-preview-summary">';
         html += '<p><strong>Total filas con SKU:</strong> ' + data.total + ' | ';
@@ -1382,6 +1483,7 @@ jQuery(function ($) {
             }
 
             var aiFields = data.ai_fields || [];
+            var manualFields = getManualFieldsFromMapping();
             var existingProducts = [];
             var newProducts = [];
             $.each(data.products, function (i, p) {
@@ -1393,6 +1495,9 @@ jQuery(function ($) {
             });
 
             var hasAiFields = aiFields.length > 0;
+            var brandManual = state.mapping && state.mapping['creation_brand'] === '__manual__';
+            var categoryManual = state.mapping && state.mapping['creation_category'] === '__manual__';
+            var hasManualFields = manualFields.length > 0 || brandManual || categoryManual;
 
             html += '<h3>Productos a procesar</h3>';
             html += '<div class="cdep-preview-tabs-wrapper">';
@@ -1404,7 +1509,7 @@ jQuery(function ($) {
             // Update tab
             html += '<div class="cdep-preview-tab-content active" id="cdep-preview-update-content" data-tab="update">';
             if (existingProducts.length > 0) {
-                html += renderProductsTable(existingProducts, updateMappedFields, updateProductNameMapped, []);
+                html += renderProductsTable(existingProducts, updateMappedFields, updateProductNameMapped, [], []);
                 html += '<hr>';
                 html += '<p><button id="cdep-start-update" class="button button-primary">Iniciar Actualización Masiva</button></p>';
             } else {
@@ -1420,11 +1525,15 @@ jQuery(function ($) {
             // Create tab
             html += '<div class="cdep-preview-tab-content" id="cdep-preview-create-content" data-tab="create">';
             if (newProducts.length > 0) {
-                html += renderProductsTable(newProducts, createMappedFields, createProductNameMapped, aiFields);
+                html += renderProductsTable(newProducts, createMappedFields, createProductNameMapped, aiFields, manualFields, brandManual, categoryManual);
                 html += '<hr>';
-                html += '<p><button id="cdep-start-create" class="button button-primary">Iniciar Creación Masiva</button>';
+                html += '<p>';
+                html += '<button id="cdep-start-create" class="button button-primary">Iniciar Creación Masiva</button>';
                 if (hasAiFields) {
                     html += ' <button id="cdep-ai-generate-create" class="button cdep-ai-generate-btn">Generar contenido con IA</button>';
+                }
+                if (hasManualFields) {
+                    html += ' <button id="cdep-save-manual" class="button">Guardar Edición Manual</button>';
                 }
                 html += '</p>';
             } else {
@@ -1482,6 +1591,7 @@ jQuery(function ($) {
                 ajax('cdep_update_preview', {
                     mapping: state.mapping,
                     ai_data: state.aiGenerated,
+                    manual_data: state.manualData,
                 }, function (previewData) {
                     state.products = previewData.products;
                     renderPreviewResult(previewData);
@@ -1563,6 +1673,33 @@ jQuery(function ($) {
         processNext(0);
     });
 
+    // === SAVE MANUAL DATA ===
+
+    $(document).on('click', '#cdep-save-manual', function () {
+        var btn = $(this);
+        btn.prop('disabled', true).text('Guardando...');
+
+        // Collect all manual inputs from the create tab
+        var manualData = {};
+        $('#cdep-preview-create-content .cdep-manual-input').each(function () {
+            var sku = $(this).data('sku');
+            var field = $(this).data('field');
+            var value = $(this).val();
+            if (!manualData[sku]) {
+                manualData[sku] = {};
+            }
+            manualData[sku][field] = value;
+        });
+
+        state.manualData = manualData;
+        saveManualData();
+
+        btn.prop('disabled', false).text('Guardar Edición Manual');
+        var $msg = $('<p class="fwue-message ok">Datos de edición manual guardados correctamente.</p>');
+        $('#cdep-preview-result').prepend($msg);
+        setTimeout(function () { $msg.remove(); }, 8000);
+    });
+
     // === SINGLE PRODUCT PROCESS ===
 
     $(document).on('click', '.cdep-process-single', function () {
@@ -1582,6 +1719,7 @@ jQuery(function ($) {
             sku: sku,
             mapping: mapping,
             ai_data: state.aiGenerated,
+            manual_data: state.manualData,
         }, function (data) {
             if (data.processed_skus && data.processed_skus.length > 0) {
                 var status = data.processed_skus[0].status;
@@ -1633,6 +1771,7 @@ jQuery(function ($) {
                 ajax('cdep_update_preview', {
                     mapping: state.mapping,
                     ai_data: state.aiGenerated,
+                    manual_data: state.manualData,
                 }, function (previewData) {
                     state.products = previewData.products;
 
