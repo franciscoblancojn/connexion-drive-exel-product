@@ -142,6 +142,30 @@ class CDEP_PRODUCTS
         }, $template);
     }
 
+    private static function resolveCalc($expression, $row, $headers, $configVars = array())
+    {
+        $resolved = preg_replace_callback('/\{([^}]+)\}/', function ($matches) use ($row, $headers, $configVars) {
+            $placeholder = trim($matches[1]);
+            if (isset($configVars[$placeholder])) {
+                return floatval($configVars[$placeholder]);
+            }
+            foreach ($headers as $h) {
+                if ($h['name'] === $placeholder) {
+                    $idx = intval($h['index']);
+                    return isset($row[$idx]) ? floatval(trim($row[$idx])) : 0;
+                }
+            }
+            return 0;
+        }, $expression);
+
+        if (!preg_match('/^[\d\s\+\-\*\/\(\)\.]+$/', $resolved)) {
+            return $resolved;
+        }
+
+        $result = @eval("return $resolved;");
+        return $result === false ? 0 : floatval($result);
+    }
+
     private static function evaluateCondition($condition, $row)
     {
         $colIndex = isset($condition['column']) ? intval($condition['column']) : -1;
@@ -203,6 +227,8 @@ class CDEP_PRODUCTS
                     } elseif ($colIndex === '__manual__') {
                         $createMapping[$realKey] = '__manual__';
                     } elseif (is_string($colIndex) && strpos($colIndex, 'custom:') === 0) {
+                        $createMapping[$realKey] = $colIndex;
+                    } elseif (is_string($colIndex) && strpos($colIndex, 'calc:') === 0) {
                         $createMapping[$realKey] = $colIndex;
                     } else {
                         $createMapping[$realKey] = intval($colIndex);
@@ -323,6 +349,9 @@ class CDEP_PRODUCTS
                 } elseif (is_string($colIndex) && strpos($colIndex, 'custom:') === 0) {
                     $template = substr($colIndex, 7);
                     $newValue = self::resolveTemplate($template, $row, $headers, $configVars);
+                } elseif (is_string($colIndex) && strpos($colIndex, 'calc:') === 0) {
+                    $expr = substr($colIndex, 5);
+                    $newValue = self::resolveCalc($expr, $row, $headers, $configVars);
                 } else {
                     $newValue = isset($row[$colIndex]) ? trim($row[$colIndex]) : '';
                 }
@@ -422,6 +451,8 @@ class CDEP_PRODUCTS
                         $createMapping[$realKey] = '__manual__';
                     } elseif (is_string($colIndex) && strpos($colIndex, 'custom:') === 0) {
                         $createMapping[$realKey] = $colIndex;
+                    } elseif (is_string($colIndex) && strpos($colIndex, 'calc:') === 0) {
+                        $createMapping[$realKey] = $colIndex;
                     } else {
                         $createMapping[$realKey] = intval($colIndex);
                     }
@@ -492,6 +523,9 @@ class CDEP_PRODUCTS
                     } elseif (is_string($colIndex) && strpos($colIndex, 'custom:') === 0) {
                         $template = substr($colIndex, 7);
                         $value = self::resolveTemplate($template, $row, $headers, $configVars);
+                    } elseif (is_string($colIndex) && strpos($colIndex, 'calc:') === 0) {
+                        $expr = substr($colIndex, 5);
+                        $value = self::resolveCalc($expr, $row, $headers, $configVars);
                     } else {
                         $value = isset($row[$colIndex]) ? $row[$colIndex] : '';
                     }

@@ -370,7 +370,7 @@ jQuery(function ($) {
         $('.cdep-field-select-create').each(function () {
             var $sel = $(this);
             // Keep base options: "No mapear", "Personalizar", "Edicion Manual", "Generar con IA"
-            var baseVals = ['', '__custom__', '__manual__', '__ai__'];
+            var baseVals = ['', '__custom__', '__calc__', '__manual__', '__ai__'];
             $sel.find('option').each(function () {
                 var v = $(this).val();
                 if (v && baseVals.indexOf(v) === -1) {
@@ -444,6 +444,11 @@ jQuery(function ($) {
                     var template = $(this).closest('td').find('.cdep-custom-template-input').val();
                     if (template) {
                         mapping['create_' + field] = 'custom:' + template;
+                    }
+                } else if (val === '__calc__') {
+                    var calcExpr = $(this).closest('td').find('.cdep-calc-input').val();
+                    if (calcExpr) {
+                        mapping['create_' + field] = 'calc:' + calcExpr;
                     }
                 } else if (val === '__ai__') {
                     mapping['create_' + field] = '__ai__';
@@ -664,6 +669,10 @@ jQuery(function ($) {
                         $(this).val('__custom__');
                         $td.find('.cdep-custom-template-input').val(val.substring(7));
                         $td.find('.cdep-custom-template-wrap').show();
+                    } else if (val.indexOf('calc:') === 0) {
+                        $(this).val('__calc__');
+                        $td.find('.cdep-calc-input').val(val.substring(5));
+                        $td.find('.cdep-calc-wrap').show();
                     } else {
                         $(this).val(val);
                     }
@@ -773,15 +782,23 @@ jQuery(function ($) {
         var val = $(this).val();
         var $td = $(this).closest('td');
         var $wrap = $td.find('.cdep-custom-template-wrap');
+        var $calcWrap = $td.find('.cdep-calc-wrap');
         var $aiWrap = $td.find('.cdep-ai-prompt-wrap');
         if (val === '__custom__') {
             $wrap.show();
+            $calcWrap.hide();
+            $aiWrap.hide();
+        } else if (val === '__calc__') {
+            $wrap.hide();
+            $calcWrap.show();
             $aiWrap.hide();
         } else if (val === '__ai__') {
             $wrap.hide();
+            $calcWrap.hide();
             $aiWrap.show();
         } else {
             $wrap.hide();
+            $calcWrap.hide();
             $aiWrap.hide();
         }
     });
@@ -821,8 +838,8 @@ jQuery(function ($) {
 
     $(document).on('click', '.cdep-template-variable-item', function () {
         var name = $(this).data('name');
-        var $wrap = $(this).closest('.cdep-custom-template-wrap, .cdep-ai-prompt-wrap');
-        var $input = $wrap.find('.cdep-custom-template-input, .cdep-ai-prompt-input');
+        var $wrap = $(this).closest('.cdep-custom-template-wrap, .cdep-calc-wrap, .cdep-ai-prompt-wrap');
+        var $input = $wrap.find('.cdep-custom-template-input, .cdep-calc-input, .cdep-ai-prompt-input');
         var input = $input[0];
         if (!input) return false;
         var start = input.selectionStart;
@@ -836,7 +853,7 @@ jQuery(function ($) {
     });
 
     $(document).on('click', function (e) {
-        if (!$(e.target).closest('.cdep-custom-template-wrap, .cdep-ai-prompt-wrap').length) {
+        if (!$(e.target).closest('.cdep-custom-template-wrap, .cdep-calc-wrap, .cdep-ai-prompt-wrap').length) {
             $('.cdep-template-variables-list').hide();
         }
     });

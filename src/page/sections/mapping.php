@@ -96,12 +96,20 @@ $productFields = CDEP_PRODUCTS::getFields();
                                     <select class="cdep-field-select-create" data-field="<?= esc_attr($fieldKey) ?>" style="width:100%;max-width:400px">
                                         <option value="">— No mapear —</option>
                                         <option value="__custom__">Personalizar</option>
+                                        <option value="__calc__">Cálculo</option>
                                         <option value="__manual__">Edición Manual</option>
                                         <option value="__ai__">Generar con IA</option>
                                     </select>
                                     <div class="cdep-custom-template-wrap" style="display:none;margin-top:4px">
                                         <div class="cdep-template-input-row">
                                             <input type="text" class="cdep-custom-template-input" placeholder="Ej: {nombre} - {tipo}" style="width:100%">
+                                            <button type="button" class="cdep-template-variable-btn button button-small" title="Insertar variable">+</button>
+                                        </div>
+                                        <div class="cdep-template-variables-list" style="display:none"></div>
+                                    </div>
+                                    <div class="cdep-calc-wrap" style="display:none;margin-top:4px">
+                                        <div class="cdep-template-input-row">
+                                            <input type="text" class="cdep-calc-input" placeholder="Ej: {columna} * 10 + 5" style="width:100%">
                                             <button type="button" class="cdep-template-variable-btn button button-small" title="Insertar variable">+</button>
                                         </div>
                                         <div class="cdep-template-variables-list" style="display:none"></div>
