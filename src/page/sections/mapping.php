@@ -106,6 +106,9 @@ $productFields = CDEP_PRODUCTS::getFields();
                                         </div>
                                         <div class="cdep-template-variables-list" style="display:none"></div>
                                     </div>
+                                    <div class="cdep-ai-prompt-wrap" style="display:none;margin-top:4px">
+                                        <textarea class="cdep-ai-prompt-input" placeholder="Prompt extra para la IA..." style="width:100%;min-height:50px"></textarea>
+                                    </div>
                                 </td>
                             </tr>
                             <?php endforeach; ?>

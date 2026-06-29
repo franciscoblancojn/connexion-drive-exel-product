@@ -447,6 +447,10 @@ jQuery(function ($) {
                     }
                 } else if (val === '__ai__') {
                     mapping['create_' + field] = '__ai__';
+                    var extraPrompt = $(this).closest('td').find('.cdep-ai-prompt-input').val();
+                    if (extraPrompt) {
+                        mapping['create_' + field + '_prompt'] = extraPrompt;
+                    }
                 } else if (val === '__manual__') {
                     mapping['create_' + field] = '__manual__';
                 } else {
@@ -646,13 +650,18 @@ jQuery(function ($) {
                 var field = $(this).data('field');
                 if (mapping['create_' + field]) {
                     var val = mapping['create_' + field];
+                    var $td = $(this).closest('td');
                     if (val === '__ai__') {
                         $(this).val('__ai__');
+                        var savedPrompt = mapping['create_' + field + '_prompt'];
+                        if (savedPrompt) {
+                            $td.find('.cdep-ai-prompt-input').val(savedPrompt);
+                        }
+                        $td.find('.cdep-ai-prompt-wrap').show();
                     } else if (val === '__manual__') {
                         $(this).val('__manual__');
                     } else if (val.indexOf('custom:') === 0) {
                         $(this).val('__custom__');
-                        var $td = $(this).closest('td');
                         $td.find('.cdep-custom-template-input').val(val.substring(7));
                         $td.find('.cdep-custom-template-wrap').show();
                     } else {
@@ -764,10 +773,16 @@ jQuery(function ($) {
         var val = $(this).val();
         var $td = $(this).closest('td');
         var $wrap = $td.find('.cdep-custom-template-wrap');
+        var $aiWrap = $td.find('.cdep-ai-prompt-wrap');
         if (val === '__custom__') {
             $wrap.show();
+            $aiWrap.hide();
+        } else if (val === '__ai__') {
+            $wrap.hide();
+            $aiWrap.show();
         } else {
             $wrap.hide();
+            $aiWrap.hide();
         }
     });
 

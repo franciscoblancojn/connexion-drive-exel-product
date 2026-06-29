@@ -717,14 +717,23 @@ add_action('wp_ajax_cdep_ai_generate', function () {
     $creationBrand = isset($mapping['creation_brand']) ? $mapping['creation_brand'] : '';
     $allRows = $cached['all_rows'];
 
-    // Build create mapping to know which fields are __ai__
+    // Build create mapping to know which fields are __ai__ and extract extra prompts
     $createMapping = array();
+    $extraPrompts = array();
     foreach ($mapping as $key => $colIndex) {
         if ($key === 'sku' || $colIndex === '') {
             continue;
         }
         if (strpos($key, 'create_') === 0) {
-            $realKey = substr($key, 7);
+            // Detect extra prompts (keys ending with _prompt)
+            $suffix = substr($key, 7);
+            $promptPos = strrpos($suffix, '_prompt');
+            if ($promptPos !== false && $promptPos === strlen($suffix) - 7) {
+                $fieldKey = substr($suffix, 0, $promptPos);
+                $extraPrompts[$fieldKey] = $colIndex;
+                continue;
+            }
+            $realKey = $suffix;
             $createMapping[$realKey] = $colIndex;
         }
     }
@@ -783,6 +792,11 @@ add_action('wp_ajax_cdep_ai_generate', function () {
                 $prompt = "Escribe UNA SOLA FRASE persuasiva de máximo 200 caracteres describiendo el producto. Sin HTML, sin títulos, sin etiquetas. Texto plano.\n\nDatos del producto:\n" . $context . "\n";
                 } elseif ($field === 'description') {
                     $prompt = "Escribe una descripción completa del producto con 3-4 secciones. Usa <h2> para títulos de sección y <p> para párrafos. Describe materiales, diseño, características y beneficios.\n\nDatos del producto:\n" . $context . "\n";
+            }
+
+            // Append extra prompt if provided
+            if (isset($extraPrompts[$field]) && !empty($extraPrompts[$field])) {
+                $prompt .= "\n\nInstrucciones adicionales del usuario:\n" . sanitize_textarea_field($extraPrompts[$field]);
             }
 
             $response = array('status' => 'error', 'data' => '');
