@@ -787,7 +787,8 @@ jQuery(function ($) {
     });
 
     $(document).on('click', '.cdep-template-variable-btn', function () {
-        var $list = $(this).closest('.cdep-custom-template-wrap').find('.cdep-template-variables-list');
+        var $wrap = $(this).closest('.cdep-custom-template-wrap, .cdep-ai-prompt-wrap');
+        var $list = $wrap.find('.cdep-template-variables-list');
         if ($list.is(':visible')) {
             $list.hide();
             return;
@@ -820,8 +821,10 @@ jQuery(function ($) {
 
     $(document).on('click', '.cdep-template-variable-item', function () {
         var name = $(this).data('name');
-        var $input = $(this).closest('.cdep-custom-template-wrap').find('.cdep-custom-template-input');
+        var $wrap = $(this).closest('.cdep-custom-template-wrap, .cdep-ai-prompt-wrap');
+        var $input = $wrap.find('.cdep-custom-template-input, .cdep-ai-prompt-input');
         var input = $input[0];
+        if (!input) return false;
         var start = input.selectionStart;
         var end = input.selectionEnd;
         var text = input.value;
@@ -833,7 +836,7 @@ jQuery(function ($) {
     });
 
     $(document).on('click', function (e) {
-        if (!$(e.target).closest('.cdep-custom-template-wrap').length) {
+        if (!$(e.target).closest('.cdep-custom-template-wrap, .cdep-ai-prompt-wrap').length) {
             $('.cdep-template-variables-list').hide();
         }
     });

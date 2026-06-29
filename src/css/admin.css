@@ -572,6 +572,7 @@
 .cdep-condition-row select,
 .cdep-condition-row input[type="text"] {
     font-size: 12px;
+    margin-inline: 0;
 }
 .cdep-condition-item {
     background: #fff;

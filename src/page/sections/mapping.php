@@ -107,7 +107,11 @@ $productFields = CDEP_PRODUCTS::getFields();
                                         <div class="cdep-template-variables-list" style="display:none"></div>
                                     </div>
                                     <div class="cdep-ai-prompt-wrap" style="display:none;margin-top:4px">
-                                        <textarea class="cdep-ai-prompt-input" placeholder="Prompt extra para la IA..." style="width:100%;min-height:50px"></textarea>
+                                        <div class="cdep-template-input-row">
+                                            <textarea class="cdep-ai-prompt-input" placeholder="Prompt extra para la IA..." style="width:100%;min-height:50px"></textarea>
+                                            <button type="button" class="cdep-template-variable-btn button button-small" title="Insertar variable">+</button>
+                                        </div>
+                                        <div class="cdep-template-variables-list" style="display:none"></div>
                                     </div>
                                 </td>
                             </tr>
