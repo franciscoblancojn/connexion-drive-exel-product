@@ -123,7 +123,7 @@ class CDEP_PRODUCTS
         }
     }
 
-    private static function resolveTemplate($template, $row, $headers, $configVars = array())
+    public static function resolveTemplate($template, $row, $headers, $configVars = array())
     {
         return preg_replace_callback('/\{([^}]+)\}/', function ($matches) use ($row, $headers, $configVars) {
             $placeholder = trim($matches[1]);
@@ -794,9 +794,15 @@ add_action('wp_ajax_cdep_ai_generate', function () {
                     $prompt = "Escribe una descripción completa del producto con 3-4 secciones. Usa <h2> para títulos de sección y <p> para párrafos. Describe materiales, diseño, características y beneficios.\n\nDatos del producto:\n" . $context . "\n";
             }
 
-            // Append extra prompt if provided
+            // Append extra prompt if provided (with variable resolution)
             if (isset($extraPrompts[$field]) && !empty($extraPrompts[$field])) {
-                $prompt .= "\n\nInstrucciones adicionales del usuario:\n" . sanitize_textarea_field($extraPrompts[$field]);
+                $resolvedExtra = CDEP_PRODUCTS::resolveTemplate(
+                    sanitize_textarea_field($extraPrompts[$field]),
+                    $row,
+                    $headers,
+                    $configVars
+                );
+                $prompt .= "\n\nInstrucciones adicionales del usuario:\n" . $resolvedExtra;
             }
 
             $response = array('status' => 'error', 'data' => '');
