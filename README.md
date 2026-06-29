@@ -1,8 +1,8 @@
 # Connexion Drive Excel Product 🚀
 
-**Version:** 1.1.55 | **License:** GPL2+
+**Version:** 1.1.56 | **License:** GPL2+
 
-Conecta Google Drive, selecciona archivos Excel/CSV, mapea columnas a 16 campos de producto y actualiza productos WooCommerce de forma masiva. Incluye generación de contenido con IA (Kodee/Gemini) y asignación condicional de marca/categoría/atributos.
+Conecta Google Drive, selecciona archivos Excel/CSV, mapea columnas a 16 campos de producto y actualiza productos WooCommerce de forma masiva. Incluye generación de contenido con IA (Kodee/Gemini), asignación condicional de marca/categoría/atributos, edición manual por fila y cálculos matemáticos con variables de columna.
 
 ---
 
@@ -13,6 +13,8 @@ Conecta Google Drive, selecciona archivos Excel/CSV, mapea columnas a 16 campos 
 - 📂 **Explorador de Archivos** — Navega carpetas de Drive, soporta Excel (.xlsx, .xls), Google Sheets y CSV.
 - 🗺️ **Mapeo de Columnas** — Detecta automaticamente columnas SKU, precio, precio oferta y cantidad. Mapeo separado para actualizar existentes (3 campos) y crear nuevos (16 campos).
 - 🎨 **Templates Personalizados** — Crea nombres y descripciones combinando texto fijo con variables de columna y configuracion (ej: `"Reloj {marca} {name}"`).
+- 🧮 **Cálculos Matemáticos** — Expresiones con `{columna}`, operadores y números: `{precio} * 1.19` para precio + IVA, `{cantidad} * {precio}` para totales. Disponible en actualización y creación.
+- ✏️ **Edición Manual** — Edita valores directamente en la tabla de preview por fila. Modo automático cuando la celda está vacía.
 - 🏷️ **Asignación Condicional** — Marca, categoría y atributos con condiciones lógicas por fila: operadores `=`, `!=`, `<`, `>` y múltiples condiciones por regla (primera coincidencia gana).
 - 👁️ **Vista Previa** — Validacion con diffs (antes/despues), imagenes, badges de estado. Resultados en tabs independientes por tipo. Vista previa de categorías y atributos evaluados.
 - ⚡ **Actualizacion Masiva** — Procesa en lotes de 25 con barra de progreso. Actualiza existentes y crea nuevos productos simultaneamente.
@@ -100,7 +102,7 @@ connexion-drive-exel-product/
 ## 🔌 AJAX Endpoints
 
 | Action | Handler | Proposito |
-|---|---|---|
+|---|---|---|---|
 | `cdep_save_config` | Closure en `drive.php:278` | Guarda credenciales OAuth |
 | `cdep_get_auth_url` | Closure en `drive.php:293` | Obtiene URL de autenticacion Google |
 | `cdep_drive_connect` | Closure en `drive.php:307` | Intercambia codigo OAuth por tokens |
@@ -110,11 +112,11 @@ connexion-drive-exel-product/
 | `cdep_refresh_cache` | Closure en `drive.php:375` | Redescarga archivo y re-parsea |
 | `cdep_reparse_file` | Closure en `drive.php:444` | Re-parsea archivo temporal con nueva fila de encabezados |
 | `cdep_drive_select_file` | Closure en `drive.php:486` | Descarga, parsea y cachea archivo seleccionado |
-| `cdep_ai_generate` | Closure en `products.php:611` | Genera contenido IA para un SKU (name/description/short_description) |
-| `cdep_update_preview` | Closure en `products.php:413` | Valida mapeo y genera vista previa |
-| `cdep_update_execute` | Closure en `products.php:443` | Ejecuta actualizacion por lotes (offset) |
-| `cdep_update_batch_skus` | Closure en `products.php:473` | Actualiza SKUs especificos por lote |
-| `cdep_update_single` | Closure en `products.php:520` | Actualiza un solo producto por SKU |
+| `cdep_ai_generate` | Closure en `products.php:738` | Genera contenido IA para un SKU (name/description/short_description) con prompt extra y resolución de variables |
+| `cdep_update_preview` | Closure en `products.php:690` | Valida mapeo y genera vista previa con soporte de manual_data, ai_data y cálculos |
+| `cdep_update_execute` | Closure en `products.php:717` | Ejecuta actualizacion por lotes (offset) con soporte de manual_data, ai_data y cálculos |
+| `cdep_update_batch_skus` | Closure en `products.php:749` | Actualiza SKUs especificos por lote |
+| `cdep_update_single` | Closure en `products.php:797` | Actualiza un solo producto por SKU |
 
 ---
 

@@ -4,6 +4,31 @@ All notable changes to **Connexion Drive Excel Product** are documented here.
 
 ---
 
+## [1.1.56] - 2026-06-29
+
+### Added
+- Edición Manual per-row: `__manual__` option in create-field selects and brand/category config
+- Auto-manual Empty: checkbox (on by default) enables editable inputs for empty cell values
+- Cálculo: `__calc__` option in update (3 fields) and create (16 fields) selects for math expressions like `{columna} * 1.19`
+- `resolveCalc()` method: resolves `{variables}`, sanitizes with `preg_replace`, evaluates with `eval()`
+- Button `+` to insert variables in calc input (reuses template variable list)
+- Guardar Edición Manual button visible when manual fields are active
+- Per-field extra AI prompt with `{variable}` resolution via `resolveTemplate()`
+- `cdep_manual_data` localStorage key for manual data persistence
+
+### Fixed
+- `resolveCalc()` now sanitizes column values with `preg_replace('/[^0-9.eE\-]/', '', $v)` before `floatval()` to handle currency symbols and thousands separators
+- Auto-manual `empty()` replaced with `$newValue === ''` to avoid overriding legitimate zero values
+- `renderMapping()` preserves `__calc__` option in update field selects (was removed by `option:not(:first)`)
+- Variable button `+` click handler includes `.cdep-calc-wrap` selector for showing variable list
+- `restoreMappingConfig()` handles `calc:` prefix for both update and create fields
+
+### Changed
+- `resolveTemplate()` changed from `private` to `public static` for reuse in AI handler
+- AJAX endpoints `cdep_update_preview`, `cdep_update_execute`, `cdep_update_batch_skus`, `cdep_update_single` accept `manual_data` parameter
+- Mapping split in PHP preserves `calc:` strings for update fields (no longer destroyed by `intval()`)
+- CSS: `.cdep-manual-input` style (light yellow background, blue focus border)
+
 ## [1.1.46] - 2026-06-27
 
 ### Added

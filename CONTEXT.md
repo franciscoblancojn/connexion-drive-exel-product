@@ -1,6 +1,6 @@
 # Connexion Drive Excel Product — Contexto para IAs
 
-> Plugin WordPress v1.1.21 — Contexto actualizado automaticamente para que IAs entren en contexto rapido.
+> Plugin WordPress v1.1.56 — Contexto actualizado automaticamente para que IAs entren en contexto rapido.
 
 ---
 
@@ -44,7 +44,7 @@ src/
     _.php               -> Cargador data (require base.php)
     base.php            -> CDEP_USE_DATA_BASE: CRUD generico wp_options
   js/
-    admin.js            -> Frontend JS (~1000 lineas): OAuth, browse, mapping, update
+    admin.js            -> Frontend JS (~2000 lineas): OAuth, browse, mapping, update, AI, calculo, manual
   page/
     _.php               -> Cargador page (require add.php)
     add.php             -> add_menu_page(), enqueue assets, tabs con FWUPage
@@ -94,9 +94,10 @@ src/
 | `sanitizeValue($value, $type)` | (privado) Sanitiza valor segun tipo |
 | `getProductField($product, $field)` | (privado) Obtiene valor actual de un campo |
 | `setProductField($product, $field, $value, $type)` | (privado) Asigna valor a un campo via WooCommerce setter |
-| `resolveTemplate($template, $row, $headers, $configVars)` | (privado) Reemplaza `{var}` con valores de columna o config |
-| `validateMapping($allRows, $mapping, $headers, $configVars)` | Valida mapeo con vista previa; acepta headers y config_vars |
-| `executeUpdate($allRows, $mapping, $offset, $limit, $headers, $configVars)` | Ejecuta actualizacion por lotes (default 25) |
+| `resolveTemplate($template, $row, $headers, $configVars)` | (public static) Reemplaza `{var}` con valores de columna o config |
+| `resolveCalc($expression, $row, $headers, $configVars)` | (privado) Resuelve `{var}` y evalua expresion matematica con `eval()` |
+| `validateMapping($allRows, $mapping, $headers, $configVars, $aiData, $manualData)` | Valida mapeo con vista previa; acepta headers, config_vars, ai_data, manual_data |
+| `executeUpdate($allRows, $mapping, $offset, $limit, $headers, $configVars, $aiData, $manualData)` | Ejecuta actualizacion por lotes (default 25) |
 
 ### CDEP_USE_DATA_BASE (`src/data/base.php`)
 | Metodo | Descripcion |
@@ -122,7 +123,7 @@ src/
 ## AJAX Endpoints
 
 | Action | Handler | Linea | Proposito |
-|---|---|---|---|
+|---|---|---|---|---|
 | `cdep_save_config` | Closure en `drive.php` | 278 | Guarda credenciales OAuth |
 | `cdep_get_auth_url` | Closure en `drive.php` | 293 | Obtiene URL de autenticacion Google |
 | `cdep_drive_connect` | Closure en `drive.php` | 307 | Intercambia codigo OAuth por tokens |
@@ -132,10 +133,11 @@ src/
 | `cdep_refresh_cache` | Closure en `drive.php` | 375 | Redescarga y re-parsea archivo |
 | `cdep_reparse_file` | Closure en `drive.php` | 444 | Re-parsea con nueva fila de encabezados |
 | `cdep_drive_select_file` | Closure en `drive.php` | 486 | Descarga + parsea + cachea archivo |
-| `cdep_update_preview` | Closure en `products.php` | 413 | Validacion de mapeo con vista previa |
-| `cdep_update_execute` | Closure en `products.php` | 443 | Ejecuta actualizacion por lotes (offset) |
-| `cdep_update_batch_skus` | Closure en `products.php` | 473 | Actualiza SKUs especificos |
-| `cdep_update_single` | Closure en `products.php` | 520 | Actualiza un solo producto |
+| `cdep_ai_generate` | Closure en `products.php` | 738 | Genera contenido IA con prompt extra y variables |
+| `cdep_update_preview` | Closure en `products.php` | 690 | Validacion de mapeo con vista previa; soporta manual_data, ai_data, calc |
+| `cdep_update_execute` | Closure en `products.php` | 717 | Ejecuta actualizacion por lotes (offset); soporta manual_data, ai_data, calc |
+| `cdep_update_batch_skus` | Closure en `products.php` | 749 | Actualiza SKUs especificos |
+| `cdep_update_single` | Closure en `products.php` | 797 | Actualiza un solo producto |
 
 Todos los AJAX:
 - Verifican nonce con `check_ajax_referer('cdep_nonce', 'nonce')`
@@ -150,7 +152,7 @@ Todos los AJAX:
 ```php
 add_action('admin_menu', function() { ... })                -> Registra menu principal
 add_action('admin_enqueue_scripts', function($hook) { ... }) -> Encola CSS/JS en pagina del plugin
-add_action('wp_ajax_*', ...)                                 -> 13 AJAX endpoints (ver tabla)
+add_action('wp_ajax_*', ...)                                 -> 14 AJAX endpoints (ver tabla)
 ```
 
 ### Sin filtros ni hooks de frontend
@@ -191,8 +193,8 @@ El plugin no usa `wp_head`, `the_content`, ni ningun filtro de frontend. Solo op
 2. Auto-selecciona columnas detectadas (SKU, precio, precio oferta, cantidad)
 3. Usuario puede cambiar la fila de encabezados y re-parsear
 4. Usuario selecciona que columna corresponde a cada campo del producto:
-   - **Productos existentes (Actualizar)**: Solo 3 campos (regular_price, sale_price, stock_quantity) vía `.cdep-field-select`
-   - **Productos nuevos (Crear)**: 16 campos vía `.cdep-field-select-create`, con soporte de "Personalizar" (templates con `{columna}`)
+   - **Productos existentes (Actualizar)**: Solo 3 campos (regular_price, sale_price, stock_quantity) vía `.cdep-field-select`, con soporte de "Cálculo" (expresiones matemáticas)
+   - **Productos nuevos (Crear)**: 16 campos vía `.cdep-field-select-create`, con soporte de "Personalizar" (templates con `{columna}`), "Cálculo", "Edición Manual" y "Generar con IA"
 5. "Configuraciones de Creación" permite configurar valores fijos (ej: Marca desde `product_brand` taxonomy)
 6. "Vista Previa" llama a `cdep_update_preview` AJAX
 7. `CDEP_PRODUCTS::validateMapping()` cruza SKUs con WooCommerce, genera diffs
@@ -246,16 +248,24 @@ El plugin no usa `wp_head`, `the_content`, ni ningun filtro de frontend. Solo op
 ### Mapping keys
 `buildMapping()` retorna un objeto con:
 - `sku` → indice de columna SKU
-- `regular_price`, `sale_price`, `stock_quantity` → indices para actualizar existentes
-- `create_{field}` → para campos de creacion (indice de columna o `custom:template`)
+- `regular_price`, `sale_price`, `stock_quantity` → indices para actualizar existentes o `calc:expr`
+- `create_{field}` → para campos de creacion (indice de columna o `custom:template`, `__manual__`, `__ai__`, `calc:expr`)
 - `creation_brand` → nombre de la marca seleccionada
 - `config_vars` → objeto `{varname: value}` para resolver `{varname}` en templates
+- `auto_manual_empty` → `'1'` si el checkbox de auto-manual esta activado
 
-### Templates personalizados
-- Se almacenan con prefijo `custom:` (ej: `create_product_name = "custom:Reloj {marca} {name}"`)
-- `{marca}` se resuelve via `config_vars` (valores del formulario de configuracion)
-- `{nombre_columna}` se resuelve via `$headers` (nombres de columna del archivo)
-- `resolveTemplate()` revisa config_vars primero, luego columnas
+### Edicion Manual
+- Opcion `__manual__` en selects de creacion y configuracion (marca, categoria)
+- Valores guardados en `localStorage` key `cdep_manual_data` como `{sku: {field: value, __brand__: "...", __category__: "..."}}`
+- Boton "Guardar Edicion Manual" visible cuando hay campos manuales
+- `auto_manual_empty`: cuando activo y el valor de celda esta vacio, muestra input editable
+- En PHP: `$manualData[$sku][$field]` resuelve el valor manual
+
+### Calculos
+- Opcion `__calc__` en selects de actualizacion (3 campos) y creacion (16 campos)
+- Almacenado con prefijo `calc:` (ej: `regular_price = "calc:{columna} * 1.19"`)
+- `resolveCalc()` reemplaza `{var}`, sanitiza con `preg_replace('/[^0-9.eE\-]/', '', $v)`, valida y evalua con `eval()`
+- Mismo boton `+` para insertar variables que en templates e IA
 
 ### Marca
 - Select poblado desde taxonomy `product_brand`
@@ -263,6 +273,11 @@ El plugin no usa `wp_head`, `the_content`, ni ningun filtro de frontend. Solo op
 
 ### Product name como link
 - Cuando un producto existe, tanto SKU como Nombre son links a `post.php?action=edit&post={product_id}`
+
+### Contenido generado con IA
+- Opcion `__ai__` disponible en selects de creacion cuando AI esta habilitado
+- Contenido generado guardado en `localStorage` key `cdep_ai_cache`
+- Prompt extra por campo con soporte de `{variables}` resuelto via `resolveTemplate()`
 
 ---
 
@@ -272,7 +287,7 @@ El plugin no usa `wp_head`, `the_content`, ni ningun filtro de frontend. Solo op
 - Si el refresh token falta, el usuario debe reconectar
 - Los archivos temporales se guardan en `wp_upload_dir()` con nombre sanitizado
 - La barra de progreso usa porcentaje calculado sobre total de SKUs seleccionados
-- Admin.js usa `localStorage` para persistir: `cdep_folder` (navegacion) y `cdep_mapping_config` (mapeo)
+- Admin.js usa `localStorage` para persistir: `cdep_folder` (navegacion), `cdep_mapping_config` (mapeo), `cdep_ai_cache` (contenido generado por IA) y `cdep_manual_data` (datos de edicion manual por fila)
 - Admin.js expone `window.cdep` con `ajaxurl`, `nonce`, `is_connected`, `config`, `selected_file`, `oauth_url`, `productFields`
 - Si hay errores de conexion, verificar que `redirect_uri` en Google Cloud coincida exactamente con `admin_url('admin.php?page=CDEP')`
 
