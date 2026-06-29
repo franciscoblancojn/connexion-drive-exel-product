@@ -804,7 +804,7 @@ jQuery(function ($) {
     });
 
     $(document).on('click', '.cdep-template-variable-btn', function () {
-        var $wrap = $(this).closest('.cdep-custom-template-wrap, .cdep-ai-prompt-wrap');
+        var $wrap = $(this).closest('.cdep-custom-template-wrap, .cdep-calc-wrap, .cdep-ai-prompt-wrap');
         var $list = $wrap.find('.cdep-template-variables-list');
         if ($list.is(':visible')) {
             $list.hide();
