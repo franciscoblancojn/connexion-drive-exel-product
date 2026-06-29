@@ -566,6 +566,11 @@ jQuery(function ($) {
             mapping['attributes'] = attrs;
         }
 
+        // Auto-manual for empty values
+        if ($('#cdep-auto-manual-empty').is(':checked')) {
+            mapping['auto_manual_empty'] = '1';
+        }
+
         return mapping;
     }
 
@@ -1088,6 +1093,10 @@ jQuery(function ($) {
             + '</div>';
     }
 
+    function isAutoManualActive() {
+        return $('#cdep-auto-manual-empty').length && $('#cdep-auto-manual-empty').is(':checked');
+    }
+
     function renderProductsTable(products, mappedFields, productNameMapped, aiFields, manualFields, brandManual, categoryManual) {
         var html = '<div class="cdep-table-wrapper">';
         html += '<table class="wp-list-table widefat striped">';
@@ -1141,10 +1150,18 @@ jQuery(function ($) {
             if (productNameMapped && p.fields['product_name']) {
                 var isAiName = aiFields && aiFields.indexOf('product_name') !== -1;
                 var nameFd = p.fields['product_name'];
+                var nameEmpty = !nameFd || !nameFd.new || nameFd.new === '' || nameFd.new === null || nameFd.new === undefined;
+                var useAutoManualName = !isAiName && nameEmpty && isAutoManualActive();
                 if (isAiName && (!nameFd || !nameFd.new)) {
                     html += '<td class="cdep-field-cell-product_name"><span class="cdep-badge cdep-badge-ai">Pendiente de generar</span></td>';
                 } else if (isAiName) {
                     html += '<td class="cdep-field-cell-product_name"><button class="button button-small cdep-view-ai-content" data-sku="' + escHtml(p.sku) + '" data-field="product_name">Ver contenido generado con IA</button></td>';
+                } else if (useAutoManualName) {
+                    var autoNameVal = '';
+                    if (state.manualData && state.manualData[p.sku] && state.manualData[p.sku]['product_name'] !== undefined) {
+                        autoNameVal = state.manualData[p.sku]['product_name'];
+                    }
+                    html += '<td class="cdep-field-cell-product_name"><input type="text" class="cdep-manual-input" data-sku="' + escHtml(p.sku) + '" data-field="product_name" value="' + escHtml(autoNameVal) + '" style="width:100%" placeholder="Editar..."></td>';
                 } else {
                     var nameHtml = renderFieldCell(nameFd, p.exists);
                     if (p.exists && p.product_id) {
@@ -1185,6 +1202,8 @@ jQuery(function ($) {
                 var fd = p.fields[f.key];
                 var isAi = aiFields && aiFields.indexOf(f.key) !== -1;
                 var isManual = manualFields && manualFields.indexOf(f.key) !== -1;
+                var isEmpty = !fd || !fd.new || fd.new === '' || fd.new === null || fd.new === undefined;
+                var useAutoManual = !isAi && !isManual && isEmpty && isAutoManualActive();
                 if (isAi && (!fd || !fd.new)) {
                     html += '<td class="cdep-field-cell-' + f.key + '"><span class="cdep-badge cdep-badge-ai">Pendiente de generar</span></td>';
                 } else if (isAi) {
@@ -1197,6 +1216,12 @@ jQuery(function ($) {
                         savedVal = fd.new;
                     }
                     html += '<td class="cdep-field-cell-' + f.key + '"><input type="text" class="cdep-manual-input" data-sku="' + escHtml(p.sku) + '" data-field="' + f.key + '" value="' + escHtml(savedVal) + '" style="width:100%"></td>';
+                } else if (useAutoManual) {
+                    var autoVal = '';
+                    if (state.manualData && state.manualData[p.sku] && state.manualData[p.sku][f.key] !== undefined) {
+                        autoVal = state.manualData[p.sku][f.key];
+                    }
+                    html += '<td class="cdep-field-cell-' + f.key + '"><input type="text" class="cdep-manual-input" data-sku="' + escHtml(p.sku) + '" data-field="' + f.key + '" value="' + escHtml(autoVal) + '" style="width:100%" placeholder="Editar..."></td>';
                 } else {
                     html += '<td class="cdep-field-cell-' + f.key + '">' + (fd ? renderFieldCell(fd, p.exists) : '') + '</td>';
                 }
@@ -1497,7 +1522,8 @@ jQuery(function ($) {
             var hasAiFields = aiFields.length > 0;
             var brandManual = state.mapping && state.mapping['creation_brand'] === '__manual__';
             var categoryManual = state.mapping && state.mapping['creation_category'] === '__manual__';
-            var hasManualFields = manualFields.length > 0 || brandManual || categoryManual;
+            var autoManualActive = isAutoManualActive();
+            var hasManualFields = manualFields.length > 0 || brandManual || categoryManual || autoManualActive;
 
             html += '<h3>Productos a procesar</h3>';
             html += '<div class="cdep-preview-tabs-wrapper">';

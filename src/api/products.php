@@ -183,6 +183,8 @@ class CDEP_PRODUCTS
         if ($brandManual) $creationBrand = '';
         if ($categoryManual) $creationCategory = '';
 
+        $autoManualEmpty = isset($mapping['auto_manual_empty']) && $mapping['auto_manual_empty'] === '1';
+
         // Split mapping: update fields for existing products, create fields for new products
         $updateFields = array('regular_price', 'sale_price', 'stock_quantity');
         $updateMapping = array();
@@ -324,6 +326,10 @@ class CDEP_PRODUCTS
                 } else {
                     $newValue = isset($row[$colIndex]) ? trim($row[$colIndex]) : '';
                 }
+                // Auto-manual override: use manual data for empty values
+                if ($autoManualEmpty && empty($newValue) && isset($manualData[$sku][$field])) {
+                    $newValue = $manualData[$sku][$field];
+                }
                 $currentValue = $exists ? self::getProductField($product, $field) : '';
 
                 // Detect changes (numeric for prices/qty, string for text)
@@ -435,6 +441,8 @@ class CDEP_PRODUCTS
         if ($brandManual) $creationBrand = '';
         if ($categoryManual) $creationCategory = '';
 
+        $autoManualEmpty = isset($mapping['auto_manual_empty']) && $mapping['auto_manual_empty'] === '1';
+
         $batch = array_slice($allRows, $offset, $limit);
         $results = array(
             'updated' => 0,
@@ -487,6 +495,10 @@ class CDEP_PRODUCTS
                     } else {
                         $value = isset($row[$colIndex]) ? $row[$colIndex] : '';
                     }
+                    // Auto-manual override: use manual data for empty values
+                    if ($autoManualEmpty && empty($value) && isset($manualData[$sku][$field])) {
+                        $value = $manualData[$sku][$field];
+                    }
                     if ($value !== '') {
                         self::setProductField($product, $field, $value, self::$fields[$field]['type']);
                     }
@@ -499,8 +511,12 @@ class CDEP_PRODUCTS
                 // Manual brand/category override
                 if ($brandManual && isset($manualData[$sku]['__brand__'])) {
                     $effectiveBrand = sanitize_text_field($manualData[$sku]['__brand__']);
+                } elseif ($autoManualEmpty && empty($effectiveBrand) && isset($manualData[$sku]['__brand__'])) {
+                    $effectiveBrand = sanitize_text_field($manualData[$sku]['__brand__']);
                 }
                 if ($categoryManual && isset($manualData[$sku]['__category__'])) {
+                    $effectiveCategory = sanitize_text_field($manualData[$sku]['__category__']);
+                } elseif ($autoManualEmpty && empty($effectiveCategory) && isset($manualData[$sku]['__category__'])) {
                     $effectiveCategory = sanitize_text_field($manualData[$sku]['__category__']);
                 }
 

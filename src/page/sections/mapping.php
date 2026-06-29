@@ -195,6 +195,13 @@ $productFields = CDEP_PRODUCTS::getFields();
             </div>
 
             <p>
+                <label>
+                    <input type="checkbox" id="cdep-auto-manual-empty" checked>
+                    En caso de no tener valor, activar edición manual
+                </label>
+            </p>
+
+            <p>
                 <button id="cdep-preview-update" class="button button-primary">
                     Vista Previa de Actualización
                 </button>
