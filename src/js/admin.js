@@ -360,7 +360,13 @@ jQuery(function ($) {
         // Populate update field mapping selects (existing products)
         $('.cdep-field-select').each(function () {
             var $sel = $(this);
-            $sel.find('option:not(:first)').remove();
+            var baseVals = ['', '__calc__'];
+            $sel.find('option').each(function () {
+                var v = $(this).val();
+                if (v && baseVals.indexOf(v) === -1) {
+                    $(this).remove();
+                }
+            });
             $.each(data.headers, function (i, h) {
                 $sel.append('<option value="' + h.index + '">' + escHtml(h.name) + '</option>');
             });

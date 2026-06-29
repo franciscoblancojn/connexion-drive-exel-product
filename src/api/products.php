@@ -360,7 +360,7 @@ class CDEP_PRODUCTS
                     $newValue = isset($row[$colIndex]) ? trim($row[$colIndex]) : '';
                 }
                 // Auto-manual override: use manual data for empty values
-                if ($autoManualEmpty && empty($newValue) && isset($manualData[$sku][$field])) {
+                if ($autoManualEmpty && $newValue === '' && isset($manualData[$sku][$field])) {
                     $newValue = $manualData[$sku][$field];
                 }
                 $currentValue = $exists ? self::getProductField($product, $field) : '';
@@ -538,7 +538,7 @@ class CDEP_PRODUCTS
                         $value = isset($row[$colIndex]) ? $row[$colIndex] : '';
                     }
                     // Auto-manual override: use manual data for empty values
-                    if ($autoManualEmpty && empty($value) && isset($manualData[$sku][$field])) {
+                    if ($autoManualEmpty && $value === '' && isset($manualData[$sku][$field])) {
                         $value = $manualData[$sku][$field];
                     }
                     if ($value !== '') {
