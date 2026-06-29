@@ -235,7 +235,11 @@ class CDEP_PRODUCTS
                     }
                 }
             } elseif (isset(self::$fields[$key])) {
-                $updateMapping[$key] = intval($colIndex);
+                if (is_string($colIndex) && strpos($colIndex, 'calc:') === 0) {
+                    $updateMapping[$key] = $colIndex;
+                } else {
+                    $updateMapping[$key] = intval($colIndex);
+                }
                 $createMapping[$key] = intval($colIndex);
             }
         }
@@ -458,7 +462,11 @@ class CDEP_PRODUCTS
                     }
                 }
             } elseif (isset(self::$fields[$key])) {
-                $updateMapping[$key] = intval($colIndex);
+                if (is_string($colIndex) && strpos($colIndex, 'calc:') === 0) {
+                    $updateMapping[$key] = $colIndex;
+                } else {
+                    $updateMapping[$key] = intval($colIndex);
+                }
                 $createMapping[$key] = intval($colIndex);
             }
         }

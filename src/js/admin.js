@@ -431,7 +431,14 @@ jQuery(function ($) {
             var field = $(this).data('field');
             var val = $(this).val();
             if (val) {
-                mapping[field] = val;
+                if (val === '__calc__') {
+                    var calcExpr = $(this).closest('td').find('.cdep-calc-input').val();
+                    if (calcExpr) {
+                        mapping[field] = 'calc:' + calcExpr;
+                    }
+                } else {
+                    mapping[field] = val;
+                }
             }
         });
 
@@ -647,7 +654,14 @@ jQuery(function ($) {
             $('.cdep-field-select').each(function () {
                 var field = $(this).data('field');
                 if (mapping[field]) {
-                    $(this).val(mapping[field]);
+                    var val = mapping[field];
+                    if (typeof val === 'string' && val.indexOf('calc:') === 0) {
+                        $(this).val('__calc__');
+                        $(this).closest('td').find('.cdep-calc-input').val(val.substring(5));
+                        $(this).closest('td').find('.cdep-calc-wrap').show();
+                    } else {
+                        $(this).val(val);
+                    }
                 }
             });
             // Restore create fields
@@ -777,6 +791,17 @@ jQuery(function ($) {
     }
 
     // === CUSTOM TEMPLATE UI ===
+
+    $(document).on('change', '.cdep-field-select', function () {
+        var val = $(this).val();
+        var $td = $(this).closest('td');
+        var $calcWrap = $td.find('.cdep-calc-wrap');
+        if (val === '__calc__') {
+            $calcWrap.show();
+        } else {
+            $calcWrap.hide();
+        }
+    });
 
     $(document).on('change', '.cdep-field-select-create', function () {
         var val = $(this).val();
