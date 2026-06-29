@@ -147,12 +147,14 @@ class CDEP_PRODUCTS
         $resolved = preg_replace_callback('/\{([^}]+)\}/', function ($matches) use ($row, $headers, $configVars) {
             $placeholder = trim($matches[1]);
             if (isset($configVars[$placeholder])) {
-                return floatval($configVars[$placeholder]);
+                $v = $configVars[$placeholder];
+                return floatval(preg_replace('/[^0-9.eE\-]/', '', $v));
             }
             foreach ($headers as $h) {
                 if ($h['name'] === $placeholder) {
                     $idx = intval($h['index']);
-                    return isset($row[$idx]) ? floatval(trim($row[$idx])) : 0;
+                    $v = isset($row[$idx]) ? trim($row[$idx]) : '0';
+                    return floatval(preg_replace('/[^0-9.eE\-]/', '', $v));
                 }
             }
             return 0;
