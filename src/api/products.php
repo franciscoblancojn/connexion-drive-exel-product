@@ -597,23 +597,7 @@ class CDEP_PRODUCTS
                                 $effectiveBrand = isset($cond['apply']) ? sanitize_text_field($cond['apply']) : '';
                                 break;
                             }
-                            $effectiveBrand = '';
                         }
-                    }
-                    if (!empty($effectiveBrand)) {
-                        $attrs = $product->get_attributes();
-                        if (!is_array($attrs)) {
-                            $attrs = array();
-                        }
-                        $attrs['brand'] = array(
-                            'name' => 'Brand',
-                            'value' => $effectiveBrand,
-                            'position' => 0,
-                            'is_visible' => 1,
-                            'is_variation' => 0,
-                            'is_taxonomy' => 0,
-                        );
-                        $product->set_attributes($attrs);
                     }
 
                     // Check conditional category (after brand but before saving)
@@ -642,6 +626,17 @@ class CDEP_PRODUCTS
                 $product->save();
 
                 if ($isNew) {
+                    // Apply brand term via taxonomy (after save to have product ID)
+                    if (!empty($effectiveBrand)) {
+                        $brandTerm = get_term_by('name', $effectiveBrand, 'product_brand');
+                        if (!$brandTerm) {
+                            $brandTerm = get_term_by('slug', $effectiveBrand, 'product_brand');
+                        }
+                        if ($brandTerm) {
+                            wp_set_object_terms($product->get_id(), array(intval($brandTerm->term_id)), 'product_brand', true);
+                        }
+                    }
+
                     // Apply all categories to the product (after save to have product ID)
                     if (!empty($effectiveCategories)) {
                         $catTermIds = array();
@@ -688,6 +683,16 @@ class CDEP_PRODUCTS
                                     continue;
                                 }
                                 $termName = $matchedTerm;
+                            } elseif ($termName === '__manual__') {
+                                // Resolve manual attribute from manualData
+                                $manualTerm = '';
+                                if (isset($manualData[$sku][$taxonomyName])) {
+                                    $manualTerm = sanitize_text_field($manualData[$sku][$taxonomyName]);
+                                }
+                                if (empty($manualTerm)) {
+                                    continue;
+                                }
+                                $termName = $manualTerm;
                             } elseif (empty($termName)) {
                                 continue;
                             }

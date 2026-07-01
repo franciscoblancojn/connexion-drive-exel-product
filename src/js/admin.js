@@ -512,25 +512,24 @@ jQuery(function ($) {
                     conditions[target] = condList;
                 }
                 // Do NOT add to config_vars since it's conditional
-            } else if (selectedVal === '__manual__') {
+                } else if (selectedVal === '__manual__') {
                 // Edicion Manual: set marker in mapping for per-row manual input
                 if (label === 'marca') {
                     mapping['creation_brand'] = '__manual__';
                 } else if (label === 'categoría') {
                     mapping['creation_category'] = '__manual__';
-                    // Also collect extra categories with real values
-                    var extraCats = [];
+                    // Collect all categories with real values (including primary)
+                    var allCats = [];
                     var $categorySelects = $('#cdep-categories-container .cdep-category-select');
-                    $categorySelects.each(function (idx) {
-                        if (idx === 0) return;
+                    $categorySelects.each(function () {
                         var v = $(this).val();
                         var t = $(this).find('option:selected').text();
                         if (v && v !== '__condicionar__' && v !== '__manual__') {
-                            extraCats.push(t);
+                            allCats.push(t);
                         }
                     });
-                    if (extraCats.length > 0) {
-                        mapping['creation_categories'] = extraCats;
+                    if (allCats.length > 0) {
+                        mapping['creation_categories'] = allCats;
                     }
                 }
             } else if (selectedVal) {
@@ -1643,6 +1642,27 @@ jQuery(function ($) {
             }
             data[sku][field] = value;
         });
+        // Collect manual attribute selects
+        $('#' + containerId + ' .cdep-manual-attr-select').each(function () {
+            var sku = $(this).data('sku');
+            var attrLabel = $(this).data('attr');
+            var value = $(this).val();
+            if (!value) return;
+            // Map attribute label back to taxonomy name
+            var taxonomies = getAttributeTaxonomies();
+            var taxonomyName = '';
+            $.each(taxonomies, function (ti, tax) {
+                if (tax.attribute_label === attrLabel || tax.attribute_name === attrLabel) {
+                    taxonomyName = tax.attribute_name;
+                    return false;
+                }
+            });
+            if (!taxonomyName) return;
+            if (!data[sku]) {
+                data[sku] = {};
+            }
+            data[sku][taxonomyName] = value;
+        });
         // Collect categories: group all category selects per SKU into __categories__ array
         var allCats = {};
         $('#' + containerId + ' .cdep-manual-category-select').each(function () {
@@ -2057,6 +2077,27 @@ jQuery(function ($) {
                 manualData[sku] = {};
             }
             manualData[sku][field] = value;
+        });
+
+        // Collect manual attribute selects
+        $('#cdep-preview-create-content .cdep-manual-attr-select').each(function () {
+            var sku = $(this).data('sku');
+            var attrLabel = $(this).data('attr');
+            var value = $(this).val();
+            if (!value) return;
+            var taxonomies = getAttributeTaxonomies();
+            var taxonomyName = '';
+            $.each(taxonomies, function (ti, tax) {
+                if (tax.attribute_label === attrLabel || tax.attribute_name === attrLabel) {
+                    taxonomyName = tax.attribute_name;
+                    return false;
+                }
+            });
+            if (!taxonomyName) return;
+            if (!manualData[sku]) {
+                manualData[sku] = {};
+            }
+            manualData[sku][taxonomyName] = value;
         });
 
         // Collect categories specially: group by SKU
