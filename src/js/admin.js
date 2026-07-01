@@ -1189,15 +1189,20 @@ jQuery(function ($) {
     $(document).on('click', '.cdep-category-add-row', function () {
         var sku = $(this).data('sku');
         var $container = $(this).siblings('.cdep-row-categories-container');
-        var catOptions = '';
-        if ($('#cdep-categories-container .cdep-category-select').first().length) {
-            catOptions = $('#cdep-categories-container .cdep-category-select').first().html();
-        }
-        if (!catOptions) {
-            catOptions = '<option value="">— Sin categoría —</option>';
+        var catOptsHtml = '<option value="">— Sin categoría —</option>';
+        var $firstCatSelect = $('#cdep-categories-container .cdep-category-select').first();
+        if ($firstCatSelect.length) {
+            var seen = {};
+            $firstCatSelect.find('option').each(function () {
+                var v = $(this).val();
+                if (v && v !== '__condicionar__' && v !== '__manual__' && !seen[v]) {
+                    seen[v] = true;
+                    catOptsHtml += '<option value="' + v + '">' + $(this).text() + '</option>';
+                }
+            });
         }
         var $newItem = $('<div class="cdep-row-category-item" style="margin-top:2px">');
-        $newItem.append('<select class="cdep-manual-input" data-sku="' + escHtml(sku) + '" data-field="__category__" style="width:calc(100% - 24px)">' + catOptions + '</select>');
+        $newItem.append('<select class="cdep-manual-input" data-sku="' + escHtml(sku) + '" data-field="__category__" style="width:calc(100% - 24px)">' + catOptsHtml + '</select>');
         $newItem.append('<button type="button" class="button button-small cdep-row-category-remove" style="width:22px;padding:0">×</button>');
         $container.append($newItem);
     });
@@ -1290,11 +1295,18 @@ jQuery(function ($) {
         });
         html += '</tr></thead><tbody>';
 
-        var catOptions = '';
+        var catOptions = [];
         if (categoryManual || brandManual) {
             var $firstCatSelect = $('#cdep-categories-container .cdep-category-select').first();
             if ($firstCatSelect.length) {
-                catOptions = $firstCatSelect.html();
+                var seen = {};
+                $firstCatSelect.find('option').each(function () {
+                    var v = $(this).val();
+                    if (v && v !== '__condicionar__' && v !== '__manual__' && !seen[v]) {
+                        seen[v] = true;
+                        catOptions.push({ value: v, text: $(this).text() });
+                    }
+                });
             }
         }
 
@@ -1361,32 +1373,33 @@ jQuery(function ($) {
                     html += '<td>';
                     html += '<select class="cdep-manual-input cdep-manual-category-select" data-sku="' + escHtml(p.sku) + '" data-field="__category__" style="width:100%">';
                     html += '<option value="">— Sin categoría —</option>';
-                    // Populate with available categories
                     if (catOptions) {
-                        html += catOptions.replace(new RegExp(' value="' + savedCat.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '"'), ' value="' + savedCat + '" selected');
+                        $.each(catOptions, function (i, opt) {
+                            var sel = opt.value === savedCat ? ' selected' : '';
+                            html += '<option value="' + opt.value + '"' + sel + '>' + escHtml(opt.text) + '</option>';
+                        });
                     }
                     html += '</select>';
                     html += '<button type="button" class="button button-small cdep-category-add-row" data-sku="' + escHtml(p.sku) + '" style="margin-top:2px">+ Categoría</button>';
                     html += '<div class="cdep-row-categories-container" data-sku="' + escHtml(p.sku) + '">';
-                    // Load saved extra categories
-                    if (state.manualData && state.manualData[p.sku] && state.manualData[p.sku]['__extra_categories__']) {
-                        var extraCats = state.manualData[p.sku]['__extra_categories__'];
-                        $.each(extraCats, function (ci, catVal) {
-                            html += '<div class="cdep-row-category-item" style="margin-top:2px">';
-                            html += '<select class="cdep-manual-input" data-sku="' + escHtml(p.sku) + '" data-field="__category__" style="width:calc(100% - 24px)">';
-                            html += '<option value="">— Sin categoría —</option>';
-                            if (catOptions) {
-                                var catHtml = catOptions;
-                                catHtml = catHtml.replace(/<option value="([^"]*)">/g, function (m, v) {
-                                    var selected = v === catVal ? ' selected' : '';
-                                    return '<option value="' + v + '"' + selected + '>';
-                                });
-                                html += catHtml;
-                            }
-                            html += '</select>';
-                            html += '<button type="button" class="button button-small cdep-row-category-remove" style="width:22px;padding:0">×</button>';
-                            html += '</div>';
-                        });
+                    // Load saved extra categories from __categories__ array (index 1+)
+                    var allSavedCats = [];
+                    if (state.manualData && state.manualData[p.sku] && state.manualData[p.sku]['__categories__']) {
+                        allSavedCats = state.manualData[p.sku]['__categories__'];
+                    }
+                    for (var ci = 1; ci < allSavedCats.length; ci++) {
+                        html += '<div class="cdep-row-category-item" style="margin-top:2px">';
+                        html += '<select class="cdep-manual-input" data-sku="' + escHtml(p.sku) + '" data-field="__category__" style="width:calc(100% - 24px)">';
+                        html += '<option value="">— Sin categoría —</option>';
+                        if (catOptions) {
+                            $.each(catOptions, function (i, opt) {
+                                var sel = opt.value === allSavedCats[ci] ? ' selected' : '';
+                                html += '<option value="' + opt.value + '"' + sel + '>' + escHtml(opt.text) + '</option>';
+                            });
+                        }
+                        html += '</select>';
+                        html += '<button type="button" class="button button-small cdep-row-category-remove" style="width:22px;padding:0">×</button>';
+                        html += '</div>';
                     }
                     html += '</div>';
                     html += '</td>';
