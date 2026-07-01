@@ -518,6 +518,20 @@ jQuery(function ($) {
                     mapping['creation_brand'] = '__manual__';
                 } else if (label === 'categoría') {
                     mapping['creation_category'] = '__manual__';
+                    // Also collect extra categories with real values
+                    var extraCats = [];
+                    var $categorySelects = $('#cdep-categories-container .cdep-category-select');
+                    $categorySelects.each(function (idx) {
+                        if (idx === 0) return;
+                        var v = $(this).val();
+                        var t = $(this).find('option:selected').text();
+                        if (v && v !== '__condicionar__' && v !== '__manual__') {
+                            extraCats.push(t);
+                        }
+                    });
+                    if (extraCats.length > 0) {
+                        mapping['creation_categories'] = extraCats;
+                    }
                 }
             } else if (selectedVal) {
                 // Map brand/category fields to mapping keys
@@ -1159,16 +1173,20 @@ jQuery(function ($) {
     function createCategoryItem() {
         var $item = $('<div class="cdep-category-item" style="margin-top:4px">');
         var $select = $('<select class="cdep-category-select" style="width:calc(100% - 28px)">');
-        $select.append('<option value="">— Sin categoría —</option>');
-        // Copy options from the first category select
+        // Copy options from the first category select (skip empty, __condicionar__, __manual__)
         var $firstSelect = $('#cdep-categories-container .cdep-category-select').first();
         if ($firstSelect.length) {
+            var seen = {};
             $firstSelect.find('option').each(function () {
                 var v = $(this).val();
-                if (v !== '__condicionar__') {
+                if (v && v !== '__condicionar__' && v !== '__manual__' && !seen[v]) {
+                    seen[v] = true;
                     $select.append('<option value="' + v + '">' + $(this).text() + '</option>');
                 }
             });
+        }
+        if ($select.find('option').length === 0) {
+            $select.append('<option value="">— Sin categoría —</option>');
         }
         $item.append($select);
         var $removeBtn = $('<button type="button" class="button button-small cdep-category-remove">×</button>');
@@ -1369,6 +1387,8 @@ jQuery(function ($) {
                         savedCat = state.manualData[p.sku]['__category__'];
                     } else if (state.manualData && state.manualData[p.sku] && state.manualData[p.sku]['__categories__'] && state.manualData[p.sku]['__categories__'].length > 0) {
                         savedCat = state.manualData[p.sku]['__categories__'][0];
+                    } else if (state.mapping && state.mapping['creation_categories'] && state.mapping['creation_categories'].length > 0) {
+                        savedCat = state.mapping['creation_categories'][0];
                     }
                     html += '<td>';
                     html += '<select class="cdep-manual-input cdep-manual-category-select" data-sku="' + escHtml(p.sku) + '" data-field="__category__" style="width:100%">';
@@ -1382,9 +1402,12 @@ jQuery(function ($) {
                     html += '</select>';
                     html += '<div class="cdep-row-categories-container" data-sku="' + escHtml(p.sku) + '">';
                     // Load saved extra categories from __categories__ array (index 1+)
+                    // Fallback to creation_categories from mapping config when no manual data yet
                     var allSavedCats = [];
                     if (state.manualData && state.manualData[p.sku] && state.manualData[p.sku]['__categories__']) {
                         allSavedCats = state.manualData[p.sku]['__categories__'];
+                    } else if (state.mapping && state.mapping['creation_categories'] && state.mapping['creation_categories'].length > 0) {
+                        allSavedCats = state.mapping['creation_categories'];
                     }
                     for (var ci = 1; ci < allSavedCats.length; ci++) {
                         html += '<div class="cdep-row-category-item" style="margin-top:2px">';
