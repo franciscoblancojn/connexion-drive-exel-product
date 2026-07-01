@@ -799,6 +799,13 @@ add_action('wp_ajax_cdep_ai_generate', function () {
     $headers = isset($cached['headers']) ? $cached['headers'] : array();
     $configVars = isset($mapping['config_vars']) ? $mapping['config_vars'] : array();
     $creationBrand = isset($mapping['creation_brand']) ? $mapping['creation_brand'] : '';
+    $marcaDescription = '';
+    if (!empty($creationBrand)) {
+        $term = get_term_by('name', $creationBrand, 'product_brand');
+        if ($term && !is_wp_error($term)) {
+            $marcaDescription = term_description($term->term_id, 'product_brand');
+        }
+    }
     $allRows = $cached['all_rows'];
 
     // Build create mapping to know which fields are __ai__ and extract extra prompts
@@ -873,9 +880,95 @@ add_action('wp_ajax_cdep_ai_generate', function () {
             if ($field === 'product_name') {
                 $prompt = "Genera SOLO el nombre del producto, descriptivo y atractivo. Máximo 100 caracteres. Sin HTML. Ejemplo: Bolso Michael Kors Once Original\n\nDatos:\n" . $context . "\n";
             } elseif ($field === 'short_description') {
-                $prompt = "Escribe UNA SOLA FRASE persuasiva de máximo 200 caracteres describiendo el producto. Sin HTML, sin títulos, sin etiquetas. Texto plano.\n\nDatos del producto:\n" . $context . "\n";
+                $prompt = "
+                Eres un especialista senior en contenido para ecommerce, SEO orgánico, GEO, búsqueda por IA, búsqueda por voz y WooCommerce.
+
+                Genera SOLO la descripción corta del producto.
+
+                REGLAS OBLIGATORIAS:
+                - Una sola frase.
+                - Máximo 200 caracteres.
+                - Texto plano.
+                - Sin HTML.
+                - Sin títulos.
+                - Sin etiquetas.
+                - Sin emojis.
+                - Sin comillas.
+                - Sin listas.
+                - No inventes información.
+                - Usa únicamente los datos del producto entregados en CONTEXTO.
+                - Si falta un dato, omítelo.
+                - Debe ser comercial, clara, natural y persuasiva.
+                - Debe incluir el nombre o tipo de producto.
+                - Debe mencionar el beneficio principal.
+                - Debe incluir marca, material, uso o característica destacada solo si existe en el contexto.
+                - Debe estar optimizada para SEO, GEO, IA y búsquedas por voz sin sobrecargar palabras clave.
+                - Finaliza obligatoriamente con: Ref. REFERENCIA
+                - Reemplaza REFERENCIA por la referencia real del producto.
+
+                CONTEXTO DEL PRODUCTO:
+                " . $context . "
+
+                SALIDA:
+                Devuelve únicamente la descripción corta final.
+                ";
                 } elseif ($field === 'description') {
-                    $prompt = "Escribe una descripción completa del producto con 3-4 secciones. Usa <h2> para títulos de sección y <p> para párrafos. Describe materiales, diseño, características y beneficios.\n\nDatos del producto:\n" . $context . "\n";
+                    $prompt = "
+                    Eres un especialista senior en contenido para ecommerce, SEO orgánico, GEO, búsqueda por IA, búsqueda por voz, WooCommerce y conversión.
+
+                    Genera SOLO la descripción larga del producto en HTML limpio.
+
+                    OBJETIVO:
+                    Crear una descripción enriquecida, clara, confiable y optimizada para motores de búsqueda tradicionales, Google AI, Gemini, ChatGPT, Copilot, Perplexity y asistentes de voz.
+
+                    REGLAS OBLIGATORIAS:
+                    - Usa únicamente los datos entregados en CONTEXTO.
+                    - No inventes información técnica.
+                    - Si falta un dato, omítelo.
+                    - No menciones datos no confirmados.
+                    - No uses frases genéricas como 'el mejor', 'alta calidad' o 'producto increíble'.
+                    - No repitas información.
+                    - No uses CSS.
+                    - No uses JavaScript.
+                    - No uses estilos inline.
+                    - HTML permitido: <h2>, <h3>, <p>, <ul>, <li>, <strong>, <table>, <tr>, <td>.
+                    - Extensión máxima: 1000 caracteres.
+                    - Lenguaje comercial, natural y profesional.
+                    - Optimiza para SEO, GEO, IA y búsqueda por voz.
+                    - Responde de forma natural: qué es, para qué sirve, para quién es, beneficios y características.
+
+                    ESTRUCTURA OBLIGATORIA:
+
+                    1. Primer párrafo:
+                    Describe qué es el producto, para quién está diseñado y cuál es su principal beneficio.
+
+                    2. Sección:
+                    <h2>Beneficios principales</h2>
+                    Incluye 3 a 5 beneficios reales basados en el contexto.
+
+                    3. Sección:
+                    <h2>Características del producto</h2>
+                    Explica materiales, diseño, uso, resistencia, garantía, marca o funcionalidad solo si existen en el contexto.
+
+                    4. Sección:
+                    <h2>Especificaciones técnicas</h2>
+                    Crea una tabla HTML solo con los datos disponibles.
+                    No incluyas filas vacías.
+
+                    5. Cierre comercial:
+                    Incluye una frase natural de confianza para comprar en Grupsity.com, mencionando originalidad, compra segura, envío en Colombia, IVA incluido o financiación solo si aplica según el contexto.
+
+                    CONTEXTO DEL PRODUCTO:
+                    " . $context . "
+
+                    SALIDA:
+                    Devuelve únicamente el HTML final de la descripción larga.
+                    ";
+            }
+
+            // Append brand description if available
+            if (!empty($marcaDescription)) {
+                $prompt .= "\n\nDescripcion de la marca:\n" . $marcaDescription;
             }
 
             // Append extra prompt if provided (with variable resolution)
