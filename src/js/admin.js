@@ -740,14 +740,27 @@ jQuery(function ($) {
             if (mapping['creation_brand']) {
                 $('#creation-brand').val(mapping['creation_brand']);
             }
-            if (mapping['creation_categories'] && mapping['creation_categories'].length > 0) {
-                // Restore first category
+            if (mapping['creation_category'] === '__manual__') {
+                // Manual mode: primary select stays __manual__, all categories become extra selects
+                var $firstSelect = $('#cdep-categories-container .cdep-category-select').first();
+                if ($firstSelect.length) {
+                    $firstSelect.val('__manual__');
+                }
+                if (mapping['creation_categories'] && mapping['creation_categories'].length > 0) {
+                    for (var ci = 0; ci < mapping['creation_categories'].length; ci++) {
+                        var $newItem = createCategoryItem();
+                        $newItem.find('.cdep-category-select').val(mapping['creation_categories'][ci]);
+                        $('#cdep-categories-container').append($newItem);
+                    }
+                }
+            } else if (mapping['creation_categories'] && mapping['creation_categories'].length > 0) {
+                // Restore first category in primary select
                 var firstCat = mapping['creation_categories'][0];
                 var $firstSelect = $('#cdep-categories-container .cdep-category-select').first();
                 if ($firstSelect.length) {
                     $firstSelect.val(firstCat);
                 }
-                // Restore additional categories
+                // Restore additional categories as extra selects
                 for (var ci = 1; ci < mapping['creation_categories'].length; ci++) {
                     var $newItem = createCategoryItem();
                     $newItem.find('.cdep-category-select').val(mapping['creation_categories'][ci]);
