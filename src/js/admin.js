@@ -442,6 +442,8 @@ jQuery(function ($) {
                     if (calcExpr) {
                         mapping[field] = 'calc:' + calcExpr;
                     }
+                } else if (val === '__manual__') {
+                    mapping[field] = '__manual__';
                 } else {
                     mapping[field] = val;
                 }
@@ -522,7 +524,26 @@ jQuery(function ($) {
                 if (label === 'marca') {
                     mapping['creation_brand'] = selectedText;
                 } else if (label === 'categoría') {
-                    mapping['creation_category'] = selectedText;
+                    // Collect all categories from the container
+                    var categories = [];
+                    var firstCategoryText = '';
+                    var $categorySelects = $('#cdep-categories-container .cdep-category-select');
+                    $categorySelects.each(function () {
+                        var v = $(this).val();
+                        var t = $(this).find('option:selected').text();
+                        if (v && v !== '__condicionar__' && v !== '__manual__') {
+                            categories.push(t);
+                            if (!firstCategoryText) {
+                                firstCategoryText = t;
+                            }
+                        }
+                    });
+                    if (categories.length > 0) {
+                        mapping['creation_categories'] = categories;
+                        mapping['creation_category'] = firstCategoryText;
+                    } else {
+                        mapping['creation_category'] = '';
+                    }
                 }
 
                 // Config vars for templates (use text, not value)
@@ -559,7 +580,8 @@ jQuery(function ($) {
             if (!taxonomy) return;
             var term = $item.find('.cdep-attribute-term-select').val();
             var isCond = term === '__condicionar__';
-            if (!isCond && !term) return;
+            var isManualAttr = term === '__manual__';
+            if (!isCond && !isManualAttr && !term) return;
             var attrCondList = [];
             if (isCond) {
                 $item.find('.cdep-attribute-condition-row .cdep-condition-item').each(function () {
@@ -580,7 +602,7 @@ jQuery(function ($) {
             }
             attrs.push({
                 taxonomy: taxonomy,
-                term: isCond ? '' : term,
+                term: isCond ? '' : (isManualAttr ? '__manual__' : term),
                 conditions: attrCondList.length > 0 ? attrCondList : null
             });
         });
@@ -665,6 +687,8 @@ jQuery(function ($) {
                         $(this).val('__calc__');
                         $(this).closest('td').find('.cdep-calc-input').val(val.substring(5));
                         $(this).closest('td').find('.cdep-calc-wrap').show();
+                    } else if (val === '__manual__') {
+                        $(this).val('__manual__');
                     } else {
                         $(this).val(val);
                     }
@@ -702,8 +726,24 @@ jQuery(function ($) {
             if (mapping['creation_brand']) {
                 $('#creation-brand').val(mapping['creation_brand']);
             }
-            if (mapping['creation_category']) {
-                $('#creation-category').val(mapping['creation_category']);
+            if (mapping['creation_categories'] && mapping['creation_categories'].length > 0) {
+                // Restore first category
+                var firstCat = mapping['creation_categories'][0];
+                var $firstSelect = $('#cdep-categories-container .cdep-category-select').first();
+                if ($firstSelect.length) {
+                    $firstSelect.val(firstCat);
+                }
+                // Restore additional categories
+                for (var ci = 1; ci < mapping['creation_categories'].length; ci++) {
+                    var $newItem = createCategoryItem();
+                    $newItem.find('.cdep-category-select').val(mapping['creation_categories'][ci]);
+                    $('#cdep-categories-container').append($newItem);
+                }
+            } else if (mapping['creation_category']) {
+                var $catSelect = $('#cdep-categories-container .cdep-category-select').first();
+                if ($catSelect.length) {
+                    $catSelect.val(mapping['creation_category']);
+                }
             }
 
             // Restore conditions
@@ -716,7 +756,7 @@ jQuery(function ($) {
                         if (!$.isArray(condList)) {
                             condList = [condList];
                         }
-                        var $select = target === 'marca' ? $('#creation-brand') : $('#creation-category');
+                        var $select = target === 'marca' ? $('#creation-brand') : $('#cdep-categories-container .cdep-category-select').first();
                         $select.val('__condicionar__');
                         var $row = $('.cdep-condition-row[data-condition="' + target + '"]');
                         $row.show();
@@ -910,8 +950,8 @@ jQuery(function ($) {
         } else {
             fieldsHtml += '<select class="cdep-condition-apply" style="width:100%">'
                 + '<option value="">— Categoría a aplicar —</option>';
-            var catOptions = $('#creation-category option').not('[value=""], [value="__condicionar__"]');
-            catOptions.each(function () {
+            var $catOpts = $('#cdep-categories-container .cdep-category-select').first().find('option').not('[value=""], [value="__condicionar__"], [value="__manual__"]');
+            $catOpts.each(function () {
                 fieldsHtml += '<option value="' + $(this).val() + '">' + $(this).text() + '</option>';
             });
             fieldsHtml += '</select>';
@@ -993,7 +1033,7 @@ jQuery(function ($) {
         });
         var html = '<div class="cdep-attribute-fields">'
             + '<select class="cdep-attribute-select" style="width:100%">' + taxOptions + '</select>'
-            + '<select class="cdep-attribute-term-select" style="width:100%"><option value="">— Término —</option><option value="__condicionar__">Condicionar</option></select>'
+            + '<select class="cdep-attribute-term-select" style="width:100%"><option value="">— Término —</option><option value="__condicionar__">Condicionar</option><option value="__manual__">Edición Manual</option></select>'
             + '<button type="button" class="button button-small cdep-attribute-remove">×</button>'
             + '</div>'
             + '<div class="cdep-attribute-condition-row cdep-condition-row" style="display:none;margin-top:4px">'
@@ -1036,9 +1076,9 @@ jQuery(function ($) {
 
     function populateAttributeTerms($item, taxonomy) {
         var $termSel = $item.find('.cdep-attribute-term-select');
-        // Keep empty option and __condicionar__, remove old terms
+        // Keep empty option, __condicionar__, and __manual__, remove old terms
         $termSel.find('option').filter(function () {
-            return $(this).val() !== '' && $(this).val() !== '__condicionar__';
+            return $(this).val() !== '' && $(this).val() !== '__condicionar__' && $(this).val() !== '__manual__';
         }).remove();
         if (!taxonomy) return;
         var taxonomies = getAttributeTaxonomies();
@@ -1114,6 +1154,58 @@ jQuery(function ($) {
         $(this).closest('.cdep-attribute-item').remove();
     });
 
+    // === CATEGORIES UI ===
+
+    function createCategoryItem() {
+        var $item = $('<div class="cdep-category-item" style="margin-top:4px">');
+        var $select = $('<select class="cdep-category-select" style="width:calc(100% - 28px)">');
+        $select.append('<option value="">— Sin categoría —</option>');
+        // Copy options from the first category select
+        var $firstSelect = $('#cdep-categories-container .cdep-category-select').first();
+        if ($firstSelect.length) {
+            $firstSelect.find('option').each(function () {
+                var v = $(this).val();
+                if (v !== '__condicionar__') {
+                    $select.append('<option value="' + v + '">' + $(this).text() + '</option>');
+                }
+            });
+        }
+        $item.append($select);
+        var $removeBtn = $('<button type="button" class="button button-small cdep-category-remove">×</button>');
+        $item.append($removeBtn);
+        return $item;
+    }
+
+    $(document).on('click', '.cdep-category-add', function () {
+        var $item = createCategoryItem();
+        $('#cdep-categories-container').append($item);
+    });
+
+    $(document).on('click', '.cdep-category-remove', function () {
+        $(this).closest('.cdep-category-item').remove();
+    });
+
+    // Row-level category add/remove in preview table
+    $(document).on('click', '.cdep-category-add-row', function () {
+        var sku = $(this).data('sku');
+        var $container = $(this).siblings('.cdep-row-categories-container');
+        var catOptions = '';
+        if ($('#cdep-categories-container .cdep-category-select').first().length) {
+            catOptions = $('#cdep-categories-container .cdep-category-select').first().html();
+        }
+        if (!catOptions) {
+            catOptions = '<option value="">— Sin categoría —</option>';
+        }
+        var $newItem = $('<div class="cdep-row-category-item" style="margin-top:2px">');
+        $newItem.append('<select class="cdep-manual-input" data-sku="' + escHtml(sku) + '" data-field="__category__" style="width:calc(100% - 24px)">' + catOptions + '</select>');
+        $newItem.append('<button type="button" class="button button-small cdep-row-category-remove" style="width:22px;padding:0">×</button>');
+        $container.append($newItem);
+    });
+
+    $(document).on('click', '.cdep-row-category-remove', function () {
+        $(this).closest('.cdep-row-category-item').remove();
+    });
+
     // Override the condition-add inside attribute condition rows to use attribute-specific items
     $(document).on('click', '.cdep-attribute-condition-row .cdep-condition-add', function () {
         var $row = $(this).closest('.cdep-attribute-condition-row');
@@ -1163,7 +1255,7 @@ jQuery(function ($) {
         return $('#cdep-auto-manual-empty').length && $('#cdep-auto-manual-empty').is(':checked');
     }
 
-    function renderProductsTable(products, mappedFields, productNameMapped, aiFields, manualFields, brandManual, categoryManual) {
+    function renderProductsTable(products, mappedFields, productNameMapped, aiFields, manualFields, brandManual, categoryManual, hideCategoriesAttributes) {
         var html = '<div class="cdep-table-wrapper">';
         html += '<table class="wp-list-table widefat striped">';
         html += '<colgroup>';
@@ -1173,8 +1265,10 @@ jQuery(function ($) {
         html += '<col style="width: 70px;">';
         html += '<col style="width: auto;">';
         html += '<col style="width: auto;">';
-        html += '<col style="width: auto;">';
-        html += '<col style="width: auto;">';
+        if (!hideCategoriesAttributes) {
+            html += '<col style="width: auto;">';
+            html += '<col style="width: auto;">';
+        }
         if (brandManual) {
             html += '<col style="width: auto;">';
         }
@@ -1184,7 +1278,10 @@ jQuery(function ($) {
         html += '</colgroup>';
         html += '<thead><tr>';
         html += '<th style="width:40px"><input type="checkbox" class="cdep-select-all" checked></th>';
-        html += '<th>Acción</th><th>Estado</th><th>Imagen</th><th>SKU</th><th>Nombre</th><th>Categorías</th><th>Atributos</th>';
+        html += '<th>Acción</th><th>Estado</th><th>Imagen</th><th>SKU</th><th>Nombre</th>';
+        if (!hideCategoriesAttributes) {
+            html += '<th>Categorías</th><th>Atributos</th>';
+        }
         if (brandManual) {
             html += '<th>Marca</th>';
         }
@@ -1192,6 +1289,14 @@ jQuery(function ($) {
             html += '<th>' + escHtml(f.label) + '</th>';
         });
         html += '</tr></thead><tbody>';
+
+        var catOptions = '';
+        if (categoryManual || brandManual) {
+            var $firstCatSelect = $('#cdep-categories-container .cdep-category-select').first();
+            if ($firstCatSelect.length) {
+                catOptions = $firstCatSelect.html();
+            }
+        }
 
         $.each(products, function (i, p) {
             var statusBadge = renderStatusBadge(p.status);
@@ -1243,27 +1348,117 @@ jQuery(function ($) {
                     html += '<td>' + escHtml(p.name) + '</td>';
                 }
             }
-            if (categoryManual) {
-                var savedCat = '';
-                if (state.manualData && state.manualData[p.sku] && state.manualData[p.sku]['__category__'] !== undefined) {
-                    savedCat = state.manualData[p.sku]['__category__'];
+
+            // Categories column
+            if (!hideCategoriesAttributes) {
+                if (categoryManual) {
+                    var savedCat = '';
+                    if (state.manualData && state.manualData[p.sku] && state.manualData[p.sku]['__category__'] !== undefined) {
+                        savedCat = state.manualData[p.sku]['__category__'];
+                    } else if (state.manualData && state.manualData[p.sku] && state.manualData[p.sku]['__categories__'] && state.manualData[p.sku]['__categories__'].length > 0) {
+                        savedCat = state.manualData[p.sku]['__categories__'][0];
+                    }
+                    html += '<td>';
+                    html += '<select class="cdep-manual-input cdep-manual-category-select" data-sku="' + escHtml(p.sku) + '" data-field="__category__" style="width:100%">';
+                    html += '<option value="">— Sin categoría —</option>';
+                    // Populate with available categories
+                    if (catOptions) {
+                        html += catOptions.replace(new RegExp(' value="' + savedCat.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '"'), ' value="' + savedCat + '" selected');
+                    }
+                    html += '</select>';
+                    html += '<button type="button" class="button button-small cdep-category-add-row" data-sku="' + escHtml(p.sku) + '" style="margin-top:2px">+ Categoría</button>';
+                    html += '<div class="cdep-row-categories-container" data-sku="' + escHtml(p.sku) + '">';
+                    // Load saved extra categories
+                    if (state.manualData && state.manualData[p.sku] && state.manualData[p.sku]['__extra_categories__']) {
+                        var extraCats = state.manualData[p.sku]['__extra_categories__'];
+                        $.each(extraCats, function (ci, catVal) {
+                            html += '<div class="cdep-row-category-item" style="margin-top:2px">';
+                            html += '<select class="cdep-manual-input" data-sku="' + escHtml(p.sku) + '" data-field="__category__" style="width:calc(100% - 24px)">';
+                            html += '<option value="">— Sin categoría —</option>';
+                            if (catOptions) {
+                                var catHtml = catOptions;
+                                catHtml = catHtml.replace(/<option value="([^"]*)">/g, function (m, v) {
+                                    var selected = v === catVal ? ' selected' : '';
+                                    return '<option value="' + v + '"' + selected + '>';
+                                });
+                                html += catHtml;
+                            }
+                            html += '</select>';
+                            html += '<button type="button" class="button button-small cdep-row-category-remove" style="width:22px;padding:0">×</button>';
+                            html += '</div>';
+                        });
+                    }
+                    html += '</div>';
+                    html += '</td>';
+                } else {
+                    html += '<td>' + escHtml(p.categories) + '</td>';
                 }
-                html += '<td><input type="text" class="cdep-manual-input" data-sku="' + escHtml(p.sku) + '" data-field="__category__" value="' + escHtml(savedCat) + '" style="width:100%" placeholder="Categoría"></td>';
-            } else {
-                html += '<td>' + escHtml(p.categories) + '</td>';
+
+                // Attributes column
+                var attrsHtml = '';
+                if (p.attributes && p.attributes.length > 0) {
+                    var hasManualAttr = false;
+                    if (state.mapping && state.mapping.attributes) {
+                        $.each(state.mapping.attributes, function (ai, attr) {
+                            if (attr.term === '__manual__') {
+                                hasManualAttr = true;
+                            }
+                        });
+                    }
+                    if (hasManualAttr) {
+                        attrsHtml = '<div class="cdep-manual-attributes">';
+                        $.each(p.attributes, function (ai, attrStr) {
+                            var parts = attrStr.split(': ');
+                            var attrLabel = parts[0] || attrStr;
+                            var attrVal = parts[1] || '';
+                            attrsHtml += '<div style="margin-bottom:2px"><strong>' + escHtml(attrLabel) + ':</strong> ';
+                            attrsHtml += '<select class="cdep-manual-attr-select" data-sku="' + escHtml(p.sku) + '" data-attr="' + escHtml(attrLabel) + '" style="width:100%">';
+                            attrsHtml += '<option value="">— Seleccionar —</option>';
+                            // Populate with terms for this attribute taxonomy
+                            var taxonomies = getAttributeTaxonomies();
+                            $.each(taxonomies, function (ti, tax) {
+                                if (tax.attribute_label === attrLabel || tax.attribute_name === attrLabel) {
+                                    if (tax.terms) {
+                                        $.each(tax.terms, function (tii, term) {
+                                            var sel = term.name === attrVal ? ' selected' : '';
+                                            attrsHtml += '<option value="' + escHtml(term.name) + '"' + sel + '>' + escHtml(term.name) + '</option>';
+                                        });
+                                    }
+                                }
+                            });
+                            attrsHtml += '</select></div>';
+                        });
+                        attrsHtml += '</div>';
+                    } else {
+                        attrsHtml = '<span class="cdep-attr-list">' + p.attributes.join('<br>') + '</span>';
+                    }
+                }
+                html += '<td>' + attrsHtml + '</td>';
             }
-            var attrsHtml = '';
-            if (p.attributes && p.attributes.length > 0) {
-                attrsHtml = '<span class="cdep-attr-list">' + p.attributes.join('<br>') + '</span>';
-            }
-            html += '<td>' + attrsHtml + '</td>';
+
+            // Brand column
             if (brandManual) {
                 var savedBrand = '';
                 if (state.manualData && state.manualData[p.sku] && state.manualData[p.sku]['__brand__'] !== undefined) {
                     savedBrand = state.manualData[p.sku]['__brand__'];
                 }
-                html += '<td><input type="text" class="cdep-manual-input cdep-manual-brand" data-sku="' + escHtml(p.sku) + '" data-field="__brand__" value="' + escHtml(savedBrand) + '" style="width:100%" placeholder="Marca"></td>';
+                html += '<td>';
+                html += '<select class="cdep-manual-input cdep-manual-brand-select" data-sku="' + escHtml(p.sku) + '" data-field="__brand__" style="width:100%">';
+                html += '<option value="">— Sin marca —</option>';
+                if ($('#creation-brand').length) {
+                    $('#creation-brand option').each(function () {
+                        var v = $(this).val();
+                        if (v && v !== '__condicionar__' && v !== '__manual__') {
+                            var sel = v === savedBrand ? ' selected' : '';
+                            html += '<option value="' + v + '"' + sel + '>' + $(this).text() + '</option>';
+                        }
+                    });
+                }
+                html += '</select>';
+                html += '</td>';
             }
+
+            // Mapped fields columns
             $.each(mappedFields, function (fi, f) {
                 var fd = p.fields[f.key];
                 var isAi = aiFields && aiFields.indexOf(f.key) !== -1;
@@ -1399,6 +1594,34 @@ jQuery(function ($) {
             }
             data[sku][field] = value;
         });
+        // Collect categories: group all category selects per SKU into __categories__ array
+        var allCats = {};
+        $('#' + containerId + ' .cdep-manual-category-select').each(function () {
+            var sku = $(this).data('sku');
+            var value = $(this).val();
+            if (!allCats[sku]) {
+                allCats[sku] = [];
+            }
+            if (value) {
+                allCats[sku].push(value);
+            }
+        });
+        $('#' + containerId + ' .cdep-row-category-item select.cdep-manual-input').each(function () {
+            var sku = $(this).data('sku');
+            var value = $(this).val();
+            if (!allCats[sku]) {
+                allCats[sku] = [];
+            }
+            if (value) {
+                allCats[sku].push(value);
+            }
+        });
+        $.each(allCats, function (sku, cats) {
+            if (!data[sku]) {
+                data[sku] = {};
+            }
+            data[sku]['__categories__'] = cats;
+        });
         return data;
     }
 
@@ -1532,8 +1755,12 @@ jQuery(function ($) {
         var manualFields = [];
         if (!state.mapping) return manualFields;
         for (var key in state.mapping) {
-            if (state.mapping.hasOwnProperty(key) && key.indexOf('create_') === 0 && state.mapping[key] === '__manual__') {
-                manualFields.push(key.replace('create_', ''));
+            if (state.mapping.hasOwnProperty(key) && state.mapping[key] === '__manual__') {
+                if (key.indexOf('create_') === 0) {
+                    manualFields.push(key.replace('create_', ''));
+                } else if (key === 'regular_price' || key === 'sale_price' || key === 'stock_quantity') {
+                    manualFields.push(key);
+                }
             }
         }
         return manualFields;
@@ -1601,7 +1828,7 @@ jQuery(function ($) {
             // Update tab
             html += '<div class="cdep-preview-tab-content active" id="cdep-preview-update-content" data-tab="update">';
             if (existingProducts.length > 0) {
-                html += renderProductsTable(existingProducts, updateMappedFields, updateProductNameMapped, [], []);
+                html += renderProductsTable(existingProducts, updateMappedFields, updateProductNameMapped, [], manualFields, false, false, true);
                 html += '<hr>';
                 html += '<p><button id="cdep-start-update" class="button button-primary">Iniciar Actualización Masiva</button></p>';
             } else {
@@ -1781,6 +2008,32 @@ jQuery(function ($) {
                 manualData[sku] = {};
             }
             manualData[sku][field] = value;
+        });
+
+        // Collect categories specially: group by SKU
+        $('#cdep-preview-create-content .cdep-manual-category-select').each(function () {
+            var sku = $(this).data('sku');
+            if (!manualData[sku]) {
+                manualData[sku] = {};
+            }
+        });
+        // For each SKU, collect all category selects into an array
+        var skuCategories = {};
+        $('#cdep-preview-create-content .cdep-manual-category-select, #cdep-preview-create-content .cdep-row-category-item select.cdep-manual-input').each(function () {
+            var sku = $(this).data('sku');
+            var value = $(this).val();
+            if (!skuCategories[sku]) {
+                skuCategories[sku] = [];
+            }
+            if (value) {
+                skuCategories[sku].push(value);
+            }
+        });
+        $.each(skuCategories, function (sku, cats) {
+            if (!manualData[sku]) {
+                manualData[sku] = {};
+            }
+            manualData[sku]['__categories__'] = cats;
         });
 
         state.manualData = manualData;

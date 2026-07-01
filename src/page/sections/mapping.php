@@ -67,10 +67,11 @@ $productFields = CDEP_PRODUCTS::getFields();
                     <tr>
                         <td><strong><?= esc_html($fieldInfo['label']) ?></strong></td>
                         <td>
-                            <select class="cdep-field-select" data-field="<?= esc_attr($fieldKey) ?>" style="width:100%;max-width:400px">
-                                <option value="">— No mapear —</option>
-                                <option value="__calc__">Cálculo</option>
-                            </select>
+                             <select class="cdep-field-select" data-field="<?= esc_attr($fieldKey) ?>" style="width:100%;max-width:400px">
+                                 <option value="">— No mapear —</option>
+                                 <option value="__calc__">Cálculo</option>
+                                 <option value="__manual__">Edición Manual</option>
+                             </select>
                             <div class="cdep-calc-wrap" style="display:none;margin-top:4px">
                                 <div class="cdep-template-input-row">
                                     <input type="text" class="cdep-calc-input" placeholder="Ej: {columna} * 1.19" style="width:100%">
@@ -178,25 +179,31 @@ $productFields = CDEP_PRODUCTS::getFields();
                             <tr>
                                 <td><strong>Categoría</strong></td>
                                 <td>
-                                    <select id="creation-category" class="cdep-config-main-select cdep-config-condicionable" style="width:100%">
-                                        <option value="">— Sin categoría —</option>
-                                        <option value="__condicionar__">Condicionar</option>
-                                        <option value="__manual__">Edición Manual</option>
-                                        <?php
-                                        $catTerms = taxonomy_exists('product_cat') ? get_terms(array(
-                                            'taxonomy' => 'product_cat',
-                                            'hide_empty' => false,
-                                        )) : array();
-                                        if (!empty($catTerms) && !is_wp_error($catTerms)):
-                                            foreach ($catTerms as $term):
-                                        ?>
-                                        <option value="<?= esc_attr($term->name) ?>"><?= esc_html($term->name) ?></option>
-                                        <?php
-                                            endforeach;
-                                        endif;
-                                        ?>
-                                    </select>
-                                    <p class="description">Categoría que se asignará a todos los productos nuevos. Selecciona "Condicionar" para aplicar según condiciones.</p>
+                                    <div id="cdep-categories-container">
+                                        <div class="cdep-category-item">
+                                            <select class="cdep-config-main-select cdep-category-select cdep-config-condicionable" style="width:100%">
+                                                <option value="">— Sin categoría —</option>
+                                                <option value="__condicionar__">Condicionar</option>
+                                                <option value="__manual__">Edición Manual</option>
+                                                <?php
+                                                $catTerms = taxonomy_exists('product_cat') ? get_terms(array(
+                                                    'taxonomy' => 'product_cat',
+                                                    'hide_empty' => false,
+                                                )) : array();
+                                                if (!empty($catTerms) && !is_wp_error($catTerms)):
+                                                    foreach ($catTerms as $term):
+                                                ?>
+                                                <option value="<?= esc_attr($term->name) ?>"><?= esc_html($term->name) ?></option>
+                                                <?php
+                                                    endforeach;
+                                                endif;
+                                                ?>
+                                            </select>
+                                            <button type="button" class="button button-small cdep-category-remove" style="display:none">×</button>
+                                        </div>
+                                    </div>
+                                    <button type="button" class="button button-small cdep-category-add" style="margin-top:4px">+ Agregar categoría</button>
+                                    <p class="description">Categorías que se asignarán a todos los productos nuevos. Selecciona "Condicionar" para aplicar según condiciones.</p>
                                     <div class="cdep-condition-row" data-condition="categoria" style="display:none;margin-top:6px">
                                         <div class="cdep-condition-items"></div>
                                         <button type="button" class="button button-small cdep-condition-add">+ Agregar otra condición</button>

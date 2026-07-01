@@ -200,6 +200,7 @@ class CDEP_PRODUCTS
 
         $creationBrand = isset($mapping['creation_brand']) ? sanitize_text_field($mapping['creation_brand']) : '';
         $creationCategory = isset($mapping['creation_category']) ? sanitize_text_field($mapping['creation_category']) : '';
+        $creationCategories = isset($mapping['creation_categories']) ? $mapping['creation_categories'] : array();
         $creationAttributes = isset($mapping['attributes']) ? $mapping['attributes'] : array();
         $conditions = isset($mapping['conditions']) ? $mapping['conditions'] : array();
 
@@ -208,6 +209,11 @@ class CDEP_PRODUCTS
         $categoryManual = ($creationCategory === '__manual__');
         if ($brandManual) $creationBrand = '';
         if ($categoryManual) $creationCategory = '';
+
+        // Normalize creation categories: use array from mapping or single string
+        if (empty($creationCategories) && !empty($creationCategory)) {
+            $creationCategories = array($creationCategory);
+        }
 
         $autoManualEmpty = isset($mapping['auto_manual_empty']) && $mapping['auto_manual_empty'] === '1';
 
@@ -239,6 +245,8 @@ class CDEP_PRODUCTS
             } elseif (isset(self::$fields[$key])) {
                 if (is_string($colIndex) && strpos($colIndex, 'calc:') === 0) {
                     $updateMapping[$key] = $colIndex;
+                } elseif ($colIndex === '__manual__') {
+                    $updateMapping[$key] = '__manual__';
                 } else {
                     $updateMapping[$key] = intval($colIndex);
                 }
@@ -309,8 +317,8 @@ class CDEP_PRODUCTS
                         break;
                     }
                 }
-            } elseif (!empty($creationCategory)) {
-                $productData['categories'] = $creationCategory;
+            } elseif (!empty($creationCategories)) {
+                $productData['categories'] = implode(', ', $creationCategories);
             }
 
             // Evaluate attributes for new products (preview)
@@ -466,6 +474,8 @@ class CDEP_PRODUCTS
             } elseif (isset(self::$fields[$key])) {
                 if (is_string($colIndex) && strpos($colIndex, 'calc:') === 0) {
                     $updateMapping[$key] = $colIndex;
+                } elseif ($colIndex === '__manual__') {
+                    $updateMapping[$key] = '__manual__';
                 } else {
                     $updateMapping[$key] = intval($colIndex);
                 }
@@ -475,7 +485,12 @@ class CDEP_PRODUCTS
 
         $creationBrand = isset($mapping['creation_brand']) ? sanitize_text_field($mapping['creation_brand']) : '';
         $creationCategory = isset($mapping['creation_category']) ? sanitize_text_field($mapping['creation_category']) : '';
+        $creationCategories = isset($mapping['creation_categories']) ? $mapping['creation_categories'] : array();
         $conditions = isset($mapping['conditions']) ? $mapping['conditions'] : array();
+
+        if (empty($creationCategories) && !empty($creationCategory)) {
+            $creationCategories = array($creationCategory);
+        }
 
         $brandManual = ($creationBrand === '__manual__');
         $categoryManual = ($creationCategory === '__manual__');
@@ -550,18 +565,24 @@ class CDEP_PRODUCTS
 
                 // Determine effective brand and category values (unconditional, conditional, or manual)
                 $effectiveBrand = $creationBrand;
-                $effectiveCategory = $creationCategory;
+                $effectiveCategories = $creationCategories;
 
-                // Manual brand/category override
+                // Manual brand override
                 if ($brandManual && isset($manualData[$sku]['__brand__'])) {
                     $effectiveBrand = sanitize_text_field($manualData[$sku]['__brand__']);
                 } elseif ($autoManualEmpty && empty($effectiveBrand) && isset($manualData[$sku]['__brand__'])) {
                     $effectiveBrand = sanitize_text_field($manualData[$sku]['__brand__']);
                 }
-                if ($categoryManual && isset($manualData[$sku]['__category__'])) {
-                    $effectiveCategory = sanitize_text_field($manualData[$sku]['__category__']);
-                } elseif ($autoManualEmpty && empty($effectiveCategory) && isset($manualData[$sku]['__category__'])) {
-                    $effectiveCategory = sanitize_text_field($manualData[$sku]['__category__']);
+
+                // Manual category override
+                if ($categoryManual && isset($manualData[$sku]['__categories__'])) {
+                    $effectiveCategories = array_map('sanitize_text_field', $manualData[$sku]['__categories__']);
+                } elseif ($categoryManual && isset($manualData[$sku]['__category__'])) {
+                    $effectiveCategories = array(sanitize_text_field($manualData[$sku]['__category__']));
+                } elseif ($autoManualEmpty && (empty($effectiveCategories) || (count($effectiveCategories) === 1 && empty($effectiveCategories[0]))) && isset($manualData[$sku]['__categories__'])) {
+                    $effectiveCategories = array_map('sanitize_text_field', $manualData[$sku]['__categories__']);
+                } elseif ($autoManualEmpty && (empty($effectiveCategories) || (count($effectiveCategories) === 1 && empty($effectiveCategories[0]))) && isset($manualData[$sku]['__category__'])) {
+                    $effectiveCategories = array(sanitize_text_field($manualData[$sku]['__category__']));
                 }
 
                 if ($isNew) {
@@ -594,12 +615,8 @@ class CDEP_PRODUCTS
                         );
                         $product->set_attributes($attrs);
                     }
-                }
 
-                $product->save();
-
-                if ($isNew) {
-                    // Check conditional category (after save to have product ID)
+                    // Check conditional category (after brand but before saving)
                     if (isset($conditions['categoria'])) {
                         $condList = $conditions['categoria'];
                         if (isset($condList['column'])) {
@@ -607,19 +624,42 @@ class CDEP_PRODUCTS
                         }
                         foreach ($condList as $cond) {
                             if (self::evaluateCondition($cond, $row)) {
-                                $effectiveCategory = isset($cond['apply']) ? sanitize_text_field($cond['apply']) : '';
+                                $condCategory = isset($cond['apply']) ? sanitize_text_field($cond['apply']) : '';
+                                if (!empty($condCategory)) {
+                                    // Replace first category with conditional one
+                                    if (isset($effectiveCategories[0])) {
+                                        $effectiveCategories[0] = $condCategory;
+                                    } else {
+                                        $effectiveCategories[] = $condCategory;
+                                    }
+                                }
                                 break;
                             }
-                            $effectiveCategory = '';
                         }
                     }
-                    if (!empty($effectiveCategory)) {
-                        $catTerm = get_term_by('name', $effectiveCategory, 'product_cat');
-                        if (!$catTerm) {
-                            $catTerm = get_term_by('slug', $effectiveCategory, 'product_cat');
+                }
+
+                $product->save();
+
+                if ($isNew) {
+                    // Apply all categories to the product (after save to have product ID)
+                    if (!empty($effectiveCategories)) {
+                        $catTermIds = array();
+                        foreach ($effectiveCategories as $catName) {
+                            $catName = trim(sanitize_text_field($catName));
+                            if (empty($catName)) {
+                                continue;
+                            }
+                            $catTerm = get_term_by('name', $catName, 'product_cat');
+                            if (!$catTerm) {
+                                $catTerm = get_term_by('slug', $catName, 'product_cat');
+                            }
+                            if ($catTerm) {
+                                $catTermIds[] = intval($catTerm->term_id);
+                            }
                         }
-                        if ($catTerm) {
-                            wp_set_object_terms($product->get_id(), array(intval($catTerm->term_id)), 'product_cat', true);
+                        if (!empty($catTermIds)) {
+                            wp_set_object_terms($product->get_id(), $catTermIds, 'product_cat', false);
                         }
                     }
                 }
