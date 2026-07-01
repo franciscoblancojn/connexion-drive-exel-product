@@ -629,3 +629,17 @@
     color: #d63638;
     cursor: pointer;
 }
+
+.widefat thead tr th{
+    white-space: nowrap;
+}
+.cdep-table-wrapper table{
+    width: auto;
+    min-width: 100%;
+}
+.cdep-table-wrapper table select{
+    min-width: 160px;
+}
+.cdep-table-wrapper *:has( >select + button){
+    display: flex;
+}
