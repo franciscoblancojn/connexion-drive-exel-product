@@ -4,6 +4,41 @@ All notable changes to **Connexion Drive Excel Product** are documented here.
 
 ---
 
+## [1.1.59] - 2026-06-30
+
+### Fixed
+- Category select in row-level preview: `catOptions` changed from raw HTML to deduplicated array of `{value, text}` objects to prevent duplicate options
+- Category selection uses `$.each` iteration with `escHtml()` instead of fragile regex `replace()`
+- Extra categories key unified from `__extra_categories__` to `__categories__` (index 1+) consistent with save handler
+- "+ Categoría" button moved below the categories container so it always renders after ALL category selects
+- Typo `cdp-row-category-remove` corrected to `cdep-row-category-remove`
+
+## [1.1.58] - 2026-06-30
+
+### Changed
+- Version bump only (no code changes)
+
+## [1.1.57] - 2026-06-30
+
+### Added
+- `__manual__` option in update field selects (regular_price, sale_price, stock_quantity) for per-row manual editing on existing products
+- `__manual__` option in attribute term selects for per-row manual attribute selection on new products
+- Multi-category support: `creation_categories` array collects all selected categories (primary + extras); backward compatible with `creation_category`
+- Categories container UI with add/remove buttons for multiple categories in creation config
+- `hideCategoriesAttributes` parameter in `renderProductsTable()` — update preview tab hides categories/attributes columns
+
+### Fixed
+- Category `catOptions` deduplication in row-level selects prevents duplicate `<option>` entries
+- `__extra_categories__` replaced with `__categories__` array (index 0 = primary, 1+ = extras) consistent across save/restore
+- Populate primary category select from `__categories__[0]`, extra categories from `__categories__[1+]`
+- `__manual__` excluded from `catOptions` in row-level category selects
+- `buildMapping()` preserves `__manual__` for update fields and `creation_categories` array
+- `restoreMappingConfig()` restores `__manual__` on update field selects and multi-category selects
+- `createCategoryItem()` excludes `__condicionar__` from copied options in secondary category selects
+- `populateAttributeTerms()` preserves `__manual__` option when filtering terms
+- `collectManualData()` groups all category selects per SKU into `__categories__` array
+- `renderProductsTable()` reads `__categories__[0]` for primary and `__categories__[1+]` for extra selects in row-level manual
+
 ## [1.1.56] - 2026-06-29
 
 ### Added

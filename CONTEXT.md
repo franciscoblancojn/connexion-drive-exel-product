@@ -1,6 +1,6 @@
 # Connexion Drive Excel Product — Contexto para IAs
 
-> Plugin WordPress v1.1.56 — Contexto actualizado automaticamente para que IAs entren en contexto rapido.
+> Plugin WordPress v1.1.59 — Contexto actualizado automaticamente para que IAs entren en contexto rapido.
 
 ---
 
@@ -193,7 +193,7 @@ El plugin no usa `wp_head`, `the_content`, ni ningun filtro de frontend. Solo op
 2. Auto-selecciona columnas detectadas (SKU, precio, precio oferta, cantidad)
 3. Usuario puede cambiar la fila de encabezados y re-parsear
 4. Usuario selecciona que columna corresponde a cada campo del producto:
-   - **Productos existentes (Actualizar)**: Solo 3 campos (regular_price, sale_price, stock_quantity) vía `.cdep-field-select`, con soporte de "Cálculo" (expresiones matemáticas)
+   - **Productos existentes (Actualizar)**: Solo 3 campos (regular_price, sale_price, stock_quantity) vía `.cdep-field-select`, con soporte de "Cálculo" (expresiones matemáticas) y "Edición Manual"
    - **Productos nuevos (Crear)**: 16 campos vía `.cdep-field-select-create`, con soporte de "Personalizar" (templates con `{columna}`), "Cálculo", "Edición Manual" y "Generar con IA"
 5. "Configuraciones de Creación" permite configurar valores fijos (ej: Marca desde `product_brand` taxonomy)
 6. "Vista Previa" llama a `cdep_update_preview` AJAX
@@ -248,18 +248,22 @@ El plugin no usa `wp_head`, `the_content`, ni ningun filtro de frontend. Solo op
 ### Mapping keys
 `buildMapping()` retorna un objeto con:
 - `sku` → indice de columna SKU
-- `regular_price`, `sale_price`, `stock_quantity` → indices para actualizar existentes o `calc:expr`
+- `regular_price`, `sale_price`, `stock_quantity` → indices para actualizar existentes o `calc:expr`, `__manual__`
 - `create_{field}` → para campos de creacion (indice de columna o `custom:template`, `__manual__`, `__ai__`, `calc:expr`)
 - `creation_brand` → nombre de la marca seleccionada
+- `creation_category` → nombre de la categoría primaria (backward compat)
+- `creation_categories` → array de nombres para múltiples categorías
 - `config_vars` → objeto `{varname: value}` para resolver `{varname}` en templates
 - `auto_manual_empty` → `'1'` si el checkbox de auto-manual esta activado
+- `attributes` → array `[{taxonomy, term, conditions}]` con `term: '__manual__'` soportado
 
 ### Edicion Manual
-- Opcion `__manual__` en selects de creacion y configuracion (marca, categoria)
-- Valores guardados en `localStorage` key `cdep_manual_data` como `{sku: {field: value, __brand__: "...", __category__: "..."}}`
+- Opcion `__manual__` en selects de actualizacion (3 campos), creacion (16 campos) y configuracion (marca, categoria, atributos)
+- Valores guardados en `localStorage` key `cdep_manual_data` como `{sku: {field: value, __brand__: "...", __category__: "...", __categories__: ["cat1", "cat2", ...]}}`
 - Boton "Guardar Edicion Manual" visible cuando hay campos manuales
 - `auto_manual_empty`: cuando activo y el valor de celda esta vacio, muestra input editable
 - En PHP: `$manualData[$sku][$field]` resuelve el valor manual
+- Categorias multiples: `__categories__` array donde indice 0 = categoria primaria, 1+ = categorias extra
 
 ### Calculos
 - Opcion `__calc__` en selects de actualizacion (3 campos) y creacion (16 campos)
@@ -270,6 +274,17 @@ El plugin no usa `wp_head`, `the_content`, ni ningun filtro de frontend. Solo op
 ### Marca
 - Select poblado desde taxonomy `product_brand`
 - El valor usado es el **nombre** del termino, no el slug (tanto para `creation_brand` como para `config_vars.marca`)
+
+### Categoría
+- `<select>` poblado desde taxonomy `product_cat`
+- Valor enviado: **nombre** de la categoría
+- Soporta `__condicionar__` para asignación condicional
+
+### Atributos
+- Sección en Configuraciones de Creación para asignar atributos WooCommerce a productos nuevos
+- Cada atributo: taxonomy → término (directo, condicional via `__condicionar__`, o manual via `__manual__`)
+- `conditions` como array de `{column, operator, value, apply}` (apply = término a asignar si coincide)
+- `populateAttributeTerms()` preserva opciones `__condicionar__` y `__manual__` al filtrar términos
 
 ### Product name como link
 - Cuando un producto existe, tanto SKU como Nombre son links a `post.php?action=edit&post={product_id}`
@@ -287,7 +302,7 @@ El plugin no usa `wp_head`, `the_content`, ni ningun filtro de frontend. Solo op
 - Si el refresh token falta, el usuario debe reconectar
 - Los archivos temporales se guardan en `wp_upload_dir()` con nombre sanitizado
 - La barra de progreso usa porcentaje calculado sobre total de SKUs seleccionados
-- Admin.js usa `localStorage` para persistir: `cdep_folder` (navegacion), `cdep_mapping_config` (mapeo), `cdep_ai_cache` (contenido generado por IA) y `cdep_manual_data` (datos de edicion manual por fila)
+- Admin.js usa `localStorage` para persistir: `cdep_folder` (navegacion), `cdep_mapping_config` (mapeo), `cdep_ai_cache` (contenido generado por IA) y `cdep_manual_data` (datos de edicion manual por fila) y `cdep_ai_prompts` (prompts extra para IA)
 - Admin.js expone `window.cdep` con `ajaxurl`, `nonce`, `is_connected`, `config`, `selected_file`, `oauth_url`, `productFields`
 - Si hay errores de conexion, verificar que `redirect_uri` en Google Cloud coincida exactamente con `admin_url('admin.php?page=CDEP')`
 
@@ -307,7 +322,7 @@ FWURespond usa el array `$respond` para mostrar mensajes. Las variables `$config
 `listFiles()` soporta paginacion via `pageToken`. El JS actual no implementa paginacion pero la API lo soporta.
 
 ### Campos del producto en validateMapping
-La respuesta de `cdep_update_preview` incluye por cada producto: `sku`, `row`, `exists`, `product_id`, `status`, `name`, `image`, `categories`, `fields` (mapa campo -> {current, new, changed}).
+La respuesta de `cdep_update_preview` incluye por cada producto: `sku`, `row`, `exists`, `product_id`, `status`, `name`, `image`, `categories`, `attributes` (atributos evaluados, solo productos nuevos), `fields` (mapa campo -> {current, new, changed}).
 
 ### Solo 3 tabs activos
 Aunque `update.php` existe en disco, la UI solo tiene 3 tabs: Conectar, Explorar, Mapear. La actualizacion se ejecuta desde el tab de Mapear.

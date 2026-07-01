@@ -20,7 +20,7 @@ Este archivo contiene las reglas, validaciones y convenciones que toda IA debe s
 - **Objeto global**: Usa `window.cdep` (localizado via `wp_localize_script`) para `ajaxurl`, `nonce`, `config`, `is_connected`, `selected_file`, `oauth_url`, `productFields`, `attributeTaxonomies`, `aiFields`.
 - **AJAX**: Toda llamada AJAX usa la función helper `ajax(action, data, success, error)` definida en admin.js.
 - **Respuestas**: Espera `resp.success` + `resp.data` (estándar WordPress AJAX).
-- **localStorage**: Se usan cuatro keys: `cdep_folder` (estado de navegación), `cdep_mapping_config` (mapeo de columnas), `cdep_ai_cache` (contenido generado por IA) y `cdep_manual_data` (datos de edición manual por fila).
+- **localStorage**: Se usan cinco keys: `cdep_folder` (estado de navegación), `cdep_mapping_config` (mapeo de columnas), `cdep_ai_cache` (contenido generado por IA) y `cdep_manual_data` (datos de edición manual por fila) y `cdep_ai_prompts` (prompts extra para IA).
 
 ### CSS
 - **Prefijo**: Todas las clases CSS deben llevar prefijo `cdep-`.
@@ -102,9 +102,9 @@ Usa las constantes definidas en `index.php`:
 
 ### Mapping (buildMapping)
 - `buildMapping()` retorna un objeto con tres grupos:
-  - **Update**: keys directas `regular_price`, `sale_price`, `stock_quantity` (índices de columna o `calc:expr`)
+  - **Update**: keys directas `regular_price`, `sale_price`, `stock_quantity` (índices de columna, `calc:expr`, o `__manual__`)
   - **Create**: keys con prefijo `create_` (ej: `create_product_name`, `create_regular_price`) — valor = índice de columna, `custom:template`, `__manual__`, `__ai__`, o `calc:expr`
-  - **Config**: `creation_brand` (nombre del término, no slug), `creation_category` (nombre de categoría), `creation_brand` (nombre del término), `attributes` (array `[{taxonomy, term, conditions}]`), `conditions` (objeto `{target: [{column, operator, value, apply}]}` para condicionar marca/categoría), `config_vars` (objeto `{varname: value}` para templates)
+  - **Config**: `creation_brand` (nombre del término, no slug), `creation_category` (nombre de categoría), `creation_categories` (array de nombres para múltiples categorías), `creation_brand` (nombre del término), `attributes` (array `[{taxonomy, term, conditions}]` con soporte de `term: '__manual__'`), `conditions` (objeto `{target: [{column, operator, value, apply}]}` para condicionar marca/categoría), `config_vars` (objeto `{varname: value}` para templates)
 
 ### Custom Templates
 - Opción "Personalizar" en selects de creación guarda el template con prefijo `custom:`
@@ -113,12 +113,13 @@ Usa las constantes definidas en `index.php`:
 - El listado de variables muestra primero las de configuración (ej: `marca`), separador, luego columnas
 
 ### Edición Manual
-- Opción `__manual__` disponible en selects de creación (16 campos) y en Configuraciones de Creación (marca, categoría)
-- Valores guardados en `localStorage` key `cdep_manual_data` como `{sku: {field: value, __brand__: "...", __category__: "..."}}`
+- Opción `__manual__` disponible en selects de actualización (3 campos), creación (16 campos) y en Configuraciones de Creación (marca, categoría, atributos)
+- Valores guardados en `localStorage` key `cdep_manual_data` como `{sku: {field: value, __brand__: "...", __category__: "...", __categories__: ["cat1", "cat2", ...]}}`
 - Botón "Guardar Edición Manual" visible cuando al menos un campo usa `__manual__`
 - `auto_manual_empty` flag (`mapping['auto_manual_empty'] = '1'`): activa input editable para celdas vacías
 - En PHP: `__manual__` usa `$manualData[$sku][$field]` para resolver valores
 - `__manual__` excluido de `$aiFields` en validateMapping
+- Categorías múltiples: `__categories__` array donde índice 0 = categoría primaria, 1+ = categorías extra
 
 ### Generación con IA
 - Opción `__ai__` disponible en selects de creación (toggle via `toggleAiOptions(enabled)`)
