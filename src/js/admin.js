@@ -1380,7 +1380,6 @@ jQuery(function ($) {
                         });
                     }
                     html += '</select>';
-                    html += '<button type="button" class="button button-small cdep-category-add-row" data-sku="' + escHtml(p.sku) + '" style="margin-top:2px">+ Categoría</button>';
                     html += '<div class="cdep-row-categories-container" data-sku="' + escHtml(p.sku) + '">';
                     // Load saved extra categories from __categories__ array (index 1+)
                     var allSavedCats = [];
@@ -1402,6 +1401,7 @@ jQuery(function ($) {
                         html += '</div>';
                     }
                     html += '</div>';
+                    html += '<button type="button" class="button button-small cdep-category-add-row" data-sku="' + escHtml(p.sku) + '" style="margin-top:2px">+ Categoría</button>';
                     html += '</td>';
                 } else {
                     html += '<td>' + escHtml(p.categories) + '</td>';
