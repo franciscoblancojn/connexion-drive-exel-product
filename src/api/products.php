@@ -732,7 +732,7 @@ class CDEP_PRODUCTS
                     $results['updated']++;
                     $results['processed_skus'][] = array('sku' => $sku, 'status' => 'updated');
                 }
-            } catch (Exception $e) {
+            } catch (Throwable $e) {
                 $results['errors'][] = array(
                     'row' => $offset + $rowIndex + 2,
                     'sku' => $sku,
@@ -750,51 +750,56 @@ class CDEP_PRODUCTS
 }
 
 add_action('wp_ajax_cdep_update_preview', function () {
-    if (!current_user_can('manage_options')) {
-        wp_send_json_error('Unauthorized');
+    try {
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error('Unauthorized');
+        }
+        check_ajax_referer('cdep_nonce', 'nonce');
+
+        $mapping = isset($_POST['mapping']) ? $_POST['mapping'] : array();
+        $selected = CDEP_DRIVE::getSelectedFile();
+
+        if (empty($selected['file_id'])) {
+            wp_send_json_error('No hay archivo seleccionado');
+        }
+
+        $cached = CDEP_DRIVE::getCachedData();
+        if (empty($cached) || empty($cached['all_rows'])) {
+            wp_send_json_error('No hay datos en caché. Seleccione el archivo nuevamente.');
+        }
+
+        $headers = isset($cached['headers']) ? $cached['headers'] : array();
+        $configVars = isset($mapping['config_vars']) ? $mapping['config_vars'] : array();
+        $aiData = isset($_POST['ai_data']) ? $_POST['ai_data'] : array();
+        $manualData = isset($_POST['manual_data']) ? $_POST['manual_data'] : array();
+        $result = CDEP_PRODUCTS::validateMapping($cached['all_rows'], $mapping, $headers, $configVars, $aiData, $manualData);
+
+        if (is_wp_error($result)) {
+            wp_send_json_error($result->get_error_message());
+        }
+
+        $result['file_name'] = $selected['file_name'];
+
+        wp_send_json_success($result);
+    } catch (Throwable $e) {
+        wp_send_json_error('Error interno en previsualización: ' . $e->getMessage());
     }
-    check_ajax_referer('cdep_nonce', 'nonce');
-
-    $mapping = isset($_POST['mapping']) ? $_POST['mapping'] : array();
-    $selected = CDEP_DRIVE::getSelectedFile();
-
-    if (empty($selected['file_id'])) {
-        wp_send_json_error('No hay archivo seleccionado');
-    }
-
-    $cached = CDEP_DRIVE::getCachedData();
-    if (empty($cached) || empty($cached['all_rows'])) {
-        wp_send_json_error('No hay datos en caché. Seleccione el archivo nuevamente.');
-    }
-
-    $headers = isset($cached['headers']) ? $cached['headers'] : array();
-    $configVars = isset($mapping['config_vars']) ? $mapping['config_vars'] : array();
-    $aiData = isset($_POST['ai_data']) ? $_POST['ai_data'] : array();
-    $manualData = isset($_POST['manual_data']) ? $_POST['manual_data'] : array();
-    $result = CDEP_PRODUCTS::validateMapping($cached['all_rows'], $mapping, $headers, $configVars, $aiData, $manualData);
-
-    if (is_wp_error($result)) {
-        wp_send_json_error($result->get_error_message());
-    }
-
-    $result['file_name'] = $selected['file_name'];
-
-    wp_send_json_success($result);
 });
 
 add_action('wp_ajax_cdep_ai_generate', function () {
-    if (!current_user_can('manage_options')) {
-        wp_send_json_error('Unauthorized');
-    }
-    check_ajax_referer('cdep_nonce', 'nonce');
+    try {
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error('Unauthorized');
+        }
+        check_ajax_referer('cdep_nonce', 'nonce');
 
-    if (!defined('IACON_KEY')) {
-        wp_send_json_error('IA Conector no está activo');
-    }
+        if (!defined('IACON_KEY')) {
+            wp_send_json_error('IA Conector no está activo');
+        }
 
-    $mapping = isset($_POST['mapping']) ? $_POST['mapping'] : array();
-    $skus = isset($_POST['skus']) ? $_POST['skus'] : array();
-    $aiProvider = sanitize_text_field($_POST['ai_provider'] ?? '');
+        $mapping = isset($_POST['mapping']) ? $_POST['mapping'] : array();
+        $skus = isset($_POST['skus']) ? $_POST['skus'] : array();
+        $aiProvider = sanitize_text_field($_POST['ai_provider'] ?? '');
 
     if (empty($skus) || !is_array($skus)) {
         wp_send_json_error('No se recibieron SKUs');
@@ -1018,7 +1023,7 @@ add_action('wp_ajax_cdep_ai_generate', function () {
                     }
                     $response = IACON_KODEE::sendPrompt($prompt, $kodeeConfig);
                 }
-            } catch (Exception $e) {
+            } catch (Throwable $e) {
                 $response = array('status' => 'error', 'message' => $e->getMessage());
             }
 
@@ -1052,134 +1057,149 @@ add_action('wp_ajax_cdep_ai_generate', function () {
     wp_send_json_success(array(
         'data' => $aiData,
     ));
+    } catch (Throwable $e) {
+        wp_send_json_error('Error interno en generación IA: ' . $e->getMessage());
+    }
 });
 
 add_action('wp_ajax_cdep_update_execute', function () {
-    if (!current_user_can('manage_options')) {
-        wp_send_json_error('Unauthorized');
+    try {
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error('Unauthorized');
+        }
+        check_ajax_referer('cdep_nonce', 'nonce');
+
+        $mapping = isset($_POST['mapping']) ? $_POST['mapping'] : array();
+        $offset = intval($_POST['offset'] ?? 0);
+        $limit = intval($_POST['limit'] ?? 25);
+        $selected = CDEP_DRIVE::getSelectedFile();
+
+        if (empty($selected['file_id'])) {
+            wp_send_json_error('No hay archivo seleccionado');
+        }
+
+        $cached = CDEP_DRIVE::getCachedData();
+        if (empty($cached) || empty($cached['all_rows'])) {
+            wp_send_json_error('No hay datos en caché');
+        }
+
+        $headers = isset($cached['headers']) ? $cached['headers'] : array();
+        $configVars = isset($mapping['config_vars']) ? $mapping['config_vars'] : array();
+        $manualData = isset($_POST['manual_data']) ? $_POST['manual_data'] : array();
+        $result = CDEP_PRODUCTS::executeUpdate($cached['all_rows'], $mapping, $offset, $limit, $headers, $configVars, array(), $manualData);
+
+        if (is_wp_error($result)) {
+            wp_send_json_error($result->get_error_message());
+        }
+
+        wp_send_json_success($result);
+    } catch (Throwable $e) {
+        wp_send_json_error('Error interno: ' . $e->getMessage());
     }
-    check_ajax_referer('cdep_nonce', 'nonce');
-
-    $mapping = isset($_POST['mapping']) ? $_POST['mapping'] : array();
-    $offset = intval($_POST['offset'] ?? 0);
-    $limit = intval($_POST['limit'] ?? 25);
-    $selected = CDEP_DRIVE::getSelectedFile();
-
-    if (empty($selected['file_id'])) {
-        wp_send_json_error('No hay archivo seleccionado');
-    }
-
-    $cached = CDEP_DRIVE::getCachedData();
-    if (empty($cached) || empty($cached['all_rows'])) {
-        wp_send_json_error('No hay datos en caché');
-    }
-
-    $headers = isset($cached['headers']) ? $cached['headers'] : array();
-    $configVars = isset($mapping['config_vars']) ? $mapping['config_vars'] : array();
-    $manualData = isset($_POST['manual_data']) ? $_POST['manual_data'] : array();
-    $result = CDEP_PRODUCTS::executeUpdate($cached['all_rows'], $mapping, $offset, $limit, $headers, $configVars, array(), $manualData);
-
-    if (is_wp_error($result)) {
-        wp_send_json_error($result->get_error_message());
-    }
-
-    wp_send_json_success($result);
 });
 
 add_action('wp_ajax_cdep_update_batch_skus', function () {
-    if (!current_user_can('manage_options')) {
-        wp_send_json_error('Unauthorized');
-    }
-    check_ajax_referer('cdep_nonce', 'nonce');
-
-    $skus = isset($_POST['skus']) ? $_POST['skus'] : array();
-    $mapping = isset($_POST['mapping']) ? $_POST['mapping'] : array();
-
-    if (empty($skus) || !is_array($skus)) {
-        wp_send_json_error('No se recibieron SKUs');
-    }
-
-    $skus = array_map('sanitize_text_field', $skus);
-
-    $cached = CDEP_DRIVE::getCachedData();
-    if (empty($cached) || empty($cached['all_rows'])) {
-        wp_send_json_error('No hay datos en caché');
-    }
-
-    $skuIndex = isset($mapping['sku']) && $mapping['sku'] !== '' ? intval($mapping['sku']) : -1;
-    if ($skuIndex < 0) {
-        wp_send_json_error('Mapeo SKU inválido');
-    }
-
-    $rowsToProcess = array();
-    foreach ($cached['all_rows'] as $row) {
-        $rowSku = isset($row[$skuIndex]) ? trim($row[$skuIndex]) : '';
-        if (in_array($rowSku, $skus)) {
-            $rowsToProcess[] = $row;
+    try {
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error('Unauthorized');
         }
+        check_ajax_referer('cdep_nonce', 'nonce');
+
+        $skus = isset($_POST['skus']) ? $_POST['skus'] : array();
+        $mapping = isset($_POST['mapping']) ? $_POST['mapping'] : array();
+
+        if (empty($skus) || !is_array($skus)) {
+            wp_send_json_error('No se recibieron SKUs');
+        }
+
+        $skus = array_map('sanitize_text_field', $skus);
+
+        $cached = CDEP_DRIVE::getCachedData();
+        if (empty($cached) || empty($cached['all_rows'])) {
+            wp_send_json_error('No hay datos en caché');
+        }
+
+        $skuIndex = isset($mapping['sku']) && $mapping['sku'] !== '' ? intval($mapping['sku']) : -1;
+        if ($skuIndex < 0) {
+            wp_send_json_error('Mapeo SKU inválido');
+        }
+
+        $rowsToProcess = array();
+        foreach ($cached['all_rows'] as $row) {
+            $rowSku = isset($row[$skuIndex]) ? trim($row[$skuIndex]) : '';
+            if (in_array($rowSku, $skus)) {
+                $rowsToProcess[] = $row;
+            }
+        }
+
+        if (empty($rowsToProcess)) {
+            wp_send_json_error('No se encontraron filas con los SKUs proporcionados');
+        }
+
+        $headers = isset($cached['headers']) ? $cached['headers'] : array();
+        $configVars = isset($mapping['config_vars']) ? $mapping['config_vars'] : array();
+        $aiData = isset($_POST['ai_data']) ? $_POST['ai_data'] : array();
+        $manualData = isset($_POST['manual_data']) ? $_POST['manual_data'] : array();
+        $result = CDEP_PRODUCTS::executeUpdate($rowsToProcess, $mapping, 0, count($rowsToProcess), $headers, $configVars, $aiData, $manualData);
+
+        if (is_wp_error($result)) {
+            wp_send_json_error($result->get_error_message());
+        }
+
+        wp_send_json_success($result);
+    } catch (Throwable $e) {
+        wp_send_json_error('Error interno: ' . $e->getMessage());
     }
-
-    if (empty($rowsToProcess)) {
-        wp_send_json_error('No se encontraron filas con los SKUs proporcionados');
-    }
-
-    $headers = isset($cached['headers']) ? $cached['headers'] : array();
-    $configVars = isset($mapping['config_vars']) ? $mapping['config_vars'] : array();
-    $aiData = isset($_POST['ai_data']) ? $_POST['ai_data'] : array();
-    $manualData = isset($_POST['manual_data']) ? $_POST['manual_data'] : array();
-    $result = CDEP_PRODUCTS::executeUpdate($rowsToProcess, $mapping, 0, count($rowsToProcess), $headers, $configVars, $aiData, $manualData);
-
-    if (is_wp_error($result)) {
-        wp_send_json_error($result->get_error_message());
-    }
-
-    wp_send_json_success($result);
 });
 
 add_action('wp_ajax_cdep_update_single', function () {
-    if (!current_user_can('manage_options')) {
-        wp_send_json_error('Unauthorized');
-    }
-    check_ajax_referer('cdep_nonce', 'nonce');
-
-    $sku = sanitize_text_field($_POST['sku'] ?? '');
-    $mapping = isset($_POST['mapping']) ? $_POST['mapping'] : array();
-
-    if (empty($sku)) {
-        wp_send_json_error('SKU vacío');
-    }
-
-    $cached = CDEP_DRIVE::getCachedData();
-    if (empty($cached) || empty($cached['all_rows'])) {
-        wp_send_json_error('No hay datos en caché');
-    }
-
-    $skuIndex = isset($mapping['sku']) && $mapping['sku'] !== '' ? intval($mapping['sku']) : -1;
-    if ($skuIndex < 0) {
-        wp_send_json_error('Mapeo SKU inválido');
-    }
-
-    $foundRow = null;
-    foreach ($cached['all_rows'] as $row) {
-        if (isset($row[$skuIndex]) && trim($row[$skuIndex]) === $sku) {
-            $foundRow = $row;
-            break;
+    try {
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error('Unauthorized');
         }
+        check_ajax_referer('cdep_nonce', 'nonce');
+
+        $sku = sanitize_text_field($_POST['sku'] ?? '');
+        $mapping = isset($_POST['mapping']) ? $_POST['mapping'] : array();
+
+        if (empty($sku)) {
+            wp_send_json_error('SKU vacío');
+        }
+
+        $cached = CDEP_DRIVE::getCachedData();
+        if (empty($cached) || empty($cached['all_rows'])) {
+            wp_send_json_error('No hay datos en caché');
+        }
+
+        $skuIndex = isset($mapping['sku']) && $mapping['sku'] !== '' ? intval($mapping['sku']) : -1;
+        if ($skuIndex < 0) {
+            wp_send_json_error('Mapeo SKU inválido');
+        }
+
+        $foundRow = null;
+        foreach ($cached['all_rows'] as $row) {
+            if (isset($row[$skuIndex]) && trim($row[$skuIndex]) === $sku) {
+                $foundRow = $row;
+                break;
+            }
+        }
+
+        if ($foundRow === null) {
+            wp_send_json_error('SKU no encontrado en el archivo');
+        }
+
+        $headers = isset($cached['headers']) ? $cached['headers'] : array();
+        $configVars = isset($mapping['config_vars']) ? $mapping['config_vars'] : array();
+        $aiData = isset($_POST['ai_data']) ? $_POST['ai_data'] : array();
+        $manualData = isset($_POST['manual_data']) ? $_POST['manual_data'] : array();
+        $result = CDEP_PRODUCTS::executeUpdate(array($foundRow), $mapping, 0, 1, $headers, $configVars, $aiData, $manualData);
+
+        if (is_wp_error($result)) {
+            wp_send_json_error($result->get_error_message());
+        }
+
+        wp_send_json_success($result);
+    } catch (Throwable $e) {
+        wp_send_json_error('Error interno: ' . $e->getMessage());
     }
-
-    if ($foundRow === null) {
-        wp_send_json_error('SKU no encontrado en el archivo');
-    }
-
-    $headers = isset($cached['headers']) ? $cached['headers'] : array();
-    $configVars = isset($mapping['config_vars']) ? $mapping['config_vars'] : array();
-    $aiData = isset($_POST['ai_data']) ? $_POST['ai_data'] : array();
-    $manualData = isset($_POST['manual_data']) ? $_POST['manual_data'] : array();
-    $result = CDEP_PRODUCTS::executeUpdate(array($foundRow), $mapping, 0, 1, $headers, $configVars, $aiData, $manualData);
-
-    if (is_wp_error($result)) {
-        wp_send_json_error($result->get_error_message());
-    }
-
-    wp_send_json_success($result);
 });
