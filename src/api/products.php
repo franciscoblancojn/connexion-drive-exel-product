@@ -623,46 +623,12 @@ class CDEP_PRODUCTS
                     }
                 }
 
-                $product->save();
-
-                if ($isNew) {
-                    // Apply brand term via taxonomy (after save to have product ID)
-                    if (!empty($effectiveBrand)) {
-                        $brandTerm = get_term_by('name', $effectiveBrand, 'product_brand');
-                        if (!$brandTerm) {
-                            $brandTerm = get_term_by('slug', $effectiveBrand, 'product_brand');
-                        }
-                        if ($brandTerm) {
-                            wp_set_object_terms($product->get_id(), array(intval($brandTerm->term_id)), 'product_brand', true);
-                        }
-                    }
-
-                    // Apply all categories to the product (after save to have product ID)
-                    if (!empty($effectiveCategories)) {
-                        $catTermIds = array();
-                        foreach ($effectiveCategories as $catName) {
-                            $catName = trim(sanitize_text_field($catName));
-                            if (empty($catName)) {
-                                continue;
-                            }
-                            $catTerm = get_term_by('name', $catName, 'product_cat');
-                            if (!$catTerm) {
-                                $catTerm = get_term_by('slug', $catName, 'product_cat');
-                            }
-                            if ($catTerm) {
-                                $catTermIds[] = intval($catTerm->term_id);
-                            }
-                        }
-                        if (!empty($catTermIds)) {
-                            wp_set_object_terms($product->get_id(), $catTermIds, 'product_cat', false);
-                        }
-                    }
-                }
-
-                // Process attributes
+                // Process attributes BEFORE save using WC_Product_Attribute
+                // so WooCommerce properly registers them in _product_attributes meta
                 if ($isNew && isset($mapping['attributes'])) {
                     $attrList = $mapping['attributes'];
                     if (is_array($attrList) && isset($attrList[0])) {
+                        $productAttrs = array();
                         foreach ($attrList as $attrItem) {
                             $taxonomyName = isset($attrItem['taxonomy']) ? sanitize_text_field($attrItem['taxonomy']) : '';
                             $termName = isset($attrItem['term']) ? sanitize_text_field($attrItem['term']) : '';
@@ -703,9 +669,57 @@ class CDEP_PRODUCTS
                                     $term = get_term_by('slug', $termName, $fullTaxonomy);
                                 }
                                 if ($term) {
-                                    wp_set_object_terms($product->get_id(), array(intval($term->term_id)), $fullTaxonomy, true);
+                                    $attribute = new WC_Product_Attribute();
+                                    $attribute->set_name($fullTaxonomy);
+                                    $attribute->set_options(array(intval($term->term_id)));
+                                    $attribute->set_visible(true);
+                                    $attribute->set_variation(false);
+                                    $productAttrs[] = $attribute;
                                 }
                             }
+                        }
+                        if (!empty($productAttrs)) {
+                            $existingAttrs = $product->get_attributes();
+                            if (!is_array($existingAttrs)) {
+                                $existingAttrs = array();
+                            }
+                            $product->set_attributes(array_merge($existingAttrs, $productAttrs));
+                        }
+                    }
+                }
+
+                $product->save();
+
+                if ($isNew) {
+                    // Apply brand term via taxonomy (after save to have product ID)
+                    if (!empty($effectiveBrand)) {
+                        $brandTerm = get_term_by('name', $effectiveBrand, 'product_brand');
+                        if (!$brandTerm) {
+                            $brandTerm = get_term_by('slug', $effectiveBrand, 'product_brand');
+                        }
+                        if ($brandTerm) {
+                            wp_set_object_terms($product->get_id(), array(intval($brandTerm->term_id)), 'product_brand', true);
+                        }
+                    }
+
+                    // Apply all categories to the product (after save to have product ID)
+                    if (!empty($effectiveCategories)) {
+                        $catTermIds = array();
+                        foreach ($effectiveCategories as $catName) {
+                            $catName = trim(sanitize_text_field($catName));
+                            if (empty($catName)) {
+                                continue;
+                            }
+                            $catTerm = get_term_by('name', $catName, 'product_cat');
+                            if (!$catTerm) {
+                                $catTerm = get_term_by('slug', $catName, 'product_cat');
+                            }
+                            if ($catTerm) {
+                                $catTermIds[] = intval($catTerm->term_id);
+                            }
+                        }
+                        if (!empty($catTermIds)) {
+                            wp_set_object_terms($product->get_id(), $catTermIds, 'product_cat', false);
                         }
                     }
                 }
