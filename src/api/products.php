@@ -674,7 +674,10 @@ class CDEP_PRODUCTS
                                     $attribute->set_options(array($term->slug));
                                     $attribute->set_visible(true);
                                     $attribute->set_variation(false);
-                                    $attribute->set_taxonomy(true);
+                                    $attrId = wc_attribute_taxonomy_id_by_name($fullTaxonomy);
+                                    if ($attrId) {
+                                        $attribute->set_id($attrId);
+                                    }
                                     $productAttrs[] = $attribute;
                                 }
                             }
