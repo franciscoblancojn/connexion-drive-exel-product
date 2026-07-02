@@ -671,7 +671,7 @@ class CDEP_PRODUCTS
                                 if ($term) {
                                     $attribute = new WC_Product_Attribute();
                                     $attribute->set_name($fullTaxonomy);
-                                    $attribute->set_options(array(intval($term->term_id)));
+                                    $attribute->set_options(array($term->slug));
                                     $attribute->set_visible(true);
                                     $attribute->set_variation(false);
                                     $attribute->set_taxonomy(true);

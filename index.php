@@ -3,7 +3,7 @@
 Plugin Name: Connexion Drive Excel Product
 Plugin URI: https://github.com/franciscoblancojn/connexion-drive-exel-product
 Description: Connect to Google Drive, select Excel files, map columns (SKU, price, quantity), and mass update WooCommerce products.
-Version: 1.1.68
+Version: 1.1.69
 Author: franciscoblancojn
 Author URI: https://franciscoblanco.vercel.app/
 License: GPL2+
