@@ -712,7 +712,7 @@ class CDEP_PRODUCTS
 
                 if ($isNew) {
                     $results['created']++;
-                    $results['processed_skus'][] = array('sku' => $sku, 'status' => 'created');
+                    $results['processed_skus'][] = array('sku' => $sku, 'status' => 'created', 'product_id' => $product->get_id());
                 } else {
                     $results['updated']++;
                     $results['processed_skus'][] = array('sku' => $sku, 'status' => 'updated');

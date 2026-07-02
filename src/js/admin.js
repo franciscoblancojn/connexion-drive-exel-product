@@ -1782,6 +1782,17 @@ jQuery(function ($) {
                                 var newVal = $(this).find('.cdep-new-value').text();
                                 $(this).replaceWith('<strong>' + newVal + '</strong>');
                             });
+                            // If created, update SKU and Name to links to the product editor
+                            if (item.status === 'created' && item.product_id) {
+                                var editUrl = cdep.ajaxurl.replace('admin-ajax.php', 'post.php?post=' + item.product_id + '&action=edit');
+                                var $skuCell = $row.find('td').eq(4);
+                                $skuCell.html('<strong><a href="' + editUrl + '" target="_blank">' + escHtml(item.sku) + '</a></strong>');
+                                var $nameCell = $row.find('td').eq(5);
+                                var nameText = $nameCell.find('strong').text() || $nameCell.text().trim();
+                                if (nameText) {
+                                    $nameCell.html('<a href="' + editUrl + '" target="_blank">' + escHtml(nameText) + '</a>');
+                                }
+                            }
                         }
                         processedCount++;
                     });
@@ -2142,6 +2153,8 @@ jQuery(function ($) {
         var sku = btn.attr('data-sku');
         var mapping = state.mapping;
         var $row = btn.closest('.cdep-product-row');
+        var $container = $row.closest('.cdep-preview-tab-content');
+        var containerId = $container.attr('id');
 
         if (!mapping || !mapping.sku) {
             showMessage('#cdep-update-result', 'Primero haz una vista previa', 'error');
@@ -2150,14 +2163,18 @@ jQuery(function ($) {
 
         btn.prop('disabled', true).text('Procesando...');
 
+        // Collect current manual data from the UI (same as batch update)
+        var manualData = collectManualData(containerId);
+
         ajax('cdep_update_single', {
             sku: sku,
             mapping: mapping,
             ai_data: state.aiGenerated,
-            manual_data: state.manualData,
+            manual_data: manualData,
         }, function (data) {
             if (data.processed_skus && data.processed_skus.length > 0) {
-                var status = data.processed_skus[0].status;
+                var item = data.processed_skus[0];
+                var status = item.status;
 
                 // Update status badge
                 $row.attr('data-status', status);
@@ -2168,6 +2185,20 @@ jQuery(function ($) {
                     var newVal = $(this).find('.cdep-new-value').text();
                     $(this).replaceWith('<strong>' + newVal + '</strong>');
                 });
+
+                // If created, update SKU and Name to links to the product editor
+                if (status === 'created' && item.product_id) {
+                    var editUrl = cdep.ajaxurl.replace('admin-ajax.php', 'post.php?post=' + item.product_id + '&action=edit');
+                    // Update SKU cell (index 4 in the table)
+                    var $skuCell = $row.find('td').eq(4);
+                    $skuCell.html('<strong><a href="' + editUrl + '" target="_blank">' + escHtml(sku) + '</a></strong>');
+                    // Update Name cell (index 5 in the table, if product_name was mapped)
+                    var $nameCell = $row.find('td').eq(5);
+                    var nameText = $nameCell.find('strong').text() || $nameCell.text().trim();
+                    if (nameText) {
+                        $nameCell.html('<a href="' + editUrl + '" target="_blank">' + escHtml(nameText) + '</a>');
+                    }
+                }
             }
             btn.prop('disabled', false).text('Procesar');
         }, function (msg) {
