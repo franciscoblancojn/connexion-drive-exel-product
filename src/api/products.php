@@ -1016,7 +1016,7 @@ add_action('wp_ajax_cdep_ai_generate', function () {
                     $kodeeConfig = array();
                     if ($field === 'short_description') {
                         $kodeeConfig = array(
-                            'length' => '50-200',
+                            'length' => '100',
                             'tone' => 'commercial',
                             'format' => 'plain_text',
                             'type' => 'sentence',
