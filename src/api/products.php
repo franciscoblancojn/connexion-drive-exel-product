@@ -828,10 +828,15 @@ add_action('wp_ajax_cdep_ai_generate', function () {
     $configVars = isset($mapping['config_vars']) ? $mapping['config_vars'] : array();
     $creationBrand = isset($mapping['creation_brand']) ? $mapping['creation_brand'] : '';
     $marcaDescription = '';
+    $marcaDescriptionPlain = '';
     if (!empty($creationBrand)) {
         $term = get_term_by('name', $creationBrand, 'product_brand');
         if ($term && !is_wp_error($term)) {
-            $marcaDescription = term_description($term->term_id, 'product_brand');
+            $rawDesc = term_description($term->term_id, 'product_brand');
+            $marcaDescription = $rawDesc;
+            $marcaDescriptionPlain = strip_tags($rawDesc);
+            $marcaDescriptionPlain = preg_replace('/\s+/', ' ', $marcaDescriptionPlain);
+            $marcaDescriptionPlain = trim($marcaDescriptionPlain);
         }
     }
     $allRows = $cached['all_rows'];
@@ -888,6 +893,10 @@ add_action('wp_ajax_cdep_ai_generate', function () {
                 $contextParts[] = 'Marca: ' . $creationBrand;
             }
 
+            if (!empty($marcaDescriptionPlain)) {
+                $contextParts[] = 'Info marca: ' . $marcaDescriptionPlain;
+            }
+
             foreach ($configVars as $varName => $varValue) {
                 $contextParts[] = $varName . ': ' . $varValue;
             }
@@ -909,36 +918,29 @@ add_action('wp_ajax_cdep_ai_generate', function () {
                 $prompt = "Genera SOLO el nombre del producto, descriptivo y atractivo. Máximo 100 caracteres. Sin HTML. Ejemplo: Bolso Michael Kors Once Original\n\nDatos:\n" . $context . "\n";
             } elseif ($field === 'short_description') {
                 $prompt = "
-                Eres un especialista senior en contenido para ecommerce, SEO orgánico, GEO, búsqueda por IA, búsqueda por voz y WooCommerce.
+                Eres un especialista senior en contenido para ecommerce, SEO organico, busqueda por IA y WooCommerce.
 
-                Genera SOLO la descripción corta del producto.
+                ADVERTENCIA: Si incluyes HTML, titulos, listas, emojis, comillas o cualquier formato que no sea texto plano, la respuesta sera RECHAZADA automaticamente.
 
-                REGLAS OBLIGATORIAS:
+                Genera UNICAMENTE la descripcion corta del producto en una sola frase.
+
+                REGLAS OBLIGATORIAS (incumplirlas invalida la respuesta):
                 - Una sola frase.
-                - Máximo 200 caracteres.
-                - Texto plano.
-                - Sin HTML.
-                - Sin títulos.
-                - Sin etiquetas.
-                - Sin emojis.
-                - Sin comillas.
-                - Sin listas.
-                - No inventes información.
-                - Usa únicamente los datos del producto entregados en CONTEXTO.
-                - Si falta un dato, omítelo.
+                - Maximo 200 caracteres.
+                - Texto plano. SIN HTML. SIN etiquetas. SIN titulos. SIN emojis. SIN comillas. SIN listas.
+                - No inventes informacion. Usa solo los datos del CONTEXTO.
+                - Si falta un dato, omitelo.
                 - Debe ser comercial, clara, natural y persuasiva.
-                - Debe incluir el nombre o tipo de producto.
-                - Debe mencionar el beneficio principal.
-                - Debe incluir marca, material, uso o característica destacada solo si existe en el contexto.
-                - Debe estar optimizada para SEO, GEO, IA y búsquedas por voz sin sobrecargar palabras clave.
-                - Finaliza obligatoriamente con: Ref. REFERENCIA o el SKU del producto
-                - No finalices con '...', finaliza con REFERENCIA o el SKU del producto.
+                - Incluye el nombre o tipo de producto.
+                - Menciona el beneficio principal.
+                - Incluye marca, material, uso o caracteristica destacada solo si existe en el contexto.
+                - Finaliza obligatoriamente con: Ref. REFERENCIA o el SKU del producto.
+                - NO finalices con puntos suspensivos (...).
 
                 CONTEXTO DEL PRODUCTO:
                 " . $context . "
 
-                SALIDA:
-                Devuelve únicamente la descripción corta final.
+                SALIDA (texto plano, una sola linea, sin formato):
                 ";
                 } elseif ($field === 'description') {
                     $prompt = "
@@ -994,11 +996,6 @@ add_action('wp_ajax_cdep_ai_generate', function () {
                     ";
             }
 
-            // Append brand description if available
-            if (!empty($marcaDescription)) {
-                $prompt .= "\n\nDescripcion de la marca:\n" . $marcaDescription;
-            }
-
             // Append extra prompt if provided (with variable resolution)
             if (isset($extraPrompts[$field]) && !empty($extraPrompts[$field])) {
                 $resolvedExtra = CDEP_PRODUCTS::resolveTemplate(
@@ -1018,11 +1015,26 @@ add_action('wp_ajax_cdep_ai_generate', function () {
                 } elseif ($aiProvider === 'kodee' && class_exists('IACON_KODEE')) {
                     $kodeeConfig = array();
                     if ($field === 'short_description') {
-                        $kodeeConfig = array('length' => '50-200');
+                        $kodeeConfig = array(
+                            'length' => '50-200',
+                            'tone' => 'commercial',
+                            'format' => 'plain_text',
+                            'type' => 'sentence',
+                        );
                     } elseif ($field === 'product_name') {
-                        $kodeeConfig = array('length' => '10-100');
+                        $kodeeConfig = array(
+                            'length' => '10-100',
+                            'tone' => 'commercial',
+                            'format' => 'plain_text',
+                            'type' => 'title',
+                        );
                     } elseif ($field === 'description') {
-                        $kodeeConfig = array('length' => '400-800');
+                        $kodeeConfig = array(
+                            'length' => '400-800',
+                            'tone' => 'commercial',
+                            'format' => 'html_clean',
+                            'type' => 'blog_post',
+                        );
                     }
                     $response = IACON_KODEE::sendPrompt($prompt, $kodeeConfig);
                 }
@@ -1030,9 +1042,12 @@ add_action('wp_ajax_cdep_ai_generate', function () {
                 $response = array('status' => 'error', 'message' => $e->getMessage());
             }
 
-            if ($response['status'] === 'ok') {
+            if ($response['status'] === 'ok' || (isset($response['type']) && $response['type'] === 'kodee_ok')) {
                 $content = $response['data'];
-                // Post-process Kodee output (always returns blog_post format)
+                if (is_array($content) && isset($content['content'])) {
+                    $content = $content['content'];
+                }
+                // Post-process output
                 if ($field === 'short_description') {
                     $content = strip_tags($content);
                     $content = preg_replace('/\s+/', ' ', $content);
