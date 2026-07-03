@@ -942,7 +942,7 @@ add_action('wp_ajax_cdep_ai_generate', function () {
 
                 SALIDA (texto plano, una sola linea, sin formato):
                 ";
-                } elseif ($field === 'description') {
+            } elseif ($field === 'description') {
                     $prompt = "
                     Eres un especialista senior en contenido para ecommerce, SEO orgánico, GEO, búsqueda por IA, búsqueda por voz, WooCommerce y conversión.
 
@@ -958,10 +958,8 @@ add_action('wp_ajax_cdep_ai_generate', function () {
                     - No menciones datos no confirmados.
                     - No uses frases genéricas como 'el mejor', 'alta calidad' o 'producto increíble'.
                     - No repitas información.
-                    - No uses CSS.
                     - No uses JavaScript.
-                    - No uses estilos inline.
-                    - HTML permitido: <h2>, <h3>, <p>, <ul>, <li>, <strong>, <table>, <tr>, <td>.
+                    - HTML permitido: <h2>, <h3>, <p>, <strong>, <small>, <i>, <ul>, <li>, <table>, <tr>, <th>, <td>.
                     - Extensión máxima: 1000 caracteres.
                     - Lenguaje comercial, natural y profesional.
                     - Optimiza para SEO, GEO, IA y búsqueda por voz.
@@ -979,10 +977,12 @@ add_action('wp_ajax_cdep_ai_generate', function () {
                     3. Sección:
                     <h2>Características del producto</h2>
                     Explica materiales, diseño, uso, resistencia, garantía, marca o funcionalidad solo si existen en el contexto.
+                    Usa una tabla para mostrar las características, y usa estilos y emojis para una mejor precentacion.
 
                     4. Sección:
                     <h2>Especificaciones técnicas</h2>
                     Crea una tabla HTML solo con los datos disponibles.
+                    Usa estilos y emojis para una mejor precentacion.
                     No incluyas filas vacías.
 
                     5. Cierre comercial:
