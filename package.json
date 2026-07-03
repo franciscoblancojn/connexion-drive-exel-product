@@ -1,6 +1,6 @@
 {
   "name": "connexion-drive-exel-product",
-  "version": "1.1.72",
+  "version": "1.1.73",
   "description": "WordPress plugin to connect Google Drive, select Excel files, map columns (SKU, price, quantity), and mass update WooCommerce products.",
   "scripts": {
     "v": "grep -i \"Version:\" index.php | sed 's/.*Version:[[:space:]]*//'",
