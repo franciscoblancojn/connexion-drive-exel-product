@@ -4,6 +4,13 @@ All notable changes to **Connexion Drive Excel Product** are documented here.
 
 ---
 
+## [1.1.60] - 2026-07-01
+
+### Fixed
+- `Call to undefined method WC_Product_Attribute::set_taxonomy()` when creating products with manual attributes — replaced with `set_id()` using `wc_attribute_taxonomy_id_by_name()` to properly link attributes to existing global taxonomies
+- `catch (Exception $e)` changed to `catch (Throwable $e)` in `executeUpdate()` and AI generation handler to catch PHP 7+ `Error` types (`TypeError`, `ArgumentCountError`) and return proper error messages instead of 500
+- AJAX handlers `cdep_update_preview`, `cdep_ai_generate`, `cdep_update_execute`, `cdep_update_batch_skus`, `cdep_update_single` now wrapped in top-level try-catch so any unhandled `Throwable` returns `wp_send_json_error` instead of a WordPress 500 error page ("Ha habido un error crítico")
+
 ## [1.1.59] - 2026-06-30
 
 ### Fixed
