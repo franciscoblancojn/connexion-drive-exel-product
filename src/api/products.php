@@ -931,8 +931,8 @@ add_action('wp_ajax_cdep_ai_generate', function () {
                 - Debe mencionar el beneficio principal.
                 - Debe incluir marca, material, uso o característica destacada solo si existe en el contexto.
                 - Debe estar optimizada para SEO, GEO, IA y búsquedas por voz sin sobrecargar palabras clave.
-                - Finaliza obligatoriamente con: Ref. REFERENCIA
-                - Reemplaza REFERENCIA por la referencia real del producto.
+                - Finaliza obligatoriamente con: Ref. REFERENCIA o el SKU del producto
+                - No finalices con '...', finaliza con REFERENCIA o el SKU del producto.
 
                 CONTEXTO DEL PRODUCTO:
                 " . $context . "
