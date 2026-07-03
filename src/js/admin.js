@@ -1308,6 +1308,18 @@ jQuery(function ($) {
         return $('#cdep-auto-manual-empty').length && $('#cdep-auto-manual-empty').is(':checked');
     }
 
+    function hasAllAiFields(sku, aiFields) {
+        if (!state.aiGenerated || !state.aiGenerated[sku] || !aiFields || aiFields.length === 0) {
+            return false;
+        }
+        for (var i = 0; i < aiFields.length; i++) {
+            if (!state.aiGenerated[sku][aiFields[i]]) {
+                return false;
+            }
+        }
+        return true;
+    }
+
     function renderProductsTable(products, mappedFields, productNameMapped, aiFields, manualFields, brandManual, categoryManual, hideCategoriesAttributes) {
         var html = '<div class="cdep-table-wrapper">';
         html += '<table class="wp-list-table widefat striped">';
@@ -1366,7 +1378,11 @@ jQuery(function ($) {
             html += '<div class="content-btn-procesing-in-table">';
             html += '<button class="button button-small cdep-process-single" data-sku="' + escHtml(p.sku) + '">Procesar</button>';
             if (aiFields && aiFields.length > 0) {
-                html += ' <button class="button button-small cdep-ai-generate-row" data-sku="' + escHtml(p.sku) + '">Generar con IA</button>';
+                if (hasAllAiFields(p.sku, aiFields)) {
+                    html += ' <button class="button button-small cdep-ai-generate-row" data-sku="' + escHtml(p.sku) + '">Regenerar contenido</button>';
+                } else {
+                    html += ' <button class="button button-small cdep-ai-generate-row" data-sku="' + escHtml(p.sku) + '">Generar con IA</button>';
+                }
             }
             html += '</div>';
             html += '</td>';
@@ -1386,7 +1402,8 @@ jQuery(function ($) {
                 if (isAiName && (!nameFd || !nameFd.new)) {
                     html += '<td class="cdep-field-cell-product_name"><span class="cdep-badge cdep-badge-ai">Pendiente de generar</span></td>';
                 } else if (isAiName) {
-                    html += '<td class="cdep-field-cell-product_name"><button class="button button-small cdep-view-ai-content" data-sku="' + escHtml(p.sku) + '" data-field="product_name">Ver contenido generado con IA</button></td>';
+                    var nameBtnText = hasAllAiFields(p.sku, aiFields) ? 'Regenerar contenido' : 'Ver contenido generado con IA';
+                    html += '<td class="cdep-field-cell-product_name"><button class="button button-small cdep-view-ai-content" data-sku="' + escHtml(p.sku) + '" data-field="product_name">' + nameBtnText + '</button></td>';
                 } else if (useAutoManualName) {
                     var autoNameVal = '';
                     if (state.manualData && state.manualData[p.sku] && state.manualData[p.sku]['product_name'] !== undefined) {
@@ -1534,7 +1551,8 @@ jQuery(function ($) {
                 if (isAi && (!fd || !fd.new)) {
                     html += '<td class="cdep-field-cell-' + f.key + '"><span class="cdep-badge cdep-badge-ai">Pendiente de generar</span></td>';
                 } else if (isAi) {
-                    html += '<td class="cdep-field-cell-' + f.key + '"><button class="button button-small cdep-view-ai-content" data-sku="' + escHtml(p.sku) + '" data-field="' + f.key + '">Ver contenido generado con IA</button></td>';
+                    var aiBtnText = hasAllAiFields(p.sku, aiFields) ? 'Regenerar contenido' : 'Ver contenido generado con IA';
+                    html += '<td class="cdep-field-cell-' + f.key + '"><button class="button button-small cdep-view-ai-content" data-sku="' + escHtml(p.sku) + '" data-field="' + f.key + '">' + aiBtnText + '</button></td>';
                 } else if (isManual) {
                     var savedVal = '';
                     if (state.manualData && state.manualData[p.sku] && state.manualData[p.sku][f.key] !== undefined) {
@@ -1947,9 +1965,20 @@ jQuery(function ($) {
             if (newProducts.length > 0) {
                 html += renderProductsTable(newProducts, createMappedFields, createProductNameMapped, aiFields, manualFields, brandManual, categoryManual);
                 html += '<hr>';
+                // Check if all new products already have all AI fields generated
+                var allAiDone = true;
+                if (hasAiFields) {
+                    $.each(newProducts, function (aiCheckI, aiCheckP) {
+                        if (!hasAllAiFields(aiCheckP.sku, aiFields)) {
+                            allAiDone = false;
+                            return false;
+                        }
+                    });
+                }
+                var showBatchAi = hasAiFields && !allAiDone;
                 html += '<p>';
                 html += '<button id="cdep-start-create" class="button button-primary">Iniciar Creación Masiva</button>';
-                if (hasAiFields) {
+                if (showBatchAi) {
                     html += ' <button id="cdep-ai-generate-create" class="button cdep-ai-generate-btn">Generar contenido con IA</button>';
                 }
                 if (hasManualFields) {
@@ -1989,8 +2018,31 @@ jQuery(function ($) {
             return;
         }
 
+        // Derive AI fields from mapping
+        var aiFields = [];
+        if (state.mapping) {
+            $.each(state.mapping, function (key, val) {
+                if (key.indexOf('create_') === 0 && val === '__ai__') {
+                    aiFields.push(key.replace('create_', ''));
+                }
+            });
+        }
+
+        // Filter out SKUs that already have all AI fields generated
+        var skusToProcess = [];
+        $.each(checkedSkus, function (ci, cSku) {
+            if (!hasAllAiFields(cSku, aiFields)) {
+                skusToProcess.push(cSku);
+            }
+        });
+
+        if (skusToProcess.length === 0) {
+            showMessage('#cdep-preview-result', 'Todos los productos seleccionados ya tienen contenido generado con IA', 'ok');
+            return;
+        }
+
         var btn = $(this);
-        var totalSkus = checkedSkus.length;
+        var totalSkus = skusToProcess.length;
         var processedCount = 0;
         var allErrors = [];
 
@@ -1999,6 +2051,9 @@ jQuery(function ($) {
         $('#cdep-create-progress').show();
         $('#cdep-create-progress .cdep-progress-fill').css('width', '0%');
         $('#cdep-create-progress .cdep-progress-text').text('0 / ' + totalSkus + ' productos generados');
+
+        // Replace checkedSkus with filtered list
+        checkedSkus = skusToProcess;
 
         function processNext(idx) {
             if (idx >= checkedSkus.length) {
