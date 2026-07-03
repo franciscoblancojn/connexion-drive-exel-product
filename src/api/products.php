@@ -876,6 +876,8 @@ add_action('wp_ajax_cdep_ai_generate', function () {
 
     $fieldLabels = CDEP_PRODUCTS::getFields();
     $aiData = array();
+    $responseErrors = array();
+    $rateLimited = false;
 
     foreach ($allRows as $row) {
         $sku = isset($row[$skuIndex]) ? trim($row[$skuIndex]) : '';
@@ -1047,6 +1049,9 @@ add_action('wp_ajax_cdep_ai_generate', function () {
                 if (is_array($content) && isset($content['content'])) {
                     $content = $content['content'];
                 }
+                // Strip ```html and ``` code fences from AI responses
+                $content = preg_replace('/^```(?:html)?\s*\n?/i', '', $content);
+                $content = preg_replace('/\n?```\s*$/i', '', $content);
                 // Post-process output
                 if ($field === 'short_description') {
                     $content = strip_tags($content);
@@ -1068,12 +1073,42 @@ add_action('wp_ajax_cdep_ai_generate', function () {
             } else {
                 $aiData[$sku][$field] = '';
                 $errorMsg = isset($response['message']) ? $response['message'] : 'Error desconocido al generar con IA';
+
+                // Extract nested error messages (IACON_AI error format)
+                if (isset($response['data']) && is_array($response['data'])) {
+                    if (isset($response['data']['message'])) {
+                        $errorMsg = $response['data']['message'];
+                    }
+                    if (isset($response['data']['data']['jsonResponse']['error']['message'])) {
+                        $errorMsg = $response['data']['data']['jsonResponse']['error']['message'];
+                    }
+                }
+
+                $responseErrors[] = array('sku' => $sku, 'field' => $field, 'message' => $errorMsg);
+
+                // Detect rate limiting / 503 errors
+                if (!$rateLimited) {
+                    $rateLimitPatterns = array('high demand', '503', 'unavailable', 'rate limit', 'too many requests', 'resource exhausted', 'quota');
+                    foreach ($rateLimitPatterns as $pattern) {
+                        if (stripos($errorMsg, $pattern) !== false) {
+                            $rateLimited = true;
+                            break;
+                        }
+                    }
+                }
+
+                // If rate limited, stop processing more fields for this SKU
+                if ($rateLimited) {
+                    break;
+                }
             }
         }
     }
 
     wp_send_json_success(array(
         'data' => $aiData,
+        'errors' => $responseErrors,
+        'rate_limited' => $rateLimited,
     ));
     } catch (Throwable $e) {
         wp_send_json_error('Error interno en generación IA: ' . $e->getMessage());

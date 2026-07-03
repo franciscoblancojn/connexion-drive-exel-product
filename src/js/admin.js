@@ -2004,7 +2004,11 @@ jQuery(function ($) {
             if (idx >= checkedSkus.length) {
                 btn.prop('disabled', false).text('Generar contenido con IA');
                 $('#cdep-start-create').prop('disabled', false);
-                $('#cdep-create-progress .cdep-progress-text').text('Completado: ' + processedCount + ' generados');
+                var completionText = 'Completado: ' + processedCount + ' generados';
+                if (allErrors.length > 0) {
+                    completionText += ', ' + allErrors.length + ' con errores';
+                }
+                $('#cdep-create-progress .cdep-progress-text').text(completionText);
 
                 // Re-run preview to consolidate AI data
                 $('#cdep-preview-update').prop('disabled', true).text('Procesando...');
@@ -2020,6 +2024,11 @@ jQuery(function ($) {
                     $('.cdep-preview-tab-content').removeClass('active');
                     $('.cdep-preview-tab-content[data-tab="create"]').addClass('active');
                     $('#cdep-preview-update').prop('disabled', false).text('Vista Previa de Actualización');
+                    if (allErrors.length > 0) {
+                        var $errMsg = $('<p class="fwue-message error">' + allErrors.length + ' producto(s) con errores. Revisa las filas marcadas en rojo.</p>');
+                        $('#cdep-preview-result').prepend($errMsg);
+                        setTimeout(function () { $errMsg.remove(); }, 15000);
+                    }
                     var $msg = $('<p class="fwue-message ok">Contenido generado correctamente para ' + processedCount + ' productos.</p>');
                     $('#cdep-preview-result').prepend($msg);
                     setTimeout(function () { $msg.remove(); }, 8000);
@@ -2040,9 +2049,42 @@ jQuery(function ($) {
                 skus: [sku],
                 ai_provider: cdep.ai_provider,
             }, function (data) {
+                // Handle rate limiting: red progress bar with 60s countdown, then retry
+                if (data.rate_limited) {
+                    var $bar = $('#cdep-create-progress .cdep-progress-fill');
+                    var $text = $('#cdep-create-progress .cdep-progress-text');
+                    var originalBg = $bar.css('background');
+                    $bar.css('background', '#dc3545');
+                    var waitSeconds = 60;
+                    $text.text('Limite de peticiones alcanzado. Esperando ' + waitSeconds + 's...');
+
+                    var timer = setInterval(function () {
+                        waitSeconds--;
+                        $text.text('Limite de peticiones alcanzado. Esperando ' + waitSeconds + 's...');
+                        if (waitSeconds <= 0) {
+                            clearInterval(timer);
+                            $bar.css('background', originalBg);
+                            processNext(idx); // retry same SKU
+                        }
+                    }, 1000);
+                    return;
+                }
+
                 if (!state.aiGenerated) {
                     state.aiGenerated = {};
                 }
+
+                // Log errors for this SKU
+                if (data.errors && data.errors.length > 0) {
+                    $.each(data.errors, function (i, err) {
+                        allErrors.push(err);
+                    });
+                    var $row = findRowBySku(sku);
+                    if ($row) {
+                        $row.attr('data-status', 'error');
+                    }
+                }
+
                 if (data.data && data.data[sku]) {
                     state.aiGenerated[sku] = data.data[sku];
                     saveAiCache();
@@ -2247,6 +2289,33 @@ jQuery(function ($) {
             skus: [sku],
             ai_provider: cdep.ai_provider,
         }, function (data) {
+            // Handle rate limit: show message to retry later
+            if (data.rate_limited) {
+                btn.prop('disabled', false).text('Generar con IA');
+                var $msg = $('<p class="fwue-message error">Limite de peticiones de IA alcanzado. Espera 1 minuto y vuelve a intentarlo.</p>');
+                $('#cdep-preview-result').prepend($msg);
+                setTimeout(function () { $msg.remove(); }, 10000);
+                return;
+            }
+
+            // Show errors in specific field cells
+            if (data.errors && data.errors.length > 0) {
+                $.each(data.errors, function (i, err) {
+                    var $cell = $row.find('.cdep-field-cell-' + err.field);
+                    if ($cell.length) {
+                        $cell.html('<span class="cdep-badge cdep-badge-error" title="' + escHtml(err.message) + '">Error: ' + escHtml(err.message) + '</span>');
+                    }
+                    if (err.field === 'product_name') {
+                        $row.find('td').eq(5).html('<span class="cdep-badge cdep-badge-error">Error: ' + escHtml(err.message) + '</span>');
+                    }
+                });
+                btn.prop('disabled', false).text('Generar con IA');
+                var $msg = $('<p class="fwue-message error">Error al generar contenido IA para ' + sku + '</p>');
+                $('#cdep-preview-result').prepend($msg);
+                setTimeout(function () { $msg.remove(); }, 8000);
+                return;
+            }
+
             if (data.data && data.data[sku]) {
                 if (!state.aiGenerated) {
                     state.aiGenerated = {};
