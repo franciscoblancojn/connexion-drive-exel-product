@@ -384,6 +384,16 @@ add_action('wp_ajax_cdep_refresh_cache', function () {
         $cachedHeaderRow = intval($prevCache['header_row']);
     }
 
+    $delimiter = isset($_POST['delimiter']) ? sanitize_text_field($_POST['delimiter']) : null;
+    if ($delimiter === 'auto') {
+        $delimiter = null;
+    }
+
+    // Restore delimiter from cache if not provided
+    if ($delimiter === null && isset($prevCache['delimiter'])) {
+        $delimiter = $prevCache['delimiter'];
+    }
+
     CDEP_DRIVE::clearCachedData();
 
     $selected = CDEP_DRIVE::getSelectedFile();
@@ -416,7 +426,7 @@ add_action('wp_ajax_cdep_refresh_cache', function () {
     CDEP_DRIVE::saveSelectedFile($fileId, $fileName, $mimeType);
 
     try {
-        $result = CDEP_EXCEL::parse($tempFile, $cachedHeaderRow);
+        $result = CDEP_EXCEL::parse($tempFile, $cachedHeaderRow, $delimiter);
         CDEP_DRIVE::saveCachedData([
             'file_id' => $fileId,
             'file_name' => $fileName,
@@ -427,6 +437,7 @@ add_action('wp_ajax_cdep_refresh_cache', function () {
             'total_rows' => $result['total_rows'],
             'all_rows' => $result['all_rows'],
             'header_row' => $cachedHeaderRow,
+            'delimiter' => $delimiter,
         ]);
         wp_send_json_success([
             'headers' => $result['headers'],
@@ -434,6 +445,7 @@ add_action('wp_ajax_cdep_refresh_cache', function () {
             'detected' => $result['detected'],
             'total_rows' => $result['total_rows'],
             'header_row' => $cachedHeaderRow,
+            'delimiter' => $delimiter,
         ]);
     } catch (Exception $e) {
         @unlink($tempFile);
@@ -448,6 +460,17 @@ add_action('wp_ajax_cdep_reparse_file', function () {
     check_ajax_referer('cdep_nonce', 'nonce');
 
     $headerRow = intval($_POST['header_row'] ?? 0);
+    $delimiter = isset($_POST['delimiter']) ? sanitize_text_field($_POST['delimiter']) : null;
+    if ($delimiter === 'auto') {
+        $delimiter = null;
+    }
+    // Fallback to cached delimiter
+    if ($delimiter === null) {
+        $prevCache = CDEP_DRIVE::getCachedData();
+        if (isset($prevCache['delimiter'])) {
+            $delimiter = $prevCache['delimiter'];
+        }
+    }
     $selected = CDEP_DRIVE::getSelectedFile();
 
     if (empty($selected['file_id'])) {
@@ -462,7 +485,7 @@ add_action('wp_ajax_cdep_reparse_file', function () {
     }
 
     try {
-        $result = CDEP_EXCEL::parse($tempFile, $headerRow);
+        $result = CDEP_EXCEL::parse($tempFile, $headerRow, $delimiter);
         $cached = CDEP_DRIVE::getCachedData();
         $cached['headers'] = $result['headers'];
         $cached['sample'] = $result['sample'];
@@ -470,6 +493,7 @@ add_action('wp_ajax_cdep_reparse_file', function () {
         $cached['total_rows'] = $result['total_rows'];
         $cached['all_rows'] = $result['all_rows'];
         $cached['header_row'] = $headerRow;
+        $cached['delimiter'] = $delimiter;
         CDEP_DRIVE::saveCachedData($cached);
 
         wp_send_json_success([
@@ -477,6 +501,7 @@ add_action('wp_ajax_cdep_reparse_file', function () {
             'sample' => $result['sample'],
             'detected' => $result['detected'],
             'total_rows' => $result['total_rows'],
+            'delimiter' => $delimiter,
         ]);
     } catch (Exception $e) {
         wp_send_json_error('Error al parsear: ' . $e->getMessage());
@@ -492,6 +517,10 @@ add_action('wp_ajax_cdep_drive_select_file', function () {
     $fileId = sanitize_text_field($_POST['file_id'] ?? '');
     $fileName = sanitize_text_field($_POST['file_name'] ?? '');
     $mimeType = sanitize_text_field($_POST['mime_type'] ?? '');
+    $delimiter = isset($_POST['delimiter']) ? sanitize_text_field($_POST['delimiter']) : null;
+    if ($delimiter === 'auto') {
+        $delimiter = null;
+    }
 
     if (empty($fileId)) {
         wp_send_json_error('Seleccione un archivo');
@@ -518,7 +547,7 @@ add_action('wp_ajax_cdep_drive_select_file', function () {
     CDEP_DRIVE::saveSelectedFile($fileId, $fileName, $mimeType);
 
     try {
-        $result = CDEP_EXCEL::parse($tempFile);
+        $result = CDEP_EXCEL::parse($tempFile, 0, $delimiter);
         CDEP_DRIVE::saveCachedData([
             'file_id' => $fileId,
             'file_name' => $fileName,
@@ -529,6 +558,7 @@ add_action('wp_ajax_cdep_drive_select_file', function () {
             'total_rows' => $result['total_rows'],
             'all_rows' => $result['all_rows'],
             'header_row' => 0,
+            'delimiter' => $delimiter,
         ]);
         wp_send_json_success([
             'headers' => $result['headers'],
@@ -537,6 +567,7 @@ add_action('wp_ajax_cdep_drive_select_file', function () {
             'total_rows' => $result['total_rows'],
             'temp_file' => $tempFile,
             'header_row' => 0,
+            'delimiter' => $delimiter,
         ]);
     } catch (Exception $e) {
         @unlink($tempFile);

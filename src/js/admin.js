@@ -272,6 +272,7 @@ jQuery(function ($) {
             file_id: fileId,
             file_name: fileName,
             mime_type: $(this).data('mimetype'),
+            delimiter: $('#cdep-delimiter').length ? $('#cdep-delimiter').val() : 'auto',
         }, function (data) {
             state.headers = data.headers;
             state.totalRows = data.total_rows;
@@ -415,6 +416,23 @@ jQuery(function ($) {
 
         if (typeof data.header_row !== 'undefined') {
             $('#cdep-header-row').val(data.header_row);
+        }
+
+        if (typeof data.delimiter !== 'undefined' && data.delimiter !== null) {
+            var delimVal = data.delimiter === '' ? 'auto' : data.delimiter;
+            if ($('#cdep-delimiter').length) {
+                $('#cdep-delimiter').val(delimVal);
+            }
+        }
+
+        // Show delimiter selector only for CSV files
+        if ($('#cdep-delimiter-row').length) {
+            var fileName = cdep.selected_file ? cdep.selected_file.file_name : '';
+            if (fileName.toLowerCase().indexOf('.csv') !== -1) {
+                $('#cdep-delimiter-row').show();
+            } else {
+                $('#cdep-delimiter-row').hide();
+            }
         }
 
         $('#cdep-mapping-form').show();
@@ -1573,7 +1591,9 @@ jQuery(function ($) {
         var btn = $(this);
         btn.prop('disabled', true).text('Actualizando...');
 
-        ajax('cdep_refresh_cache', {}, function (data) {
+        ajax('cdep_refresh_cache', {
+            delimiter: $('#cdep-delimiter').length ? $('#cdep-delimiter').val() : 'auto',
+        }, function (data) {
             window.cdepParsedData = data;
             $('#cdep-preview-result').html('');
             loadMapping();
@@ -1596,6 +1616,7 @@ jQuery(function ($) {
 
         ajax('cdep_reparse_file', {
             header_row: headerRow,
+            delimiter: $('#cdep-delimiter').length ? $('#cdep-delimiter').val() : 'auto',
         }, function (data) {
             window.cdepParsedData = data;
             clearAiCache();

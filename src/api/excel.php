@@ -3,17 +3,22 @@ defined('ABSPATH') || exit;
 
 class CDEP_EXCEL {
 
-    public static function parse($filePath, $headerRow = 0) {
+    public static function parse($filePath, $headerRow = 0, $delimiter = null) {
         if (!file_exists($filePath)) {
             throw new Exception('File not found: ' . $filePath);
         }
 
         $extension = strtolower(pathinfo($filePath, PATHINFO_EXTENSION));
 
+        // Normalize delimiter: TAB -> actual tab char
+        if ($delimiter === 'TAB') {
+            $delimiter = "\t";
+        }
+
         if (in_array($extension, ['xlsx', 'xls'])) {
             return self::parseWithPhpSpreadsheet($filePath, $headerRow);
         } elseif ($extension === 'csv') {
-            return self::parseCSV($filePath, $headerRow);
+            return self::parseCSV($filePath, $headerRow, $delimiter);
         } else {
             throw new Exception('Unsupported file format: ' . $extension);
         }
@@ -72,14 +77,31 @@ class CDEP_EXCEL {
         ];
     }
 
-    private static function parseCSV($filePath, $headerRow = 0) {
+    private static function detectDelimiter($line) {
+        $delimiters = array(',' => 0, ';' => 0, "\t" => 0);
+        foreach ($delimiters as $delim => $count) {
+            $delimiters[$delim] = substr_count($line, $delim);
+        }
+        arsort($delimiters);
+        reset($delimiters);
+        $mostCommon = key($delimiters);
+        return $delimiters[$mostCommon] > 0 ? $mostCommon : ',';
+    }
+
+    private static function parseCSV($filePath, $headerRow = 0, $delimiter = null) {
         $handle = fopen($filePath, 'r');
         if (!$handle) {
             throw new Exception('Cannot open CSV file');
         }
 
-        $allLines = [];
-        while (($row = fgetcsv($handle)) !== false) {
+        if ($delimiter === null) {
+            $firstLine = fgets($handle);
+            rewind($handle);
+            $delimiter = self::detectDelimiter($firstLine);
+        }
+
+        $allLines = array();
+        while (($row = fgetcsv($handle, 0, $delimiter)) !== false) {
             $allLines[] = array_map('trim', $row);
         }
         fclose($handle);

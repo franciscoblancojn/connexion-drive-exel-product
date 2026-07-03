@@ -643,3 +643,6 @@
 .cdep-table-wrapper *:has( >select + button){
     display: flex;
 }
+#cdep-delimiter-row {
+    display: none;
+}

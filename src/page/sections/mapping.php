@@ -37,6 +37,18 @@ $productFields = CDEP_PRODUCTS::getFields();
                         <p class="description">Número de fila que contiene los nombres de columna (0 = primera fila)</p>
                     </td>
                 </tr>
+                <tr id="cdep-delimiter-row">
+                    <th><label for="cdep-delimiter">Delimitador CSV</label></th>
+                    <td>
+                        <select id="cdep-delimiter" class="cdep-delimiter-select">
+                            <option value="auto">Auto-detectar</option>
+                            <option value=",">Coma (,)</option>
+                            <option value=";">Punto y coma (;)</option>
+                            <option value="TAB">Tabulación (TAB)</option>
+                        </select>
+                        <p class="description">Delimitador usado en el archivo CSV. "Auto-detectar" intenta detectarlo automáticamente.</p>
+                    </td>
+                </tr>
                 <tr>
                     <th><label for="mapping-sku">Columna SKU <span style="color:#d63638">*</span></label></th>
                     <td>
