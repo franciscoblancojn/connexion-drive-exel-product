@@ -1377,12 +1377,8 @@ jQuery(function ($) {
             html += '<td>';
             html += '<div class="content-btn-procesing-in-table">';
             html += '<button class="button button-small cdep-process-single" data-sku="' + escHtml(p.sku) + '">Procesar</button>';
-            if (aiFields && aiFields.length > 0) {
-                if (hasAllAiFields(p.sku, aiFields)) {
-                    html += ' <button class="button button-small cdep-ai-generate-row" data-sku="' + escHtml(p.sku) + '">Regenerar contenido</button>';
-                } else {
-                    html += ' <button class="button button-small cdep-ai-generate-row" data-sku="' + escHtml(p.sku) + '">Generar con IA</button>';
-                }
+            if (aiFields && aiFields.length > 0 && !hasAllAiFields(p.sku, aiFields)) {
+                html += ' <button class="button button-small cdep-ai-generate-row" data-sku="' + escHtml(p.sku) + '">Generar con IA</button>';
             }
             html += '</div>';
             html += '</td>';
@@ -1402,8 +1398,10 @@ jQuery(function ($) {
                 if (isAiName && (!nameFd || !nameFd.new)) {
                     html += '<td class="cdep-field-cell-product_name"><span class="cdep-badge cdep-badge-ai">Pendiente de generar</span></td>';
                 } else if (isAiName) {
-                    var nameBtnText = hasAllAiFields(p.sku, aiFields) ? 'Regenerar contenido' : 'Ver contenido generado con IA';
-                    html += '<td class="cdep-field-cell-product_name"><button class="button button-small cdep-view-ai-content" data-sku="' + escHtml(p.sku) + '" data-field="product_name">' + nameBtnText + '</button></td>';
+                    html += '<td class="cdep-field-cell-product_name">' +
+                        '<button class="button button-small cdep-view-ai-content" data-sku="' + escHtml(p.sku) + '" data-field="product_name">Ver contenido generado con IA</button>' +
+                        ' <button class="button button-small cdep-ai-regenerate-field" data-sku="' + escHtml(p.sku) + '" data-field="product_name">Regenerar</button>' +
+                        '</td>';
                 } else if (useAutoManualName) {
                     var autoNameVal = '';
                     if (state.manualData && state.manualData[p.sku] && state.manualData[p.sku]['product_name'] !== undefined) {
@@ -1551,8 +1549,10 @@ jQuery(function ($) {
                 if (isAi && (!fd || !fd.new)) {
                     html += '<td class="cdep-field-cell-' + f.key + '"><span class="cdep-badge cdep-badge-ai">Pendiente de generar</span></td>';
                 } else if (isAi) {
-                    var aiBtnText = hasAllAiFields(p.sku, aiFields) ? 'Regenerar contenido' : 'Ver contenido generado con IA';
-                    html += '<td class="cdep-field-cell-' + f.key + '"><button class="button button-small cdep-view-ai-content" data-sku="' + escHtml(p.sku) + '" data-field="' + f.key + '">' + aiBtnText + '</button></td>';
+                    html += '<td class="cdep-field-cell-' + f.key + '">' +
+                        '<button class="button button-small cdep-view-ai-content" data-sku="' + escHtml(p.sku) + '" data-field="' + f.key + '">Ver contenido generado con IA</button>' +
+                        ' <button class="button button-small cdep-ai-regenerate-field" data-sku="' + escHtml(p.sku) + '" data-field="' + f.key + '">Regenerar</button>' +
+                        '</td>';
                 } else if (isManual) {
                     var savedVal = '';
                     if (state.manualData && state.manualData[p.sku] && state.manualData[p.sku][f.key] !== undefined) {
@@ -2159,12 +2159,18 @@ jQuery(function ($) {
                         $.each(aiFields, function (i, fk) {
                             var $cell = $row.find('.cdep-field-cell-' + fk);
                             if ($cell.length) {
-                                $cell.html('<button class="button button-small cdep-view-ai-content" data-sku="' + escHtml(sku) + '" data-field="' + fk + '">Ver contenido generado con IA</button>');
+                                $cell.html(
+                                    '<button class="button button-small cdep-view-ai-content" data-sku="' + escHtml(sku) + '" data-field="' + fk + '">Ver contenido generado con IA</button>' +
+                                    ' <button class="button button-small cdep-ai-regenerate-field" data-sku="' + escHtml(sku) + '" data-field="' + fk + '">Regenerar</button>'
+                                );
                             }
                         });
                         var isAiName = aiFields.indexOf('product_name') !== -1;
                         if (isAiName && state.aiGenerated[sku] && state.aiGenerated[sku]['product_name']) {
-                            $row.find('td').eq(5).html('<button class="button button-small cdep-view-ai-content" data-sku="' + escHtml(sku) + '" data-field="product_name">Ver contenido generado con IA</button>');
+                            $row.find('td').eq(5).html(
+                                '<button class="button button-small cdep-view-ai-content" data-sku="' + escHtml(sku) + '" data-field="product_name">Ver contenido generado con IA</button>' +
+                                ' <button class="button button-small cdep-ai-regenerate-field" data-sku="' + escHtml(sku) + '" data-field="product_name">Regenerar</button>'
+                            );
                         }
                     }
                 }
@@ -2394,7 +2400,10 @@ jQuery(function ($) {
                                 if (isAi && fd && fd.new) {
                                     var $cell = $row.find('.cdep-field-cell-' + fieldKey);
                                     if ($cell.length) {
-                                        $cell.html('<button class="button button-small cdep-view-ai-content" data-sku="' + escHtml(sku) + '" data-field="' + fieldKey + '">Ver contenido generado con IA</button>');
+                                        $cell.html(
+                                            '<button class="button button-small cdep-view-ai-content" data-sku="' + escHtml(sku) + '" data-field="' + fieldKey + '">Ver contenido generado con IA</button>' +
+                                            ' <button class="button button-small cdep-ai-regenerate-field" data-sku="' + escHtml(sku) + '" data-field="' + fieldKey + '">Regenerar</button>'
+                                        );
                                     }
                                 }
                             });
@@ -2403,11 +2412,27 @@ jQuery(function ($) {
                             if (p.fields['product_name']) {
                                 var isAiName = previewData.ai_fields && previewData.ai_fields.indexOf('product_name') !== -1;
                                 if (isAiName && p.fields['product_name'].new) {
-                                    $row.find('td').eq(5).html('<button class="button button-small cdep-view-ai-content" data-sku="' + escHtml(sku) + '" data-field="product_name">Ver contenido generado con IA</button>');
+                                    $row.find('td').eq(5).html(
+                                        '<button class="button button-small cdep-view-ai-content" data-sku="' + escHtml(sku) + '" data-field="product_name">Ver contenido generado con IA</button>' +
+                                        ' <button class="button button-small cdep-ai-regenerate-field" data-sku="' + escHtml(sku) + '" data-field="product_name">Regenerar</button>'
+                                    );
                                 }
                             }
                         }
                     });
+
+                    // If all AI fields generated, remove the action button
+                    var allAiFields = [];
+                    if (state.mapping) {
+                        $.each(state.mapping, function (key, val) {
+                            if (key.indexOf('create_') === 0 && val === '__ai__') {
+                                allAiFields.push(key.replace('create_', ''));
+                            }
+                        });
+                    }
+                    if (hasAllAiFields(sku, allAiFields)) {
+                        $row.find('.cdep-ai-generate-row').remove();
+                    }
 
                     btn.prop('disabled', false).text('Generar con IA');
                     var $msg = $('<p class="fwue-message ok">Contenido generado para ' + sku + '</p>');
@@ -2425,6 +2450,68 @@ jQuery(function ($) {
             var $msg = $('<p class="fwue-message error">' + msg + '</p>');
             $('#cdep-preview-result').prepend($msg);
             setTimeout(function () { $msg.remove(); }, 8000);
+        });
+    });
+
+    // === PER-FIELD AI REGENERATE ===
+    $(document).on('click', '.cdep-ai-regenerate-field', function () {
+        var btn = $(this);
+        var sku = btn.data('sku');
+        var field = btn.data('field');
+        var $row = btn.closest('.cdep-product-row');
+        var $cell = btn.closest('td');
+
+        btn.prop('disabled', true).text('Regenerando...');
+
+        ajax('cdep_ai_generate', {
+            mapping: state.mapping,
+            skus: [sku],
+            field: field,
+            ai_provider: cdep.ai_provider,
+        }, function (data) {
+            if (data.data && data.data[sku] && data.data[sku][field]) {
+                if (!state.aiGenerated) {
+                    state.aiGenerated = {};
+                }
+                if (!state.aiGenerated[sku]) {
+                    state.aiGenerated[sku] = {};
+                }
+                state.aiGenerated[sku][field] = data.data[sku][field];
+                saveAiCache();
+
+                // Re-run preview to update the cell
+                ajax('cdep_update_preview', {
+                    mapping: state.mapping,
+                    ai_data: state.aiGenerated,
+                    manual_data: state.manualData,
+                }, function (previewData) {
+                    $cell.html(
+                        '<button class="button button-small cdep-view-ai-content" data-sku="' + escHtml(sku) + '" data-field="' + field + '">Ver contenido generado con IA</button>' +
+                        ' <button class="button button-small cdep-ai-regenerate-field" data-sku="' + escHtml(sku) + '" data-field="' + field + '">Regenerar</button>'
+                    );
+
+                    // If all AI fields generated, remove the action button
+                    var allAiFields = [];
+                    if (state.mapping) {
+                        $.each(state.mapping, function (key, val) {
+                            if (key.indexOf('create_') === 0 && val === '__ai__') {
+                                allAiFields.push(key.replace('create_', ''));
+                            }
+                        });
+                    }
+                    if (hasAllAiFields(sku, allAiFields)) {
+                        $row.find('.cdep-ai-generate-row').remove();
+                    }
+
+                    btn.prop('disabled', false).text('Regenerar');
+                }, function (msg) {
+                    btn.prop('disabled', false).text('Regenerar');
+                });
+            } else {
+                btn.prop('disabled', false).text('Regenerar');
+            }
+        }, function (msg) {
+            btn.prop('disabled', false).text('Regenerar');
         });
     });
 

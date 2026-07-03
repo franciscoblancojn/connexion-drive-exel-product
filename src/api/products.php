@@ -874,6 +874,12 @@ add_action('wp_ajax_cdep_ai_generate', function () {
         wp_send_json_error('No hay campos configurados para generar con IA');
     }
 
+    // Support per-field generation: if a specific field is requested, only generate that one
+    $requestedField = isset($_POST['field']) ? sanitize_text_field($_POST['field']) : '';
+    if (!empty($requestedField) && in_array($requestedField, $aiFields)) {
+        $aiFields = array($requestedField);
+    }
+
     $fieldLabels = CDEP_PRODUCTS::getFields();
     $aiData = array();
     $responseErrors = array();
