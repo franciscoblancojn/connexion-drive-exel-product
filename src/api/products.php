@@ -999,7 +999,7 @@ add_action('wp_ajax_cdep_ai_generate', function () {
             // Append extra prompt if provided (with variable resolution)
             if (isset($extraPrompts[$field]) && !empty($extraPrompts[$field])) {
                 $resolvedExtra = CDEP_PRODUCTS::resolveTemplate(
-                    sanitize_textarea_field($extraPrompts[$field]),
+                    ($extraPrompts[$field]),
                     $row,
                     $headers,
                     $configVars
