@@ -31,9 +31,9 @@ class CDEP_PRODUCTS
     {
         switch ($type) {
             case 'float':
-                return floatval(str_replace(array('$', ',', ' '), array('', '', ''), $value));
+                return self::parseNumber($value);
             case 'int':
-                return intval($value);
+                return intval(preg_replace('/[^0-9\-]/', '', $value));
             case 'bool':
                 return in_array(strtolower(trim($value)), array('sí', 'si', 'yes', '1', 'true', 'on'));
             default:
@@ -142,23 +142,47 @@ class CDEP_PRODUCTS
         }, $template);
     }
 
+    private static function parseNumber($raw)
+    {
+        $cleaned = preg_replace('/[^0-9.,\-]/', '', $raw);
+        if ($cleaned === '' || $cleaned === '-') {
+            return 0;
+        }
+        // Latin American format: comma = decimal, dot = thousands separator
+        // "$ 193.613"    -> 193613  (dot is thousands)
+        // "$1.234,56"    -> 1234.56 (dot thousands, comma decimal)
+        // "193,613"      -> 193.613 (comma decimal)
+        if (strpos($cleaned, ',') !== false) {
+            // Has comma: comma is decimal separator
+            // Remove all dots (thousands separators) first
+            $cleaned = str_replace('.', '', $cleaned);
+            $cleaned = str_replace(',', '.', $cleaned);
+        } else {
+            // No comma: dots are thousands separators, remove them
+            $cleaned = str_replace('.', '', $cleaned);
+        }
+        return floatval($cleaned);
+    }
+
     private static function resolveCalc($expression, $row, $headers, $configVars = array())
     {
         $resolved = preg_replace_callback('/\{([^}]+)\}/', function ($matches) use ($row, $headers, $configVars) {
             $placeholder = trim($matches[1]);
             if (isset($configVars[$placeholder])) {
                 $v = $configVars[$placeholder];
-                return floatval(preg_replace('/[^0-9.eE\-]/', '', $v));
+                return strval(self::parseNumber($v));
             }
             foreach ($headers as $h) {
                 if ($h['name'] === $placeholder) {
                     $idx = intval($h['index']);
                     $v = isset($row[$idx]) ? trim($row[$idx]) : '0';
-                    return floatval(preg_replace('/[^0-9.eE\-]/', '', $v));
+                    return strval(self::parseNumber($v));
                 }
             }
-            return 0;
+            return '0';
         }, $expression);
+
+        $resolved = trim($resolved);
 
         if (!preg_match('/^[\d\s\+\-\*\/\(\)\.]+$/', $resolved)) {
             return $resolved;
