@@ -18,6 +18,9 @@ if (class_exists('IACON_USE_DATA_CONFIG')) {
     if ($aiConfig['kodee']['enabled'] ?? false) {
         $aiProviders[] = array('key' => 'kodee', 'title' => 'Hostinger Kodee');
     }
+    if (!empty($aiConfig['groq']['apikey']) && ($aiConfig['groq']['enabled'] ?? false)) {
+        $aiProviders[] = array('key' => 'groq', 'title' => 'Groq');
+    }
 }
 
 $cdepAiEnabled = get_option(CDEP_KEY . '_AI_ENABLED', '0');

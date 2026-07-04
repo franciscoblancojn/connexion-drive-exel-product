@@ -1020,6 +1020,8 @@ add_action('wp_ajax_cdep_ai_generate', function () {
             try {
                 if ($aiProvider === 'gemini' && class_exists('IACON_AI')) {
                     $response = IACON_AI::sendPrompt($prompt);
+                } elseif ($aiProvider === 'groq' && class_exists('IACON_GROQ')) {
+                    $response = IACON_GROQ::sendPrompt($prompt);
                 } elseif ($aiProvider === 'kodee' && class_exists('IACON_KODEE')) {
                     $kodeeConfig = array();
                     if ($field === 'short_description') {
