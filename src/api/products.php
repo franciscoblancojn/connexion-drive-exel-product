@@ -978,6 +978,7 @@ add_action('wp_ajax_cdep_ai_generate', function () {
                 Genera UNICAMENTE la descripcion corta del producto en una sola frase.
 
                 REGLAS OBLIGATORIAS (incumplirlas invalida la respuesta):
+                - No coloques el precio.
                 - Una sola frase.
                 - Maximo 200 caracteres.
                 - Texto plano. SIN HTML. SIN etiquetas. SIN titulos. SIN emojis. SIN comillas. SIN listas.
@@ -1005,6 +1006,7 @@ add_action('wp_ajax_cdep_ai_generate', function () {
                     Crear una descripción enriquecida, clara, confiable y optimizada para motores de búsqueda tradicionales, Google AI, Gemini, ChatGPT, Copilot, Perplexity y asistentes de voz.
 
                     REGLAS OBLIGATORIAS:
+                    - No coloques el precio.
                     - Usa únicamente los datos entregados en CONTEXTO.
                     - No inventes información técnica.
                     - Si falta un dato, omítelo.
