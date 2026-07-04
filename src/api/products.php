@@ -1063,11 +1063,7 @@ add_action('wp_ajax_cdep_ai_generate', function () {
             $response = array('status' => 'error', 'data' => '');
 
             try {
-                if ($aiProvider === 'gemini' && class_exists('IACON_AI')) {
-                    $response = IACON_AI::sendPrompt($prompt);
-                } elseif ($aiProvider === 'groq' && class_exists('IACON_GROQ')) {
-                    $response = IACON_GROQ::sendPrompt($prompt);
-                } elseif ($aiProvider === 'kodee' && class_exists('IACON_KODEE')) {
+                if ($aiProvider === 'kodee' && class_exists('IACON_KODEE')) {
                     $kodeeConfig = array();
                     if ($field === 'short_description') {
                         $kodeeConfig = array(
@@ -1092,6 +1088,19 @@ add_action('wp_ajax_cdep_ai_generate', function () {
                         );
                     }
                     $response = IACON_KODEE::sendPrompt($prompt, $kodeeConfig);
+                } elseif (class_exists('IACON_AI')) {
+                    $aiWrapper = IACON_AI::get($aiProvider);
+                    if ($aiWrapper) {
+                        $response = $aiWrapper->sendPrompt($prompt);
+                    } elseif ($aiProvider === 'gemini' && class_exists('IACON_GEMINI')) {
+                        $response = IACON_GEMINI::sendPrompt($prompt);
+                    } elseif ($aiProvider === 'groq' && class_exists('IACON_GROQ')) {
+                        $response = IACON_GROQ::sendPrompt($prompt);
+                    } else {
+                        $response = array('status' => 'error', 'message' => 'Conexión de IA no encontrada: ' . $aiProvider);
+                    }
+                } else {
+                    $response = array('status' => 'error', 'message' => 'IA Conector no está disponible');
                 }
             } catch (Throwable $e) {
                 $response = array('status' => 'error', 'message' => $e->getMessage());

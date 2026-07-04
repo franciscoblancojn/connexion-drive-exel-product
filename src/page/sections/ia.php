@@ -8,18 +8,18 @@ if (!defined('IACON_KEY')) {
 }
 
 $aiProviders = array();
-$aiConfig = array();
 if (class_exists('IACON_USE_DATA_CONFIG')) {
     $IACON_USE_DATA_CONFIG = new IACON_USE_DATA_CONFIG();
-    $aiConfig = $IACON_USE_DATA_CONFIG->get();
-    if (!empty($aiConfig['gemini']['apikey']) && ($aiConfig['gemini']['enabled'] ?? false)) {
-        $aiProviders[] = array('key' => 'gemini', 'title' => 'Gemini');
+    $connections = $IACON_USE_DATA_CONFIG->getConnections();
+    foreach ($connections as $key => $conn) {
+        if (isset($conn['enabled']) && $conn['enabled']) {
+            $label = isset($conn['label']) ? $conn['label'] : $key;
+            $aiProviders[] = array('key' => $key, 'title' => $label);
+        }
     }
+    $aiConfig = $IACON_USE_DATA_CONFIG->get();
     if ($aiConfig['kodee']['enabled'] ?? false) {
         $aiProviders[] = array('key' => 'kodee', 'title' => 'Hostinger Kodee');
-    }
-    if (!empty($aiConfig['groq']['apikey']) && ($aiConfig['groq']['enabled'] ?? false)) {
-        $aiProviders[] = array('key' => 'groq', 'title' => 'Groq');
     }
 }
 
