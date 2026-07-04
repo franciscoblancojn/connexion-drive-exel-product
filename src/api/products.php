@@ -22,6 +22,13 @@ class CDEP_PRODUCTS
         'description' => array('label' => 'Descripción', 'type' => 'string'),
     );
 
+    private static $decimalChar = ',';
+
+    public static function setDecimalChar($char)
+    {
+        self::$decimalChar = ($char === '.') ? '.' : ',';
+    }
+
     public static function getFields()
     {
         return self::$fields;
@@ -148,18 +155,31 @@ class CDEP_PRODUCTS
         if ($cleaned === '' || $cleaned === '-') {
             return 0;
         }
-        // Latin American format: comma = decimal, dot = thousands separator
-        // "$ 193.613"    -> 193613  (dot is thousands)
-        // "$1.234,56"    -> 1234.56 (dot thousands, comma decimal)
-        // "193,613"      -> 193.613 (comma decimal)
-        if (strpos($cleaned, ',') !== false) {
-            // Has comma: comma is decimal separator
-            // Remove all dots (thousands separators) first
-            $cleaned = str_replace('.', '', $cleaned);
-            $cleaned = str_replace(',', '.', $cleaned);
+        if (self::$decimalChar === ',') {
+            // Latin American format: comma = decimal, dot = thousands separator
+            // "$ 193.613"    -> 193613  (dot is thousands)
+            // "$1.234,56"    -> 1234.56 (dot thousands, comma decimal)
+            // "193,613"      -> 193.613 (comma decimal)
+            if (strpos($cleaned, ',') !== false) {
+                // Has comma: comma is decimal separator
+                // Remove all dots (thousands separators) first
+                $cleaned = str_replace('.', '', $cleaned);
+                $cleaned = str_replace(',', '.', $cleaned);
+            } else {
+                // No comma: dots are thousands separators, remove them
+                $cleaned = str_replace('.', '', $cleaned);
+            }
         } else {
-            // No comma: dots are thousands separators, remove them
-            $cleaned = str_replace('.', '', $cleaned);
+            // US format: dot = decimal, comma = thousands separator
+            // "1,234.56"    -> 1234.56 (comma thousands, dot decimal)
+            // "193.613"     -> 193.613 (dot is decimal)
+            if (strpos($cleaned, '.') !== false) {
+                // Has dot: remove commas (thousands separators), keep dot
+                $cleaned = str_replace(',', '', $cleaned);
+            } elseif (strpos($cleaned, ',') !== false) {
+                // No dot, has comma: comma is thousands separator
+                $cleaned = str_replace(',', '', $cleaned);
+            }
         }
         return floatval($cleaned);
     }
@@ -784,6 +804,7 @@ add_action('wp_ajax_cdep_update_preview', function () {
         check_ajax_referer('cdep_nonce', 'nonce');
 
         $mapping = isset($_POST['mapping']) ? $_POST['mapping'] : array();
+        CDEP_PRODUCTS::setDecimalChar(isset($mapping['decimal_char']) ? $mapping['decimal_char'] : ',');
         $selected = CDEP_DRIVE::getSelectedFile();
 
         if (empty($selected['file_id'])) {
@@ -1192,6 +1213,7 @@ add_action('wp_ajax_cdep_update_batch_skus', function () {
 
         $skus = isset($_POST['skus']) ? $_POST['skus'] : array();
         $mapping = isset($_POST['mapping']) ? $_POST['mapping'] : array();
+        CDEP_PRODUCTS::setDecimalChar(isset($mapping['decimal_char']) ? $mapping['decimal_char'] : ',');
 
         if (empty($skus) || !is_array($skus)) {
             wp_send_json_error('No se recibieron SKUs');
@@ -1246,6 +1268,7 @@ add_action('wp_ajax_cdep_update_single', function () {
 
         $sku = sanitize_text_field($_POST['sku'] ?? '');
         $mapping = isset($_POST['mapping']) ? $_POST['mapping'] : array();
+        CDEP_PRODUCTS::setDecimalChar(isset($mapping['decimal_char']) ? $mapping['decimal_char'] : ',');
 
         if (empty($sku)) {
             wp_send_json_error('SKU vacío');

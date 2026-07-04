@@ -448,6 +448,7 @@ jQuery(function ($) {
     function buildMapping() {
         var mapping = {
             sku: $('#mapping-sku').val(),
+            decimal_char: $('#cdep-decimal-char').val() || ',',
         };
 
         // Update fields (existing products): regular_price, sale_price, stock_quantity
@@ -708,6 +709,9 @@ jQuery(function ($) {
             var mapping = JSON.parse(saved);
             if (mapping.sku) {
                 $('#mapping-sku').val(mapping.sku);
+            }
+            if (mapping.decimal_char) {
+                $('#cdep-decimal-char').val(mapping.decimal_char);
             }
             // Restore update fields
             $('.cdep-field-select').each(function () {

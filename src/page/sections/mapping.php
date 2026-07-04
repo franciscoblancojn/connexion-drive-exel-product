@@ -37,6 +37,16 @@ $productFields = CDEP_PRODUCTS::getFields();
                         <p class="description">Número de fila que contiene los nombres de columna (0 = primera fila)</p>
                     </td>
                 </tr>
+                <tr>
+                    <th><label for="cdep-decimal-char">Caracter de decimales</label></th>
+                    <td>
+                        <select id="cdep-decimal-char">
+                            <option value="," selected>Coma (,) — formato Latino</option>
+                            <option value=".">Punto (.) — formato US</option>
+                        </select>
+                        <p class="description">Define cómo se interpretan los números en cálculos. Ej: "1.234,56" con Coma = 1234.56, con Punto = 1.234</p>
+                    </td>
+                </tr>
                 <tr id="cdep-delimiter-row">
                     <th><label for="cdep-delimiter">Delimitador CSV</label></th>
                     <td>
