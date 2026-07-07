@@ -361,7 +361,11 @@ jQuery(function ($) {
         // Populate update field mapping selects (existing products)
         $('.cdep-field-select').each(function () {
             var $sel = $(this);
-            var baseVals = ['', '__calc__'];
+            var field = $(this).data('field');
+            var baseVals = ['', '__calc__', '__manual__'];
+            if (field === 'description' || field === 'short_description') {
+                baseVals.push('__ai__');
+            }
             $sel.find('option').each(function () {
                 var v = $(this).val();
                 if (v && baseVals.indexOf(v) === -1) {
@@ -451,7 +455,7 @@ jQuery(function ($) {
             decimal_char: $('#cdep-decimal-char').val() || ',',
         };
 
-        // Update fields (existing products): regular_price, sale_price, stock_quantity
+        // Update fields (existing products): regular_price, sale_price, stock_quantity, description, short_description
         $('.cdep-field-select').each(function () {
             var field = $(this).data('field');
             var val = $(this).val();
@@ -463,6 +467,12 @@ jQuery(function ($) {
                     }
                 } else if (val === '__manual__') {
                     mapping[field] = '__manual__';
+                } else if (val === '__ai__') {
+                    mapping[field] = '__ai__';
+                    var extraPrompt = $(this).closest('td').find('.cdep-ai-prompt-input').val();
+                    if (extraPrompt) {
+                        mapping[field + '_prompt'] = extraPrompt;
+                    }
                 } else {
                     mapping[field] = val;
                 }
@@ -718,12 +728,20 @@ jQuery(function ($) {
                 var field = $(this).data('field');
                 if (mapping[field]) {
                     var val = mapping[field];
+                    var $td = $(this).closest('td');
                     if (typeof val === 'string' && val.indexOf('calc:') === 0) {
                         $(this).val('__calc__');
-                        $(this).closest('td').find('.cdep-calc-input').val(val.substring(5));
-                        $(this).closest('td').find('.cdep-calc-wrap').show();
+                        $td.find('.cdep-calc-input').val(val.substring(5));
+                        $td.find('.cdep-calc-wrap').show();
                     } else if (val === '__manual__') {
                         $(this).val('__manual__');
+                    } else if (val === '__ai__') {
+                        $(this).val('__ai__');
+                        var savedPrompt = mapping[field + '_prompt'];
+                        if (savedPrompt) {
+                            $td.find('.cdep-ai-prompt-input').val(savedPrompt);
+                        }
+                        $td.find('.cdep-ai-prompt-wrap').show();
                     } else {
                         $(this).val(val);
                     }
@@ -882,6 +900,25 @@ jQuery(function ($) {
                 }
             }
         });
+        // Update field selects: only description and short_description
+        $('.cdep-field-select').each(function () {
+            var field = $(this).data('field');
+            if (field !== 'description' && field !== 'short_description') return;
+            var $sel = $(this);
+            var $aiOpt = $sel.find('option[value="__ai__"]');
+            if (enabled) {
+                if ($aiOpt.length === 0) {
+                    var $manualOpt = $sel.find('option[value="__manual__"]');
+                    $manualOpt.after('<option value="__ai__">Generar con IA</option>');
+                }
+            } else {
+                $aiOpt.remove();
+                if ($sel.val() === '__ai__') {
+                    $sel.val('');
+                    $sel.closest('td').find('.cdep-ai-prompt-wrap').hide();
+                }
+            }
+        });
     }
 
     // === CUSTOM TEMPLATE UI ===
@@ -890,10 +927,16 @@ jQuery(function ($) {
         var val = $(this).val();
         var $td = $(this).closest('td');
         var $calcWrap = $td.find('.cdep-calc-wrap');
+        var $aiWrap = $td.find('.cdep-ai-prompt-wrap');
         if (val === '__calc__') {
             $calcWrap.show();
+            $aiWrap.hide();
+        } else if (val === '__ai__') {
+            $calcWrap.hide();
+            $aiWrap.show();
         } else {
             $calcWrap.hide();
+            $aiWrap.hide();
         }
     });
 
@@ -1881,7 +1924,7 @@ jQuery(function ($) {
             if (state.mapping.hasOwnProperty(key) && state.mapping[key] === '__manual__') {
                 if (key.indexOf('create_') === 0) {
                     manualFields.push(key.replace('create_', ''));
-                } else if (key === 'regular_price' || key === 'sale_price' || key === 'stock_quantity') {
+                } else if (key === 'regular_price' || key === 'sale_price' || key === 'stock_quantity' || key === 'description' || key === 'short_description') {
                     manualFields.push(key);
                 }
             }
@@ -1951,9 +1994,32 @@ jQuery(function ($) {
             // Update tab
             html += '<div class="cdep-preview-tab-content active" id="cdep-preview-update-content" data-tab="update">';
             if (existingProducts.length > 0) {
-                html += renderProductsTable(existingProducts, updateMappedFields, updateProductNameMapped, [], manualFields, false, false, true);
+                var updateAiFields = [];
+                $.each(aiFields, function (i, f) {
+                    // Only include AI fields that are mapped for update (non-create)
+                    if (f === 'description' || f === 'short_description') {
+                        updateAiFields.push(f);
+                    }
+                });
+                html += renderProductsTable(existingProducts, updateMappedFields, updateProductNameMapped, updateAiFields, manualFields, false, false, true);
                 html += '<hr>';
-                html += '<p><button id="cdep-start-update" class="button button-primary">Iniciar Actualización Masiva</button></p>';
+                html += '<p><button id="cdep-start-update" class="button button-primary">Iniciar Actualización Masiva</button>';
+                if (updateAiFields.length > 0) {
+                    var allUpdateAiDone = true;
+                    $.each(existingProducts, function (aiCheckI, aiCheckP) {
+                        if (!hasAllAiFields(aiCheckP.sku, updateAiFields)) {
+                            allUpdateAiDone = false;
+                            return false;
+                        }
+                    });
+                    if (!allUpdateAiDone) {
+                        html += ' <button id="cdep-ai-generate-update" class="button cdep-ai-generate-btn">Generar contenido con IA</button>';
+                    }
+                }
+                if (hasManualFields) {
+                    html += ' <button id="cdep-save-manual-update" class="button">Guardar Edición Manual</button>';
+                }
+                html += '</p>';
             } else {
                 html += '<p>No hay productos existentes para actualizar.</p>';
             }
@@ -2022,12 +2088,16 @@ jQuery(function ($) {
             return;
         }
 
-        // Derive AI fields from mapping
+        // Derive AI fields from mapping (both create_ prefixed and non-prefixed)
         var aiFields = [];
         if (state.mapping) {
             $.each(state.mapping, function (key, val) {
-                if (key.indexOf('create_') === 0 && val === '__ai__') {
-                    aiFields.push(key.replace('create_', ''));
+                if (val === '__ai__') {
+                    if (key.indexOf('create_') === 0) {
+                        aiFields.push(key.replace('create_', ''));
+                    } else {
+                        aiFields.push(key);
+                    }
                 }
             });
         }
@@ -2202,13 +2272,16 @@ jQuery(function ($) {
 
     // === SAVE MANUAL DATA ===
 
-    $(document).on('click', '#cdep-save-manual', function () {
+    $(document).on('click', '#cdep-save-manual, #cdep-save-manual-update', function () {
         var btn = $(this);
         btn.prop('disabled', true).text('Guardando...');
 
-        // Collect all manual inputs from the create tab
+        var isUpdate = btn.attr('id') === 'cdep-save-manual-update';
+        var containerSel = isUpdate ? '#cdep-preview-update-content' : '#cdep-preview-create-content';
+
+        // Collect all manual inputs from the tab
         var manualData = {};
-        $('#cdep-preview-create-content .cdep-manual-input').each(function () {
+        $(containerSel + ' .cdep-manual-input').each(function () {
             var sku = $(this).data('sku');
             var field = $(this).data('field');
             var value = $(this).val();
@@ -2219,7 +2292,7 @@ jQuery(function ($) {
         });
 
         // Collect manual attribute selects
-        $('#cdep-preview-create-content .cdep-manual-attr-select').each(function () {
+        $(containerSel + ' .cdep-manual-attr-select').each(function () {
             var sku = $(this).data('sku');
             var attrLabel = $(this).data('attr');
             var value = $(this).val();
@@ -2240,7 +2313,7 @@ jQuery(function ($) {
         });
 
         // Collect categories specially: group by SKU
-        $('#cdep-preview-create-content .cdep-manual-category-select').each(function () {
+        $(containerSel + ' .cdep-manual-category-select').each(function () {
             var sku = $(this).data('sku');
             if (!manualData[sku]) {
                 manualData[sku] = {};
@@ -2248,7 +2321,7 @@ jQuery(function ($) {
         });
         // For each SKU, collect all category selects into an array
         var skuCategories = {};
-        $('#cdep-preview-create-content .cdep-manual-category-select, #cdep-preview-create-content .cdep-row-category-item select.cdep-manual-input').each(function () {
+        $(containerSel + ' .cdep-manual-category-select, ' + containerSel + ' .cdep-row-category-item select.cdep-manual-input').each(function () {
             var sku = $(this).data('sku');
             var value = $(this).val();
             if (!skuCategories[sku]) {
@@ -2429,8 +2502,12 @@ jQuery(function ($) {
                     var allAiFields = [];
                     if (state.mapping) {
                         $.each(state.mapping, function (key, val) {
-                            if (key.indexOf('create_') === 0 && val === '__ai__') {
-                                allAiFields.push(key.replace('create_', ''));
+                            if (val === '__ai__') {
+                                if (key.indexOf('create_') === 0) {
+                                    allAiFields.push(key.replace('create_', ''));
+                                } else {
+                                    allAiFields.push(key);
+                                }
                             }
                         });
                     }
@@ -2498,8 +2575,12 @@ jQuery(function ($) {
                     var allAiFields = [];
                     if (state.mapping) {
                         $.each(state.mapping, function (key, val) {
-                            if (key.indexOf('create_') === 0 && val === '__ai__') {
-                                allAiFields.push(key.replace('create_', ''));
+                            if (val === '__ai__') {
+                                if (key.indexOf('create_') === 0) {
+                                    allAiFields.push(key.replace('create_', ''));
+                                } else {
+                                    allAiFields.push(key);
+                                }
                             }
                         });
                     }

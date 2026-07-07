@@ -71,7 +71,7 @@ $productFields = CDEP_PRODUCTS::getFields();
             </table>
 
             <h3>Productos existentes — Actualización</h3>
-            <p class="description">Selecciona columnas para actualizar productos que ya existen en WooCommerce. Solo se actualizarán precio y stock.</p>
+            <p class="description">Selecciona columnas para actualizar productos que ya existen en WooCommerce.</p>
 
             <table class="wp-list-table widefat striped" id="cdep-field-mapping-update">
                 <thead>
@@ -82,9 +82,11 @@ $productFields = CDEP_PRODUCTS::getFields();
                 </thead>
                 <tbody>
                     <?php
-                    $updateFields = array('regular_price', 'sale_price', 'stock_quantity');
+                    $updateFields = array('regular_price', 'sale_price', 'stock_quantity', 'description', 'short_description');
+                    $aiUpdateFields = array('description', 'short_description');
                     foreach ($updateFields as $fieldKey):
                         $fieldInfo = $productFields[$fieldKey];
+                        $hasAi = in_array($fieldKey, $aiUpdateFields);
                     ?>
                     <tr>
                         <td><strong><?= esc_html($fieldInfo['label']) ?></strong></td>
@@ -93,6 +95,9 @@ $productFields = CDEP_PRODUCTS::getFields();
                                  <option value="">— No mapear —</option>
                                  <option value="__calc__">Cálculo</option>
                                  <option value="__manual__">Edición Manual</option>
+                                 <?php if ($hasAi): ?>
+                                 <option value="__ai__">Generar con IA</option>
+                                 <?php endif; ?>
                              </select>
                             <div class="cdep-calc-wrap" style="display:none;margin-top:4px">
                                 <div class="cdep-template-input-row">
@@ -101,6 +106,15 @@ $productFields = CDEP_PRODUCTS::getFields();
                                 </div>
                                 <div class="cdep-template-variables-list" style="display:none"></div>
                             </div>
+                            <?php if ($hasAi): ?>
+                            <div class="cdep-ai-prompt-wrap" style="display:none;margin-top:4px">
+                                <div class="cdep-template-input-row">
+                                    <textarea class="cdep-ai-prompt-input" placeholder="Prompt extra para la IA..." style="width:100%;min-height:50px"></textarea>
+                                    <button type="button" class="cdep-template-variable-btn button button-small" title="Insertar variable">+</button>
+                                </div>
+                                <div class="cdep-template-variables-list" style="display:none"></div>
+                            </div>
+                            <?php endif; ?>
                         </td>
                     </tr>
                     <?php endforeach; ?>

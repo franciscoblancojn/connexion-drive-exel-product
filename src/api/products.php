@@ -291,10 +291,16 @@ class CDEP_PRODUCTS
                     $updateMapping[$key] = $colIndex;
                 } elseif ($colIndex === '__manual__') {
                     $updateMapping[$key] = '__manual__';
+                } elseif ($colIndex === '__ai__') {
+                    $updateMapping[$key] = '__ai__';
+                    if (!in_array($key, $aiFields)) {
+                        $aiFields[] = $key;
+                    }
                 } else {
                     $updateMapping[$key] = intval($colIndex);
+                    // Only add numeric column indexes to create mapping (non-prefixed)
+                    $createMapping[$key] = intval($colIndex);
                 }
-                $createMapping[$key] = intval($colIndex);
             }
         }
 
@@ -520,10 +526,13 @@ class CDEP_PRODUCTS
                     $updateMapping[$key] = $colIndex;
                 } elseif ($colIndex === '__manual__') {
                     $updateMapping[$key] = '__manual__';
+                } elseif ($colIndex === '__ai__') {
+                    $updateMapping[$key] = '__ai__';
                 } else {
                     $updateMapping[$key] = intval($colIndex);
+                    // Only add numeric column indexes to create mapping (non-prefixed)
+                    $createMapping[$key] = intval($colIndex);
                 }
-                $createMapping[$key] = intval($colIndex);
             }
         }
 
@@ -904,6 +913,21 @@ add_action('wp_ajax_cdep_ai_generate', function () {
             }
             $realKey = $suffix;
             $createMapping[$realKey] = $colIndex;
+        } else {
+            // Non-prefixed (update) fields: description, short_description
+            $promptPos = strrpos($key, '_prompt');
+            if ($promptPos !== false && $promptPos === strlen($key) - 7) {
+                $fieldKey = substr($key, 0, $promptPos);
+                $allFields = CDEP_PRODUCTS::getFields();
+                if (isset($allFields[$fieldKey])) {
+                    $extraPrompts[$fieldKey] = $colIndex;
+                    continue;
+                }
+            }
+            $allFields = CDEP_PRODUCTS::getFields();
+            if (isset($allFields[$key])) {
+                $createMapping[$key] = $colIndex;
+            }
         }
     }
 
