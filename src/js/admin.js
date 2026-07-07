@@ -540,6 +540,22 @@ jQuery(function ($) {
                 if (condList.length > 0) {
                     conditions[target] = condList;
                 }
+                // Also collect base category values when condicionar is selected
+                if (label === 'categoría') {
+                    var categories = [];
+                    var $categorySelects = $('#cdep-categories-container .cdep-category-select');
+                    $categorySelects.each(function () {
+                        var v = $(this).val();
+                        var t = $(this).find('option:selected').text();
+                        if (v && v !== '__condicionar__' && v !== '__manual__') {
+                            categories.push(t);
+                        }
+                    });
+                    if (categories.length > 0) {
+                        mapping['creation_categories'] = categories;
+                        mapping['creation_category'] = categories[0];
+                    }
+                }
                 // Do NOT add to config_vars since it's conditional
                 } else if (selectedVal === '__manual__') {
                 // Edicion Manual: set marker in mapping for per-row manual input
@@ -824,6 +840,18 @@ jQuery(function ($) {
                         }
                         var $select = target === 'marca' ? $('#creation-brand') : $('#cdep-categories-container .cdep-category-select').first();
                         $select.val('__condicionar__');
+                        // When restoring conditions for categoria, also add base categories as additional items
+                        if (target === 'categoria' && mapping['creation_categories'] && mapping['creation_categories'].length > 0) {
+                            var $container = $('#cdep-categories-container');
+                            // Remove any existing extra category items (keep first one which is __condicionar__)
+                            $container.find('.cdep-category-item:not(:first)').remove();
+                            for (var ci = 0; ci < mapping['creation_categories'].length; ci++) {
+                                var catVal = mapping['creation_categories'][ci];
+                                var $newItem = createCategoryItem();
+                                $newItem.find('.cdep-category-select').val(catVal);
+                                $container.append($newItem);
+                            }
+                        }
                         var $row = $('.cdep-condition-row[data-condition="' + target + '"]');
                         $row.show();
                         var $container = $row.find('.cdep-condition-items');

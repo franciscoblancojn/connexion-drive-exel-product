@@ -352,23 +352,30 @@ class CDEP_PRODUCTS
 
                 $terms = wp_get_post_terms($productId, 'product_cat', array('fields' => 'names'));
                 $productData['categories'] = !empty($terms) ? implode(', ', $terms) : '';
-            } elseif (isset($conditions['categoria'])) {
-                // Preview: show what category would be applied if condition matches
-                $condList = $conditions['categoria'];
-                if (isset($condList['column'])) {
-                    $condList = array($condList);
-                }
-                foreach ($condList as $cond) {
-                    if (self::evaluateCondition($cond, $row)) {
-                        $effectiveCategory = isset($cond['apply']) ? sanitize_text_field($cond['apply']) : '';
-                        if (!empty($effectiveCategory)) {
-                            $productData['categories'] = $effectiveCategory;
+            }
+            // For new products only: evaluate conditional/fallback categories
+            if (!$exists) {
+                $categoryMatched = false;
+                if (isset($conditions['categoria'])) {
+                    $condList = $conditions['categoria'];
+                    if (isset($condList['column'])) {
+                        $condList = array($condList);
+                    }
+                    foreach ($condList as $cond) {
+                        if (self::evaluateCondition($cond, $row)) {
+                            $effectiveCategory = isset($cond['apply']) ? sanitize_text_field($cond['apply']) : '';
+                            if (!empty($effectiveCategory)) {
+                                $productData['categories'] = $effectiveCategory;
+                                $categoryMatched = true;
+                            }
+                            break;
                         }
-                        break;
                     }
                 }
-            } elseif (!empty($creationCategories)) {
-                $productData['categories'] = implode(', ', $creationCategories);
+                // Fallback: use creation categories if no condition matched
+                if (!$categoryMatched && !empty($creationCategories)) {
+                    $productData['categories'] = implode(', ', $creationCategories);
+                }
             }
 
             // Evaluate attributes for new products (preview)
