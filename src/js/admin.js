@@ -614,6 +614,43 @@ jQuery(function ($) {
             }
         });
 
+        // Extra category rows (added via "+ Agregar categoría"): each can independently
+        // be a fixed category (handled above), "Condicionar" (own condition list, additive
+        // — does not replace other categories), or "Edición Manual" (switches the whole
+        // categoría field to manual mode, same as selecting it on the primary row).
+        var categoryExtraConditions = [];
+        var anyExtraCategoryManual = false;
+        $('#cdep-categories-container .cdep-category-item').each(function (idx) {
+            if (idx === 0) return;
+            var v = $(this).find('.cdep-category-select').val();
+            if (v === '__condicionar__') {
+                var condList = [];
+                $(this).find('.cdep-category-condition-row .cdep-condition-item').each(function () {
+                    var colVal = $(this).find('.cdep-condition-column').val();
+                    var opVal = $(this).find('.cdep-condition-operator').val();
+                    var condVal = $(this).find('.cdep-condition-value').val();
+                    var applyVal = $(this).find('.cdep-condition-apply').val();
+                    if (colVal && condVal && applyVal) {
+                        condList.push({
+                            column: colVal,
+                            operator: opVal || '=',
+                            value: condVal,
+                            apply: applyVal
+                        });
+                    }
+                });
+                if (condList.length > 0) categoryExtraConditions.push(condList);
+            } else if (v === '__manual__') {
+                anyExtraCategoryManual = true;
+            }
+        });
+        if (categoryExtraConditions.length > 0) {
+            mapping['creation_categories_conditions'] = categoryExtraConditions;
+        }
+        if (anyExtraCategoryManual) {
+            mapping['creation_category'] = '__manual__';
+        }
+
         var keys = [];
         for (var k in configVars) {
             if (configVars.hasOwnProperty(k)) keys.push(k);
@@ -875,6 +912,27 @@ jQuery(function ($) {
                         });
                     }
                 }
+            }
+
+            // Restore extra category rows with their own independent conditions
+            if (mapping['creation_categories_conditions'] && mapping['creation_categories_conditions'].length > 0) {
+                $.each(mapping['creation_categories_conditions'], function (i, condList) {
+                    var $newItem = createCategoryItem();
+                    $newItem.find('.cdep-category-select').val('__condicionar__');
+                    var $condRow = $newItem.find('.cdep-category-condition-row');
+                    $condRow.show();
+                    var $condContainer = $condRow.find('.cdep-condition-items');
+                    $.each(condList, function (ci, condition) {
+                        var $condItem = createConditionItem('categoria_extra');
+                        populateItemColumns($condItem);
+                        if (condition.column) $condItem.find('.cdep-condition-column').val(condition.column);
+                        if (condition.operator) $condItem.find('.cdep-condition-operator').val(condition.operator);
+                        if (condition.value) $condItem.find('.cdep-condition-value').val(condition.value);
+                        if (condition.apply) $condItem.find('.cdep-condition-apply').val(condition.apply);
+                        $condContainer.append($condItem);
+                    });
+                    $('#cdep-categories-container').append($newItem);
+                });
             }
 
             // Restore attributes
@@ -1277,8 +1335,12 @@ jQuery(function ($) {
 
     function createCategoryItem() {
         var $item = $('<div class="cdep-category-item" style="margin-top:4px">');
-        var $select = $('<select class="cdep-category-select" style="width:calc(100% - 28px)">');
-        // Copy options from the first category select (skip empty, __condicionar__, __manual__)
+        var $fields = $('<div class="cdep-category-item-fields" style="display:flex;gap:4px">');
+        var $select = $('<select class="cdep-category-select cdep-category-select-extra" style="width:calc(100% - 28px)">');
+        $select.append('<option value="">— Sin categoría —</option>');
+        $select.append('<option value="__condicionar__">Condicionar</option>');
+        $select.append('<option value="__manual__">Edición Manual</option>');
+        // Copy real category options from the first category select (skip empty, __condicionar__, __manual__)
         var $firstSelect = $('#cdep-categories-container .cdep-category-select').first();
         if ($firstSelect.length) {
             var seen = {};
@@ -1290,12 +1352,16 @@ jQuery(function ($) {
                 }
             });
         }
-        if ($select.find('option').length === 0) {
-            $select.append('<option value="">— Sin categoría —</option>');
-        }
-        $item.append($select);
+        $fields.append($select);
         var $removeBtn = $('<button type="button" class="button button-small cdep-category-remove">×</button>');
-        $item.append($removeBtn);
+        $fields.append($removeBtn);
+        $item.append($fields);
+        $item.append(
+            '<div class="cdep-category-condition-row cdep-condition-row" data-condition="categoria_extra" style="display:none;margin-top:4px">'
+            + '<div class="cdep-condition-items"></div>'
+            + '<button type="button" class="button button-small cdep-condition-add">+ Agregar otra condición</button>'
+            + '</div>'
+        );
         return $item;
     }
 
@@ -1306,6 +1372,23 @@ jQuery(function ($) {
 
     $(document).on('click', '.cdep-category-remove', function () {
         $(this).closest('.cdep-category-item').remove();
+    });
+
+    // Condicionar toggle for extra category rows (own, independent condition block)
+    $(document).on('change', '.cdep-category-select-extra', function () {
+        var $item = $(this).closest('.cdep-category-item');
+        var $row = $item.find('.cdep-category-condition-row');
+        if ($(this).val() === '__condicionar__') {
+            $row.show();
+            if ($row.find('.cdep-condition-item').length === 0) {
+                var $condItem = createConditionItem('categoria_extra');
+                populateItemColumns($condItem);
+                $row.find('.cdep-condition-items').append($condItem);
+            }
+        } else {
+            $row.hide();
+            $row.find('.cdep-condition-items').empty();
+        }
     });
 
     // Row-level category add/remove in preview table

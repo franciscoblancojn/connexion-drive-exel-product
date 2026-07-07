@@ -356,6 +356,7 @@ class CDEP_PRODUCTS
             // For new products only: evaluate conditional/fallback categories
             if (!$exists) {
                 $categoryMatched = false;
+                $previewCategories = array();
                 if (isset($conditions['categoria'])) {
                     $condList = $conditions['categoria'];
                     if (isset($condList['column'])) {
@@ -365,7 +366,7 @@ class CDEP_PRODUCTS
                         if (self::evaluateCondition($cond, $row)) {
                             $effectiveCategory = isset($cond['apply']) ? sanitize_text_field($cond['apply']) : '';
                             if (!empty($effectiveCategory)) {
-                                $productData['categories'] = $effectiveCategory;
+                                $previewCategories[] = $effectiveCategory;
                                 $categoryMatched = true;
                             }
                             break;
@@ -374,7 +375,28 @@ class CDEP_PRODUCTS
                 }
                 // Fallback: use creation categories if no condition matched
                 if (!$categoryMatched && !empty($creationCategories)) {
-                    $productData['categories'] = implode(', ', $creationCategories);
+                    $previewCategories = $creationCategories;
+                }
+                // Extra category rows set to "Condicionar": each is independent and additive,
+                // it does not replace the categories resolved above.
+                if (isset($mapping['creation_categories_conditions']) && is_array($mapping['creation_categories_conditions'])) {
+                    foreach ($mapping['creation_categories_conditions'] as $extraCondList) {
+                        if (!is_array($extraCondList)) {
+                            continue;
+                        }
+                        foreach ($extraCondList as $extraCond) {
+                            if (self::evaluateCondition($extraCond, $row)) {
+                                $extraCategory = isset($extraCond['apply']) ? sanitize_text_field($extraCond['apply']) : '';
+                                if (!empty($extraCategory)) {
+                                    $previewCategories[] = $extraCategory;
+                                }
+                                break;
+                            }
+                        }
+                    }
+                }
+                if (!empty($previewCategories)) {
+                    $productData['categories'] = implode(', ', array_unique($previewCategories));
                 }
             }
 
@@ -678,6 +700,25 @@ class CDEP_PRODUCTS
                                     }
                                 }
                                 break;
+                            }
+                        }
+                    }
+
+                    // Extra category rows set to "Condicionar": each is independent and
+                    // additive — it adds its matched category without replacing the others.
+                    if (isset($mapping['creation_categories_conditions']) && is_array($mapping['creation_categories_conditions'])) {
+                        foreach ($mapping['creation_categories_conditions'] as $extraCondList) {
+                            if (!is_array($extraCondList)) {
+                                continue;
+                            }
+                            foreach ($extraCondList as $extraCond) {
+                                if (self::evaluateCondition($extraCond, $row)) {
+                                    $extraCategory = isset($extraCond['apply']) ? sanitize_text_field($extraCond['apply']) : '';
+                                    if (!empty($extraCategory)) {
+                                        $effectiveCategories[] = $extraCategory;
+                                    }
+                                    break;
+                                }
                             }
                         }
                     }
