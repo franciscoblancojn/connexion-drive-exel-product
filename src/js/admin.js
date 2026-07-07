@@ -1687,9 +1687,7 @@ jQuery(function ($) {
             clearAiCache();
             clearManualData();
             $('#cdep-preview-result').html('');
-            loadMapping();
-            showMessage('#cdep-mapping-container', 'Encabezados actualizados (fila ' + headerRow + ')', 'ok');
-            btn.prop('disabled', false).text('Aplicar');
+            location.reload();
         }, function (msg) {
             showMessage('#cdep-mapping-container', msg, 'error');
             btn.prop('disabled', false).text('Aplicar');
