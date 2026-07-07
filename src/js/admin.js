@@ -2671,4 +2671,67 @@ jQuery(function ($) {
             $('#cdep-ai-modal').hide();
         }
     });
+
+    // === EXPORT / IMPORT CONFIG ===
+
+    $(document).on('click', '#cdep-export-config', function () {
+        var keys = ['cdep_mapping_config', 'cdep_manual_data', 'cdep_ai_cache', 'cdep_ai_prompts', 'cdep_folder'];
+        var data = {
+            version: 1,
+            exported_at: new Date().toISOString(),
+            data: {}
+        };
+        for (var i = 0; i < keys.length; i++) {
+            try {
+                var raw = localStorage.getItem(keys[i]);
+                if (raw) {
+                    data.data[keys[i]] = JSON.parse(raw);
+                }
+            } catch (e) {}
+        }
+        var blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+        var url = URL.createObjectURL(blob);
+        var a = document.createElement('a');
+        a.href = url;
+        a.download = 'cdep-config-' + new Date().toISOString().slice(0, 10) + '.json';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    });
+
+    $(document).on('click', '#cdep-import-config', function () {
+        $('#cdep-import-file').click();
+    });
+
+    $(document).on('change', '#cdep-import-file', function () {
+        var file = this.files[0];
+        if (!file) return;
+        var reader = new FileReader();
+        reader.onload = function (e) {
+            try {
+                var json = JSON.parse(e.target.result);
+                if (!json.version || !json.data) {
+                    showMessage('#cdep-mapping-container', 'Formato de archivo inválido', 'error');
+                    return;
+                }
+                for (var key in json.data) {
+                    if (json.data.hasOwnProperty(key)) {
+                        try {
+                            localStorage.setItem(key, JSON.stringify(json.data[key]));
+                        } catch (e) {
+                            showMessage('#cdep-mapping-container', 'Error al guardar en localStorage', 'error');
+                            return;
+                        }
+                    }
+                }
+                showMessage('#cdep-mapping-container', 'Configuración importada correctamente. Recargando...', 'ok');
+                setTimeout(function () { location.reload(); }, 1500);
+            } catch (e) {
+                showMessage('#cdep-mapping-container', 'Error al leer el archivo: ' + e.message, 'error');
+            }
+        };
+        reader.readAsText(file);
+        $(this).val('');
+    });
 });

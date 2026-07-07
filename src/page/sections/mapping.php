@@ -277,6 +277,16 @@ $productFields = CDEP_PRODUCTS::getFields();
             </p>
 
             <div id="cdep-preview-result"></div>
+
+            <div class="cdep-export-import" style="margin-top:20px;padding-top:15px;border-top:1px solid #ccd0d4">
+                <h3>Exportar / Importar Configuración</h3>
+                <p class="description">Exporta toda la configuración de mapeo, edición manual y contenido generado con IA para usarla en otro navegador o sesión.</p>
+                <p>
+                    <button id="cdep-export-config" class="button">Exportar Configuración</button>
+                    <button id="cdep-import-config" class="button">Importar Configuración</button>
+                    <input type="file" id="cdep-import-file" accept=".json" style="display:none">
+                </p>
+            </div>
         </div>
     </div>
 </div>
