@@ -555,9 +555,8 @@ jQuery(function ($) {
                     var $categorySelects = $('#cdep-categories-container .cdep-category-select');
                     $categorySelects.each(function () {
                         var v = $(this).val();
-                        var t = $(this).find('option:selected').text();
                         if (v && v !== '__condicionar__' && v !== '__manual__') {
-                            categories.push(t);
+                            categories.push(v);
                         }
                     });
                     if (categories.length > 0) {
@@ -577,9 +576,8 @@ jQuery(function ($) {
                     var $categorySelects = $('#cdep-categories-container .cdep-category-select');
                     $categorySelects.each(function () {
                         var v = $(this).val();
-                        var t = $(this).find('option:selected').text();
                         if (v && v !== '__condicionar__' && v !== '__manual__') {
-                            allCats.push(t);
+                            allCats.push(v);
                         }
                     });
                     if (allCats.length > 0) {
@@ -589,25 +587,24 @@ jQuery(function ($) {
             } else if (selectedVal) {
                 // Map brand/category fields to mapping keys
                 if (label === 'marca') {
-                    mapping['creation_brand'] = selectedText;
+                    mapping['creation_brand'] = selectedVal;
                 } else if (label === 'categoría') {
                     // Collect all categories from the container
                     var categories = [];
-                    var firstCategoryText = '';
+                    var firstCategoryVal = '';
                     var $categorySelects = $('#cdep-categories-container .cdep-category-select');
                     $categorySelects.each(function () {
                         var v = $(this).val();
-                        var t = $(this).find('option:selected').text();
                         if (v && v !== '__condicionar__' && v !== '__manual__') {
-                            categories.push(t);
-                            if (!firstCategoryText) {
-                                firstCategoryText = t;
+                            categories.push(v);
+                            if (!firstCategoryVal) {
+                                firstCategoryVal = v;
                             }
                         }
                     });
                     if (categories.length > 0) {
                         mapping['creation_categories'] = categories;
-                        mapping['creation_category'] = firstCategoryText;
+                        mapping['creation_category'] = firstCategoryVal;
                     } else {
                         mapping['creation_category'] = '';
                     }
@@ -876,6 +873,13 @@ jQuery(function ($) {
                 if ($catSelect.length) {
                     $catSelect.val(mapping['creation_category']);
                 }
+            }
+
+            // Restore auto_manual_empty checkbox
+            if (mapping['auto_manual_empty'] === '1') {
+                $('#cdep-auto-manual-empty').prop('checked', true);
+            } else {
+                $('#cdep-auto-manual-empty').prop('checked', false);
             }
 
             // Restore conditions

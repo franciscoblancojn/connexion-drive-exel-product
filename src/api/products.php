@@ -398,7 +398,19 @@ class CDEP_PRODUCTS
                     }
                 }
                 if (!empty($previewCategories)) {
-                    $productData['categories'] = implode(', ', array_unique($previewCategories));
+                    $displayCats = array();
+                    foreach ($previewCategories as $catVal) {
+                        $catVal = trim(sanitize_text_field($catVal));
+                        if (!empty($catVal)) {
+                            $catTerm = get_term_by('slug', $catVal, 'product_cat');
+                            if ($catTerm) {
+                                $displayCats[] = $catTerm->name;
+                            } else {
+                                $displayCats[] = $catVal;
+                            }
+                        }
+                    }
+                    $productData['categories'] = implode(', ', array_unique($displayCats));
                 }
             }
 
