@@ -4,6 +4,11 @@ All notable changes to **Connexion Drive Excel Product** are documented here.
 
 ---
 
+## [1.3.6] - 2026-07-08
+
+### Added
+- `product_name` field added to "Productos existentes — Actualización" section, allowing name updates for existing products with support for column mapping, manual editing, and AI generation
+
 ## [1.3.5] - 2026-07-08
 
 ### Changed

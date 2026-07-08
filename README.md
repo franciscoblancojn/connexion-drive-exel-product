@@ -11,7 +11,7 @@ Conecta Google Drive, selecciona archivos Excel/CSV/Google Sheets, mapea columna
 - 🤖 **Generación con IA** — Genera nombres, descripciones cortas y descripciones largas mediante Kodee/Gemini/Groq API, con carga por lote uno-por-uno y barra de progreso. Incluye prompt extra por campo con resolución de variables y contexto de marca.
 - 🔌 **Conexion Google Drive** — Autenticacion OAuth 2.0 con refresh token y renovacion automatica.
 - 📂 **Explorador de Archivos** — Navega carpetas de Drive, soporta Excel (.xlsx, .xls), Google Sheets y CSV.
-- 🗺️ **Mapeo de Columnas** — Detecta automaticamente columnas SKU, precio, precio oferta y cantidad. Mapeo separado para actualizar existentes (5 campos: precio, oferta, stock, descripción, desc. corta) y crear nuevos (16 campos).
+- 🗺️ **Mapeo de Columnas** — Detecta automaticamente columnas SKU, precio, precio oferta y cantidad. Mapeo separado para actualizar existentes (6 campos: precio, oferta, stock, descripción, desc. corta, nombre) y crear nuevos (16 campos).
 - 🎨 **Templates Personalizados** — Crea nombres y descripciones combinando texto fijo con variables de columna y configuracion (ej: `"Reloj {marca} {name}"`).
 - 🧮 **Cálculos Matemáticos** — Expresiones con `{columna}`, operadores y números: `{precio} * 1.19` para precio + IVA, `{cantidad} * {precio}` para totales. Disponible en actualización y creación.
 - ✏️ **Edición Manual** — Edita valores directamente en la tabla de preview por fila, disponible tanto en actualización (5 campos) como en creación (16 campos + marca, categoría, atributos). Modo automático cuando la celda está vacía.
@@ -147,7 +147,7 @@ connexion-drive-exel-product/
 | `short_description` | string | `set_short_description()` |
 | `description` | string | `set_description()` |
 
-> **Nota:** Para productos existentes se mapean 5 campos (`regular_price`, `sale_price`, `stock_quantity`, `description`, `short_description`) con soporte de cálculos matemáticos, edición manual por fila y generación con IA (description/short_description). Para productos nuevos se mapean los 16 campos completos más la asignación de marca, categorías múltiples y atributos WooCommerce (con soporte de condiciones lógicas y edición manual).
+> **Nota:** Para productos existentes se mapean 6 campos (`regular_price`, `sale_price`, `stock_quantity`, `description`, `short_description`, `product_name`) con soporte de cálculos matemáticos, edición manual por fila y generación con IA (description/short_description/product_name). Para productos nuevos se mapean los 16 campos completos más la asignación de marca, categorías múltiples y atributos WooCommerce (con soporte de condiciones lógicas y edición manual).
 
 ---
 

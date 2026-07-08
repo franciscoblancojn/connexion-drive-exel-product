@@ -194,7 +194,7 @@ El plugin no usa `wp_head`, `the_content`, ni ningun filtro de frontend. Solo op
 2. Auto-selecciona columnas detectadas (SKU, precio, precio oferta, cantidad)
 3. Usuario puede cambiar la fila de encabezados y re-parsear
 4. Usuario selecciona que columna corresponde a cada campo del producto:
-   - **Productos existentes (Actualizar)**: 5 campos (regular_price, sale_price, stock_quantity, description, short_description) vía `.cdep-field-select`, con soporte de "Cálculo" (expresiones matemáticas) y "Edición Manual" y "Generar con IA" (description/short_description)
+   - **Productos existentes (Actualizar)**: 6 campos (regular_price, sale_price, stock_quantity, description, short_description, product_name) vía `.cdep-field-select`, con soporte de "Cálculo" (expresiones matemáticas), "Edición Manual" y "Generar con IA" (description/short_description/product_name)
    - **Productos nuevos (Crear)**: 16 campos vía `.cdep-field-select-create`, con soporte de "Personalizar" (templates con `{columna}`), "Cálculo", "Edición Manual" y "Generar con IA"
 5. "Configuraciones de Creación" permite configurar valores fijos (ej: Marca desde `product_brand` taxonomy)
 6. "Vista Previa" llama a `cdep_update_preview` AJAX

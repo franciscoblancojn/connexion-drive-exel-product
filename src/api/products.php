@@ -262,7 +262,7 @@ class CDEP_PRODUCTS
         $autoManualEmpty = isset($mapping['auto_manual_empty']) && $mapping['auto_manual_empty'] === '1';
 
         // Split mapping: update fields for existing products, create fields for new products
-        $updateFields = array('regular_price', 'sale_price', 'stock_quantity');
+        $updateFields = array('regular_price', 'sale_price', 'stock_quantity', 'description', 'short_description', 'product_name');
         $updateMapping = array();
         $createMapping = array();
         $aiFields = array();

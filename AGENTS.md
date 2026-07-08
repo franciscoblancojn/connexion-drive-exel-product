@@ -103,7 +103,7 @@ Usa las constantes definidas en `index.php`:
 
 ### Mapping (buildMapping)
 - `buildMapping()` retorna un objeto con tres grupos:
-  - **Update**: keys directas `regular_price`, `sale_price`, `stock_quantity`, `description`, `short_description` (índices de columna, `calc:expr`, o `__manual__`, y `__ai__` para description/short_description)
+  - **Update**: keys directas `regular_price`, `sale_price`, `stock_quantity`, `description`, `short_description`, `product_name` (índices de columna, `calc:expr`, o `__manual__`, y `__ai__` para description/short_description/product_name)
   - **Create**: keys con prefijo `create_` (ej: `create_product_name`, `create_regular_price`) — valor = índice de columna, `custom:template`, `__manual__`, `__ai__`, o `calc:expr`
   - **Config**: `creation_brand` (nombre del término, no slug), `creation_category` (nombre de categoría), `creation_categories` (array de nombres para múltiples categorías), `creation_brand` (nombre del término), `attributes` (array `[{taxonomy, term, conditions}]` con soporte de `term: '__manual__'`), `conditions` (objeto `{target: [{column, operator, value, apply}]}` para condicionar marca/categoría), `config_vars` (objeto `{varname: value}` para templates)
 
@@ -114,7 +114,7 @@ Usa las constantes definidas en `index.php`:
 - El listado de variables muestra primero las de configuración (ej: `marca`), separador, luego columnas
 
 ### Edición Manual
-- Opción `__manual__` disponible en selects de actualización (5 campos), creación (16 campos) y en Configuraciones de Creación (marca, categoría, atributos)
+- Opción `__manual__` disponible en selects de actualización (6 campos), creación (16 campos) y en Configuraciones de Creación (marca, categoría, atributos)
 - Valores guardados en `localStorage` key `cdep_manual_data` como `{sku: {field: value, __brand__: "...", __category__: "...", __categories__: ["cat1", "cat2", ...]}}`
 - Botón "Guardar Edición Manual" visible cuando al menos un campo usa `__manual__`
 - `auto_manual_empty` flag (`mapping['auto_manual_empty'] = '1'`): activa input editable para celdas vacías
@@ -130,7 +130,7 @@ Usa las constantes definidas en `index.php`:
 - Extra prompts se envían al handler `cdep_ai_generate` que resuelve `{var}` via `resolveTemplate()`
 
 ### Cálculos Matemáticos
-- Opción `__calc__` disponible en selects de actualización (5 campos) y creación (16 campos)
+- Opción `__calc__` disponible en selects de actualización (6 campos) y creación (16 campos)
 - Expresión guardada con prefijo `calc:` (ej: `regular_price = "calc:{PRICE 2026} * 2 * 1.19"`)
 - `resolveCalc()` reemplaza `{var}` con `floatval(preg_replace('/[^0-9.eE\-]/', '', $valor))`, valida caracteres seguros y evalúa con `eval()`
 - Variables resueltas desde `config_vars` primero, luego columnas del archivo

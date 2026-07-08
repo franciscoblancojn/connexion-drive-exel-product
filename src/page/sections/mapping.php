@@ -82,8 +82,8 @@ $productFields = CDEP_PRODUCTS::getFields();
                 </thead>
                 <tbody>
                     <?php
-                    $updateFields = array('regular_price', 'sale_price', 'stock_quantity', 'description', 'short_description');
-                    $aiUpdateFields = array('description', 'short_description');
+                    $updateFields = array('regular_price', 'sale_price', 'stock_quantity', 'description', 'short_description', 'product_name');
+                    $aiUpdateFields = array('description', 'short_description', 'product_name');
                     foreach ($updateFields as $fieldKey):
                         $fieldInfo = $productFields[$fieldKey];
                         $hasAi = in_array($fieldKey, $aiUpdateFields);
