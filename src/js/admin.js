@@ -362,8 +362,8 @@ jQuery(function ($) {
         $('.cdep-field-select').each(function () {
             var $sel = $(this);
             var field = $(this).data('field');
-            var baseVals = ['', '__calc__', '__manual__'];
-            if (field === 'description' || field === 'short_description') {
+            var baseVals = ['', '__custom__', '__calc__', '__manual__'];
+            if (field === 'description' || field === 'short_description' || field === 'product_name') {
                 baseVals.push('__ai__');
             }
             $sel.find('option').each(function () {
