@@ -999,10 +999,10 @@ jQuery(function ($) {
                 }
             }
         });
-        // Update field selects: only description and short_description
+        // Update field selects: only text fields that support AI
         $('.cdep-field-select').each(function () {
             var field = $(this).data('field');
-            if (field !== 'description' && field !== 'short_description') return;
+            if (field !== 'description' && field !== 'short_description' && field !== 'product_name') return;
             var $sel = $(this);
             var $aiOpt = $sel.find('option[value="__ai__"]');
             if (enabled) {
@@ -1025,15 +1025,23 @@ jQuery(function ($) {
     $(document).on('change', '.cdep-field-select', function () {
         var val = $(this).val();
         var $td = $(this).closest('td');
+        var $wrap = $td.find('.cdep-custom-template-wrap');
         var $calcWrap = $td.find('.cdep-calc-wrap');
         var $aiWrap = $td.find('.cdep-ai-prompt-wrap');
-        if (val === '__calc__') {
+        if (val === '__custom__') {
+            $wrap.show();
+            $calcWrap.hide();
+            $aiWrap.hide();
+        } else if (val === '__calc__') {
+            $wrap.hide();
             $calcWrap.show();
             $aiWrap.hide();
         } else if (val === '__ai__') {
+            $wrap.hide();
             $calcWrap.hide();
             $aiWrap.show();
         } else {
+            $wrap.hide();
             $calcWrap.hide();
             $aiWrap.hide();
         }
