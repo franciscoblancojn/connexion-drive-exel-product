@@ -138,12 +138,13 @@ Usa las constantes definidas en `index.php`:
 
 ### Marca
 - `<select>` poblado desde taxonomy `product_brand`
-- Valor enviado: **nombre** del término (`$term->name`), no el slug (`$term->slug`)
+- Valor enviado: **slug** del término (`$term->slug`), con fallback a nombre para retrocompatibilidad
 - Se usa tanto en `creation_brand` (atributo del producto) como en `config_vars.marca` (templates)
 
 ### Categoría
 - `<select>` poblado desde taxonomy `product_cat`
-- Valor enviado: **nombre** de la categoría
+- Valor enviado: **slug** del término (único), con fallback a nombre para retrocompatibilidad
+- Muestra la jerarquía completa (ej: `Hombre > Deportivo`) para distinguir categorías hijas con el mismo nombre
 - Soporta `__condicionar__` para asignación condicional
 
 ### Atributos

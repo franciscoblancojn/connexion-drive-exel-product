@@ -786,9 +786,9 @@ class CDEP_PRODUCTS
                             }
                             $fullTaxonomy = 'pa_' . $taxonomyName;
                             if (taxonomy_exists($fullTaxonomy)) {
-                                $term = get_term_by('name', $termName, $fullTaxonomy);
+                                $term = get_term_by('slug', $termName, $fullTaxonomy);
                                 if (!$term) {
-                                    $term = get_term_by('slug', $termName, $fullTaxonomy);
+                                    $term = get_term_by('name', $termName, $fullTaxonomy);
                                 }
                                 if ($term) {
                                     $attribute = new WC_Product_Attribute();
@@ -819,9 +819,9 @@ class CDEP_PRODUCTS
                 if ($isNew) {
                     // Apply brand term via taxonomy (after save to have product ID)
                     if (!empty($effectiveBrand)) {
-                        $brandTerm = get_term_by('name', $effectiveBrand, 'product_brand');
+                        $brandTerm = get_term_by('slug', $effectiveBrand, 'product_brand');
                         if (!$brandTerm) {
-                            $brandTerm = get_term_by('slug', $effectiveBrand, 'product_brand');
+                            $brandTerm = get_term_by('name', $effectiveBrand, 'product_brand');
                         }
                         if ($brandTerm) {
                             wp_set_object_terms($product->get_id(), array(intval($brandTerm->term_id)), 'product_brand', true);
@@ -836,9 +836,9 @@ class CDEP_PRODUCTS
                             if (empty($catName)) {
                                 continue;
                             }
-                            $catTerm = get_term_by('name', $catName, 'product_cat');
+                            $catTerm = get_term_by('slug', $catName, 'product_cat');
                             if (!$catTerm) {
-                                $catTerm = get_term_by('slug', $catName, 'product_cat');
+                                $catTerm = get_term_by('name', $catName, 'product_cat');
                             }
                             if ($catTerm) {
                                 $catTermIds[] = intval($catTerm->term_id);
@@ -953,7 +953,10 @@ add_action('wp_ajax_cdep_ai_generate', function () {
     $marcaDescription = '';
     $marcaDescriptionPlain = '';
     if (!empty($creationBrand)) {
-        $term = get_term_by('name', $creationBrand, 'product_brand');
+        $term = get_term_by('slug', $creationBrand, 'product_brand');
+        if (!$term || is_wp_error($term)) {
+            $term = get_term_by('name', $creationBrand, 'product_brand');
+        }
         if ($term && !is_wp_error($term)) {
             $rawDesc = term_description($term->term_id, 'product_brand');
             $marcaDescription = $rawDesc;

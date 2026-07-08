@@ -4,6 +4,12 @@ All notable changes to **Connexion Drive Excel Product** are documented here.
 
 ---
 
+## [1.3.7] - 2026-07-08
+
+### Changed
+- Category select now shows hierarchical paths (e.g. `Hombre > Deportivo`) to distinguish child categories with the same name across different parents
+- Category, brand, and attribute select values changed from term name to **slug** for uniqueness; PHP lookup updated to try slug first, name as fallback for backward compatibility
+
 ## [1.3.6] - 2026-07-08
 
 ### Added

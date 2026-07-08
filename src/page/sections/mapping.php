@@ -206,7 +206,7 @@ $productFields = CDEP_PRODUCTS::getFields();
                                         if (!empty($brandTerms) && !is_wp_error($brandTerms)):
                                             foreach ($brandTerms as $term):
                                         ?>
-                                        <option value="<?= esc_attr($term->name) ?>"><?= esc_html($term->name) ?></option>
+                                        <option value="<?= esc_attr($term->slug) ?>"><?= esc_html($term->name) ?></option>
                                         <?php
                                             endforeach;
                                         endif;
@@ -235,9 +235,23 @@ $productFields = CDEP_PRODUCTS::getFields();
                                                     'hide_empty' => false,
                                                 )) : array();
                                                 if (!empty($catTerms) && !is_wp_error($catTerms)):
+                                                    $termMap = array();
+                                                    foreach ($catTerms as $t) {
+                                                        $termMap[$t->term_id] = $t;
+                                                    }
                                                     foreach ($catTerms as $term):
+                                                        $displayName = $term->name;
+                                                        $parentId = $term->parent;
+                                                        if ($parentId && isset($termMap[$parentId])) {
+                                                            $path = array($term->name);
+                                                            while ($parentId && isset($termMap[$parentId])) {
+                                                                array_unshift($path, $termMap[$parentId]->name);
+                                                                $parentId = $termMap[$parentId]->parent;
+                                                            }
+                                                            $displayName = implode(' > ', $path);
+                                                        }
                                                 ?>
-                                                <option value="<?= esc_attr($term->name) ?>"><?= esc_html($term->name) ?></option>
+                                                <option value="<?= esc_attr($term->slug) ?>"><?= esc_html($displayName) ?></option>
                                                 <?php
                                                     endforeach;
                                                 endif;

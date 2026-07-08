@@ -278,11 +278,13 @@ El plugin no usa `wp_head`, `the_content`, ni ningun filtro de frontend. Solo op
 
 ### Marca
 - Select poblado desde taxonomy `product_brand`
-- El valor usado es el **nombre** del termino, no el slug (tanto para `creation_brand` como para `config_vars.marca`)
+- Valor enviado: **slug** del término, con fallback a nombre para retrocompatibilidad
+- Se usa tanto en `creation_brand` como en `config_vars.marca`
 
 ### Categoría
 - `<select>` poblado desde taxonomy `product_cat`
-- Valor enviado: **nombre** de la categoría
+- Valor enviado: **slug** del término (único), con fallback a nombre para retrocompatibilidad
+- Muestra la jerarquía completa (ej: `Hombre > Deportivo`) para distinguir categorías hijas con el mismo nombre
 - Soporta `__condicionar__` para asignación condicional
 
 ### Atributos
