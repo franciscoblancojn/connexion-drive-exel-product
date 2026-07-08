@@ -645,26 +645,16 @@ class CDEP_PRODUCTS
                     }
                 }
 
-                // Determine effective brand and category values (unconditional, conditional, or manual)
+                // Determine effective brand and category values (unconditional, then conditional
+                // layered on top; manual additions are applied last, see below)
                 $effectiveBrand = $creationBrand;
                 $effectiveCategories = $creationCategories;
 
-                // Manual brand override
+                // Manual brand override (a single slot, so manual replaces it)
                 if ($brandManual && isset($manualData[$sku]['__brand__'])) {
                     $effectiveBrand = sanitize_text_field($manualData[$sku]['__brand__']);
                 } elseif ($autoManualEmpty && empty($effectiveBrand) && isset($manualData[$sku]['__brand__'])) {
                     $effectiveBrand = sanitize_text_field($manualData[$sku]['__brand__']);
-                }
-
-                // Manual category override
-                if ($categoryManual && isset($manualData[$sku]['__categories__'])) {
-                    $effectiveCategories = array_map('sanitize_text_field', $manualData[$sku]['__categories__']);
-                } elseif ($categoryManual && isset($manualData[$sku]['__category__'])) {
-                    $effectiveCategories = array(sanitize_text_field($manualData[$sku]['__category__']));
-                } elseif ($autoManualEmpty && (empty($effectiveCategories) || (count($effectiveCategories) === 1 && empty($effectiveCategories[0]))) && isset($manualData[$sku]['__categories__'])) {
-                    $effectiveCategories = array_map('sanitize_text_field', $manualData[$sku]['__categories__']);
-                } elseif ($autoManualEmpty && (empty($effectiveCategories) || (count($effectiveCategories) === 1 && empty($effectiveCategories[0]))) && isset($manualData[$sku]['__category__'])) {
-                    $effectiveCategories = array(sanitize_text_field($manualData[$sku]['__category__']));
                 }
 
                 if ($isNew) {
@@ -723,6 +713,33 @@ class CDEP_PRODUCTS
                         }
                     }
                 }
+
+                // Manual categories are always additive: they add to whatever was resolved
+                // above (fixed + conditional), they never replace it. The only exception is
+                // "auto manual for empty values", which is a pure fallback for when nothing
+                // at all was resolved.
+                if ($categoryManual) {
+                    $manualExtraCategories = array();
+                    if (isset($manualData[$sku]['__categories__'])) {
+                        $manualExtraCategories = array_map('sanitize_text_field', $manualData[$sku]['__categories__']);
+                    } elseif (isset($manualData[$sku]['__category__'])) {
+                        $manualExtraCategories = array(sanitize_text_field($manualData[$sku]['__category__']));
+                    }
+                    foreach ($manualExtraCategories as $manualCategory) {
+                        if ($manualCategory !== '') {
+                            $effectiveCategories[] = $manualCategory;
+                        }
+                    }
+                } elseif ($autoManualEmpty && empty(array_filter($effectiveCategories))) {
+                    if (isset($manualData[$sku]['__categories__'])) {
+                        $effectiveCategories = array_map('sanitize_text_field', $manualData[$sku]['__categories__']);
+                    } elseif (isset($manualData[$sku]['__category__'])) {
+                        $effectiveCategories = array(sanitize_text_field($manualData[$sku]['__category__']));
+                    }
+                }
+                $effectiveCategories = array_values(array_unique(array_filter($effectiveCategories, function ($c) {
+                    return $c !== '';
+                })));
 
                 // Process attributes BEFORE save using WC_Product_Attribute
                 // so WooCommerce properly registers them in _product_attributes meta

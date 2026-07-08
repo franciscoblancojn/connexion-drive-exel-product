@@ -520,8 +520,12 @@ jQuery(function ($) {
             var selectedText = $input.find('option:selected').text();
 
             if (selectedVal === '__condicionar__') {
-                var target = $(this).find('.cdep-condition-row').data('condition');
-                var $items = $(this).find('.cdep-condition-items .cdep-condition-item');
+                // Exclude the per-extra-category-row condition blocks (.cdep-category-condition-row):
+                // they live inside this same <tr> too, and would otherwise be picked up here instead
+                // of the field's own shared condition row when any extra category row exists.
+                var $conditionRow = $(this).find('.cdep-condition-row').not('.cdep-category-condition-row');
+                var target = $conditionRow.data('condition');
+                var $items = $conditionRow.find('.cdep-condition-items .cdep-condition-item');
                 var condList = [];
                 $items.each(function () {
                     var colVal = $(this).find('.cdep-condition-column').val();
@@ -1585,87 +1589,88 @@ jQuery(function ($) {
             // Categories column
             if (!hideCategoriesAttributes) {
                 if (categoryManual) {
-                    var savedCat = '';
-                    if (state.manualData && state.manualData[p.sku] && state.manualData[p.sku]['__category__'] !== undefined) {
-                        savedCat = state.manualData[p.sku]['__category__'];
-                    } else if (state.manualData && state.manualData[p.sku] && state.manualData[p.sku]['__categories__'] && state.manualData[p.sku]['__categories__'].length > 0) {
-                        savedCat = state.manualData[p.sku]['__categories__'][0];
-                    } else if (state.mapping && state.mapping['creation_categories'] && state.mapping['creation_categories'].length > 0) {
-                        savedCat = state.mapping['creation_categories'][0];
-                    }
+                    // The fixed/conditional categories already resolved for this row (p.categories,
+                    // computed server-side) are shown read-only — manual mode only lets you ADD
+                    // extra categories on top, it never edits or replaces these.
                     html += '<td>';
-                    html += '<select class="cdep-manual-input cdep-manual-category-select" data-sku="' + escHtml(p.sku) + '" data-field="__category__" style="width:100%">';
-                    html += '<option value="">— Sin categoría —</option>';
-                    if (catOptions) {
-                        $.each(catOptions, function (i, opt) {
-                            var sel = opt.value === savedCat ? ' selected' : '';
-                            html += '<option value="' + opt.value + '"' + sel + '>' + escHtml(opt.text) + '</option>';
-                        });
-                    }
-                    html += '</select>';
+                    html += '<div class="cdep-resolved-categories" style="margin-bottom:4px;color:#555">'
+                        + (p.categories ? escHtml(p.categories) : '<em>— Sin categoría fija/condicionada —</em>')
+                        + '</div>';
                     html += '<div class="cdep-row-categories-container" data-sku="' + escHtml(p.sku) + '">';
-                    // Load saved extra categories from __categories__ array (index 1+)
-                    // Fallback to creation_categories from mapping config when no manual data yet
                     var allSavedCats = [];
                     if (state.manualData && state.manualData[p.sku] && state.manualData[p.sku]['__categories__']) {
                         allSavedCats = state.manualData[p.sku]['__categories__'];
-                    } else if (state.mapping && state.mapping['creation_categories'] && state.mapping['creation_categories'].length > 0) {
-                        allSavedCats = state.mapping['creation_categories'];
                     }
-                    for (var ci = 1; ci < allSavedCats.length; ci++) {
+                    $.each(allSavedCats, function (ci, savedExtraCat) {
                         html += '<div class="cdep-row-category-item" style="margin-top:2px">';
                         html += '<select class="cdep-manual-input" data-sku="' + escHtml(p.sku) + '" data-field="__category__" style="width:calc(100% - 24px)">';
                         html += '<option value="">— Sin categoría —</option>';
                         if (catOptions) {
                             $.each(catOptions, function (i, opt) {
-                                var sel = opt.value === allSavedCats[ci] ? ' selected' : '';
+                                var sel = opt.value === savedExtraCat ? ' selected' : '';
                                 html += '<option value="' + opt.value + '"' + sel + '>' + escHtml(opt.text) + '</option>';
                             });
                         }
                         html += '</select>';
                         html += '<button type="button" class="button button-small cdep-row-category-remove" style="width:22px;padding:0">×</button>';
                         html += '</div>';
-                    }
+                    });
                     html += '</div>';
-                    html += '<button type="button" class="button button-small cdep-category-add-row" data-sku="' + escHtml(p.sku) + '" style="margin-top:2px">+ Categoría</button>';
+                    html += '<button type="button" class="button button-small cdep-category-add-row" data-sku="' + escHtml(p.sku) + '" style="margin-top:2px">+ Categoría adicional</button>';
                     html += '</td>';
                 } else {
                     html += '<td>' + escHtml(p.categories) + '</td>';
                 }
 
-                // Attributes column
+                // Attributes column: fixed/conditional attributes are shown read-only,
+                // only attributes actually set to "Edición Manual" get an editable select.
                 var attrsHtml = '';
                 if (p.attributes && p.attributes.length > 0) {
-                    var hasManualAttr = false;
+                    var manualAttrTaxonomies = {};
                     if (state.mapping && state.mapping.attributes) {
                         $.each(state.mapping.attributes, function (ai, attr) {
                             if (attr.term === '__manual__') {
-                                hasManualAttr = true;
+                                manualAttrTaxonomies[attr.taxonomy] = true;
                             }
                         });
                     }
+                    var hasManualAttr = false;
+                    for (var mtKey in manualAttrTaxonomies) {
+                        if (manualAttrTaxonomies.hasOwnProperty(mtKey)) {
+                            hasManualAttr = true;
+                            break;
+                        }
+                    }
                     if (hasManualAttr) {
+                        var taxonomies = getAttributeTaxonomies();
                         attrsHtml = '<div class="cdep-manual-attributes">';
                         $.each(p.attributes, function (ai, attrStr) {
                             var parts = attrStr.split(': ');
                             var attrLabel = parts[0] || attrStr;
                             var attrVal = parts[1] || '';
-                            attrsHtml += '<div style="margin-bottom:2px"><strong>' + escHtml(attrLabel) + ':</strong> ';
-                            attrsHtml += '<select class="cdep-manual-attr-select" data-sku="' + escHtml(p.sku) + '" data-attr="' + escHtml(attrLabel) + '" style="width:100%">';
-                            attrsHtml += '<option value="">— Seleccionar —</option>';
-                            // Populate with terms for this attribute taxonomy
-                            var taxonomies = getAttributeTaxonomies();
+                            var matchedTax = null;
                             $.each(taxonomies, function (ti, tax) {
                                 if (tax.attribute_label === attrLabel || tax.attribute_name === attrLabel) {
-                                    if (tax.terms) {
-                                        $.each(tax.terms, function (tii, term) {
-                                            var sel = term.name === attrVal ? ' selected' : '';
-                                            attrsHtml += '<option value="' + escHtml(term.name) + '"' + sel + '>' + escHtml(term.name) + '</option>';
-                                        });
-                                    }
+                                    matchedTax = tax;
+                                    return false;
                                 }
                             });
-                            attrsHtml += '</select></div>';
+                            var isThisManual = matchedTax && manualAttrTaxonomies[matchedTax.attribute_name];
+                            if (isThisManual) {
+                                attrsHtml += '<div style="margin-bottom:2px"><strong>' + escHtml(attrLabel) + ':</strong> ';
+                                attrsHtml += '<select class="cdep-manual-attr-select" data-sku="' + escHtml(p.sku) + '" data-attr="' + escHtml(attrLabel) + '" style="width:100%">';
+                                attrsHtml += '<option value="">— Seleccionar —</option>';
+                                if (matchedTax && matchedTax.terms) {
+                                    $.each(matchedTax.terms, function (tii, term) {
+                                        var sel = term.name === attrVal ? ' selected' : '';
+                                        attrsHtml += '<option value="' + escHtml(term.name) + '"' + sel + '>' + escHtml(term.name) + '</option>';
+                                    });
+                                }
+                                attrsHtml += '</select></div>';
+                            } else {
+                                // Fixed or conditional attribute: read-only, not editable here
+                                attrsHtml += '<div style="margin-bottom:2px"><strong>' + escHtml(attrLabel) + ':</strong> ' + escHtml(attrVal) + '</div>';
+                            }
                         });
                         attrsHtml += '</div>';
                     } else {
