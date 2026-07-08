@@ -1,6 +1,6 @@
 # Connexion Drive Excel Product — Contexto para IAs
 
-> Plugin WordPress v1.1.59 — Contexto actualizado automaticamente para que IAs entren en contexto rapido.
+> Plugin WordPress v1.3.5 — Contexto actualizado automaticamente para que IAs entren en contexto rapido.
 
 ---
 
@@ -53,6 +53,7 @@ src/
       browse.php        -> Explorador archivos Google Drive
       mapping.php       -> Mapeo columnas + campos del producto
       update.php        -> (Legacy, no se usa como tab)
+      ia.php            -> Configuraciones IA (proveedor, enable/disable)
 ```
 
 ---
@@ -131,13 +132,13 @@ src/
 | `cdep_drive_list` | Closure en `drive.php` | 336 | Lista archivos/carpetas de Drive |
 | `cdep_get_cached_data` | Closure en `drive.php` | 353 | Obtiene datos parseados en cache |
 | `cdep_refresh_cache` | Closure en `drive.php` | 375 | Redescarga y re-parsea archivo |
-| `cdep_reparse_file` | Closure en `drive.php` | 444 | Re-parsea con nueva fila de encabezados |
-| `cdep_drive_select_file` | Closure en `drive.php` | 486 | Descarga + parsea + cachea archivo |
-| `cdep_ai_generate` | Closure en `products.php` | 738 | Genera contenido IA con prompt extra y variables |
-| `cdep_update_preview` | Closure en `products.php` | 690 | Validacion de mapeo con vista previa; soporta manual_data, ai_data, calc |
-| `cdep_update_execute` | Closure en `products.php` | 717 | Ejecuta actualizacion por lotes (offset); soporta manual_data, ai_data, calc |
-| `cdep_update_batch_skus` | Closure en `products.php` | 749 | Actualiza SKUs especificos |
-| `cdep_update_single` | Closure en `products.php` | 797 | Actualiza un solo producto |
+| `cdep_reparse_file` | Closure en `drive.php` | 456 | Re-parsea con nueva fila de encabezados |
+| `cdep_drive_select_file` | Closure en `drive.php` | 511 | Descarga + parsea + cachea archivo |
+| `cdep_ai_generate` | Closure en `products.php` | 911 | Genera contenido IA con prompt extra y variables |
+| `cdep_update_preview` | Closure en `products.php` | 873 | Validacion de mapeo con vista previa; soporta manual_data, ai_data, calc |
+| `cdep_update_execute` | Closure en `products.php` | 1271 | Ejecuta actualizacion por lotes (offset); soporta manual_data, ai_data, calc |
+| `cdep_update_batch_skus` | Closure en `products.php` | 1307 | Actualiza SKUs especificos |
+| `cdep_update_single` | Closure en `products.php` | 1362 | Actualiza un solo producto |
 
 Todos los AJAX:
 - Verifican nonce con `check_ajax_referer('cdep_nonce', 'nonce')`
@@ -152,7 +153,7 @@ Todos los AJAX:
 ```php
 add_action('admin_menu', function() { ... })                -> Registra menu principal
 add_action('admin_enqueue_scripts', function($hook) { ... }) -> Encola CSS/JS en pagina del plugin
-add_action('wp_ajax_*', ...)                                 -> 14 AJAX endpoints (ver tabla)
+add_action('wp_ajax_*', ...)                                 -> 15 AJAX endpoints (ver tabla)
 ```
 
 ### Sin filtros ni hooks de frontend
@@ -193,7 +194,7 @@ El plugin no usa `wp_head`, `the_content`, ni ningun filtro de frontend. Solo op
 2. Auto-selecciona columnas detectadas (SKU, precio, precio oferta, cantidad)
 3. Usuario puede cambiar la fila de encabezados y re-parsear
 4. Usuario selecciona que columna corresponde a cada campo del producto:
-   - **Productos existentes (Actualizar)**: Solo 3 campos (regular_price, sale_price, stock_quantity) vía `.cdep-field-select`, con soporte de "Cálculo" (expresiones matemáticas) y "Edición Manual"
+   - **Productos existentes (Actualizar)**: 5 campos (regular_price, sale_price, stock_quantity, description, short_description) vía `.cdep-field-select`, con soporte de "Cálculo" (expresiones matemáticas) y "Edición Manual" y "Generar con IA" (description/short_description)
    - **Productos nuevos (Crear)**: 16 campos vía `.cdep-field-select-create`, con soporte de "Personalizar" (templates con `{columna}`), "Cálculo", "Edición Manual" y "Generar con IA"
 5. "Configuraciones de Creación" permite configurar valores fijos (ej: Marca desde `product_brand` taxonomy)
 6. "Vista Previa" llama a `cdep_update_preview` AJAX
@@ -223,7 +224,7 @@ El plugin no usa `wp_head`, `the_content`, ni ningun filtro de frontend. Solo op
 ## window.cdep (wp_localize_script)
 
 | Propiedad | Descripcion |
-|---|---|
+|---|---|---|
 | `ajaxurl` | `admin_url('admin-ajax.php')` |
 | `nonce` | Nonce valido para `cdep_nonce` |
 | `is_connected` | Bool: estado de conexion Drive |
@@ -231,6 +232,10 @@ El plugin no usa `wp_head`, `the_content`, ni ningun filtro de frontend. Solo op
 | `selected_file` | Array: archivo seleccionado |
 | `oauth_url` | URL de callback OAuth |
 | `productFields` | Array: `{field_key => field_label}` de CDEP_PRODUCTS::getFields() |
+| `attributeTaxonomies` | Array: taxonomias de atributos WooCommerce con terminos |
+| `aiFields` | Array: campos que soportan generacion con IA |
+| `ai_enabled` | Bool: si la IA esta habilitada |
+| `ai_provider` | String: proveedor de IA seleccionado |
 
 ---
 
@@ -303,7 +308,7 @@ El plugin no usa `wp_head`, `the_content`, ni ningun filtro de frontend. Solo op
 - Los archivos temporales se guardan en `wp_upload_dir()` con nombre sanitizado
 - La barra de progreso usa porcentaje calculado sobre total de SKUs seleccionados
 - Admin.js usa `localStorage` para persistir: `cdep_folder` (navegacion), `cdep_mapping_config` (mapeo), `cdep_ai_cache` (contenido generado por IA) y `cdep_manual_data` (datos de edicion manual por fila) y `cdep_ai_prompts` (prompts extra para IA)
-- Admin.js expone `window.cdep` con `ajaxurl`, `nonce`, `is_connected`, `config`, `selected_file`, `oauth_url`, `productFields`
+- Admin.js expone `window.cdep` con `ajaxurl`, `nonce`, `is_connected`, `config`, `selected_file`, `oauth_url`, `productFields`, `attributeTaxonomies`, `ai_enabled`, `ai_provider`
 - Si hay errores de conexion, verificar que `redirect_uri` en Google Cloud coincida exactamente con `admin_url('admin.php?page=CDEP')`
 
 ### Config form via POST
@@ -324,5 +329,6 @@ FWURespond usa el array `$respond` para mostrar mensajes. Las variables `$config
 ### Campos del producto en validateMapping
 La respuesta de `cdep_update_preview` incluye por cada producto: `sku`, `row`, `exists`, `product_id`, `status`, `name`, `image`, `categories`, `attributes` (atributos evaluados, solo productos nuevos), `fields` (mapa campo -> {current, new, changed}).
 
-### Solo 3 tabs activos
-Aunque `update.php` existe en disco, la UI solo tiene 3 tabs: Conectar, Explorar, Mapear. La actualizacion se ejecuta desde el tab de Mapear.
+### Solo 3 tabs activos + IA tab
+Aunque `update.php` existe en disco, la UI solo tiene 3 tabs principales: Conectar, Explorar, Mapear. La actualizacion se ejecuta desde el tab de Mapear.
+Cuando el plugin IA Conector (`IACON_KEY`) esta presente, se agrega un 4to tab "Configuraciones IA" para habilitar/deshabilitar IA y seleccionar proveedor (Kodee/Gemini/Groq).

@@ -4,6 +4,188 @@ All notable changes to **Connexion Drive Excel Product** are documented here.
 
 ---
 
+## [1.3.5] - 2026-07-08
+
+### Changed
+- Version bump only (no code changes)
+
+## [1.3.4] - 2026-07-08
+
+### Changed
+- Version bump only (no code changes)
+
+## [1.3.3] - 2026-07-08
+
+### Changed
+- Version bump only (no code changes)
+
+## [1.3.2] - 2026-07-08
+
+### Changed
+- Version bump only (no code changes)
+
+## [1.3.1] - 2026-07-08
+
+### Fixed
+- Import/export configuration adjustments
+
+## [1.3.0] - 2026-07-08
+
+### Added
+- Export/Import configuration: export mapping config, manual data, AI cache, AI prompts, and folder state as a JSON file; import to restore in another browser/session
+- CSV delimiter selection: Auto-detect, Comma (`,`), Semicolon (`;`), Tab (`TAB`); stored in cache and re-parsed on delimiter change
+- Decimal character selector: Latin format (comma decimal) vs US format (dot decimal); `CDEP_PRODUCTS::setDecimalChar()` and `parseNumber()` methods handle both formats
+- AI provider selection tab ("Configuraciones IA"): enable/disable AI, select provider (Kodee, Gemini, Groq) via `IACON_KEY` integration
+- Brand description in AI prompts: fetches `term_description()` from `product_brand` taxonomy and appends to AI context
+- Rate limiting detection: pattern matching against AI error messages, stops processing more fields when rate limited
+- Code fence stripping from AI responses (` ```html ` blocks removed)
+- Groq AI provider support via `IACON_GROQ::sendPrompt()`
+- Description (`description`) and short description (`short_description`) added to update fields (now 5 fields: regular_price, sale_price, stock_quantity, description, short_description)
+- AI generation for description/short_description in update section (via `aiUpdateFields`)
+- `file_name` in preview response
+- `field_labels`, `update_field_labels`, `create_field_labels`, `ai_fields` in preview response
+
+### Fixed
+- Product creation with brand and categories: proper handling of term names vs slugs
+- Number parsing with comma as decimal separator in calculations
+- Extra AI prompts now resolve `{var}` via `resolveTemplate()`
+
+## [1.2.1] - 2026-07-07
+
+### Changed
+- Version bump only (no code changes)
+
+## [1.2.0] - 2026-07-07
+
+### Added
+- AI improvements and adjustments
+- Groq AI provider integration
+- Rate limit handling
+
+## [1.1.84] - 2026-07-07
+
+### Added
+- Decimal character configuration (comma/dot)
+- CSV delimiter auto-detection and configuration
+- AJAX handlers now accept `decimal_char` parameter
+
+## [1.1.83] - 2026-07-07
+
+### Changed
+- Version bump only (no code changes)
+
+## [1.1.82] - 2026-07-07
+
+### Added
+- Groq AI provider support
+
+## [1.1.81] - 2026-07-06
+
+### Changed
+- Version bump only (no code changes)
+
+## [1.1.80] - 2026-07-06
+
+### Changed
+- Version bump only (no code changes)
+
+## [1.1.79] - 2026-07-06
+
+### Added
+- Rate limiting detection in AI generation handler
+- Stop processing more fields for rate-limited SKUs
+
+## [1.1.78] - 2026-07-06
+
+### Added
+- AI adjustments and improvements
+
+## [1.1.77] - 2026-07-06
+
+### Added
+- AI adjustments
+
+## [1.1.76] - 2026-07-06
+
+### Changed
+- Version bump only (no code changes)
+
+## [1.1.75] - 2026-07-06
+
+### Changed
+- Version bump only (no code changes)
+
+## [1.1.74] - 2026-07-06
+
+### Changed
+- Version bump only (no code changes)
+
+## [1.1.73] - 2026-07-06
+
+### Changed
+- Version bump only (no code changes)
+
+## [1.1.72] - 2026-07-06
+
+### Changed
+- Prompt adjustments
+
+## [1.1.71] - 2026-07-06
+
+### Added
+- AI prompt adjustments for product descriptions
+- Brand description context included in AI prompts
+
+## [1.1.70] - 2026-07-06
+
+### Changed
+- Version bump only (no code changes)
+
+## [1.1.69] - 2026-07-06
+
+### Changed
+- Version bump only (no code changes)
+
+## [1.1.68] - 2026-07-06
+
+### Changed
+- Version bump only (no code changes)
+
+## [1.1.67] - 2026-07-06
+
+### Changed
+- Version bump only (no code changes)
+
+## [1.1.66] - 2026-07-06
+
+### Changed
+- Version bump only (no code changes)
+
+## [1.1.65] - 2026-07-06
+
+### Changed
+- Version bump only (no code changes)
+
+## [1.1.64] - 2026-07-06
+
+### Fixed
+- Product creation with brand and categories: fixed term lookup for brand and category assignment
+
+## [1.1.63] - 2026-07-06
+
+### Added
+- Brand description sent in AI prompt context for more accurate product descriptions
+
+## [1.1.62] - 2026-07-06
+
+### Changed
+- Version bump only (no code changes)
+
+## [1.1.61] - 2026-07-06
+
+### Changed
+- Version bump only (no code changes)
+
 ## [1.1.60] - 2026-07-01
 
 ### Fixed

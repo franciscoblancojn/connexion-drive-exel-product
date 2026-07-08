@@ -2,25 +2,28 @@
 
 **Version:** 1.3.5 | **License:** GPL2+
 
-Conecta Google Drive, selecciona archivos Excel/CSV, mapea columnas a 16 campos de producto y actualiza productos WooCommerce de forma masiva. Incluye generación de contenido con IA (Kodee/Gemini), asignación condicional de marca/categoría/atributos, edición manual por fila y cálculos matemáticos con variables de columna.
+Conecta Google Drive, selecciona archivos Excel/CSV/Google Sheets, mapea columnas a 16 campos de producto y actualiza productos WooCommerce de forma masiva. Incluye generación de contenido con IA (Kodee/Gemini/Groq), asignación condicional de marca/categoría/atributos, edición manual por fila, cálculos matemáticos con variables de columna, exportación/importación de configuración, selección de formato decimal y delimitador CSV configurable.
 
 ---
 
 ## ✨ Caracteristicas
 
-- 🤖 **Generación con IA** — Genera nombres, descripciones cortas y descripciones largas mediante Kodee API (Gemini), con carga por lote uno-por-uno y barra de progreso.
+- 🤖 **Generación con IA** — Genera nombres, descripciones cortas y descripciones largas mediante Kodee/Gemini/Groq API, con carga por lote uno-por-uno y barra de progreso. Incluye prompt extra por campo con resolución de variables y contexto de marca.
 - 🔌 **Conexion Google Drive** — Autenticacion OAuth 2.0 con refresh token y renovacion automatica.
 - 📂 **Explorador de Archivos** — Navega carpetas de Drive, soporta Excel (.xlsx, .xls), Google Sheets y CSV.
-- 🗺️ **Mapeo de Columnas** — Detecta automaticamente columnas SKU, precio, precio oferta y cantidad. Mapeo separado para actualizar existentes (3 campos) y crear nuevos (16 campos).
+- 🗺️ **Mapeo de Columnas** — Detecta automaticamente columnas SKU, precio, precio oferta y cantidad. Mapeo separado para actualizar existentes (5 campos: precio, oferta, stock, descripción, desc. corta) y crear nuevos (16 campos).
 - 🎨 **Templates Personalizados** — Crea nombres y descripciones combinando texto fijo con variables de columna y configuracion (ej: `"Reloj {marca} {name}"`).
 - 🧮 **Cálculos Matemáticos** — Expresiones con `{columna}`, operadores y números: `{precio} * 1.19` para precio + IVA, `{cantidad} * {precio}` para totales. Disponible en actualización y creación.
-- ✏️ **Edición Manual** — Edita valores directamente en la tabla de preview por fila, disponible tanto en actualización (precio, precio oferta, cantidad) como en creación (16 campos + marca, categoría, atributos). Modo automático cuando la celda está vacía.
+- ✏️ **Edición Manual** — Edita valores directamente en la tabla de preview por fila, disponible tanto en actualización (5 campos) como en creación (16 campos + marca, categoría, atributos). Modo automático cuando la celda está vacía.
 - 🏷️ **Asignación Condicional** — Marca, categoría y atributos con condiciones lógicas por fila: operadores `=`, `!=`, `<`, `>` y múltiples condiciones por regla (primera coincidencia gana).
 - 📂 **Categorías Múltiples** — Asigna varias categorías a productos nuevos, tanto en configuración de creación como por fila en la tabla de preview.
 - 👁️ **Vista Previa** — Validacion con diffs (antes/despues), imagenes, badges de estado. Resultados en tabs independientes por tipo. Vista previa de categorías y atributos evaluados.
 - ⚡ **Actualizacion Masiva** — Procesa en lotes de 25 con barra de progreso. Actualiza existentes y crea nuevos productos simultaneamente.
 - 🎯 **Actualizacion Individual** — Boton "Procesar" por fila para actualizar un solo producto.
 - 🔗 **Enlace a Edicion** — SKUs y nombres existentes abren el editor de WooCommerce en nueva pestana.
+- 💾 **Exportar/Importar Configuración** — Exporta mapeo, edición manual, datos IA y estado como JSON para usar en otro navegador o sesión.
+- 🌐 **Formato Decimal** — Selecciona coma (formato Latino) o punto (formato US) para interpretación de números.
+- 📄 **Delimitador CSV** — Auto-detectar, coma, punto y coma o tabulación como delimitador de columnas.
 - 🛡️ **Seguridad** — Nonces, capabilities `manage_options`, sanitizacion de inputs, escapado de outputs.
 
 ---
@@ -75,6 +78,7 @@ connexion-drive-exel-product/
         browse.php              # Explorador de archivos Google Drive
         mapping.php             # Mapeo de columnas y campos del producto
         update.php              # (Legacy) Ejecucion de actualizacion masiva
+        ia.php                  # Configuraciones IA (Kodee/Gemini/Groq)
 ```
 
 ---
@@ -96,7 +100,8 @@ connexion-drive-exel-product/
 |---|---|
 | 🔌 **Conectar** | Configuracion de credenciales OAuth 2.0, conectar/desconectar Google Drive |
 | 📂 **Explorar** | Navegacion por carpetas de Drive y seleccion de archivo |
-| 🗺️ **Mapear** | Seleccion de fila de encabezados, mapeo de columnas (actualizar existentes / crear nuevos), configuracion de creacion (marca, categoría, atributos), condiciones lógicas por fila, templates personalizados, generación con IA, vista previa con diffs |
+| 🗺️ **Mapear** | Seleccion de fila de encabezados, mapeo de columnas (actualizar existentes / crear nuevos), configuracion de creacion (marca, categoría, atributos), condiciones lógicas por fila, templates personalizados, generación con IA, vista previa con diffs, formato decimal, delimitador CSV, exportar/importar configuración |
+| 🤖 **Configuraciones IA** | Habilitar/deshabilitar IA, seleccionar proveedor (Kodee, Gemini, Groq) |
 
 ---
 
@@ -110,14 +115,14 @@ connexion-drive-exel-product/
 | `cdep_drive_disconnect` | Closure en `drive.php:326` | Elimina tokens y desconecta Drive |
 | `cdep_drive_list` | Closure en `drive.php:336` | Lista archivos/carpetas en una carpeta de Drive |
 | `cdep_get_cached_data` | Closure en `drive.php:353` | Obtiene datos parseados en cache |
-| `cdep_refresh_cache` | Closure en `drive.php:375` | Redescarga archivo y re-parsea |
-| `cdep_reparse_file` | Closure en `drive.php:444` | Re-parsea archivo temporal con nueva fila de encabezados |
-| `cdep_drive_select_file` | Closure en `drive.php:486` | Descarga, parsea y cachea archivo seleccionado |
-| `cdep_ai_generate` | Closure en `products.php:738` | Genera contenido IA para un SKU (name/description/short_description) con prompt extra y resolución de variables |
-| `cdep_update_preview` | Closure en `products.php:690` | Valida mapeo y genera vista previa con soporte de manual_data, ai_data y cálculos |
-| `cdep_update_execute` | Closure en `products.php:717` | Ejecuta actualizacion por lotes (offset) con soporte de manual_data, ai_data y cálculos |
-| `cdep_update_batch_skus` | Closure en `products.php:749` | Actualiza SKUs especificos por lote |
-| `cdep_update_single` | Closure en `products.php:797` | Actualiza un solo producto por SKU |
+| `cdep_refresh_cache` | Closure en `drive.php:375` | Redescarga archivo y re-parsea (soporta delimiter) |
+| `cdep_reparse_file` | Closure en `drive.php:456` | Re-parsea archivo temporal con nueva fila de encabezados (soporta delimiter) |
+| `cdep_drive_select_file` | Closure en `drive.php:511` | Descarga, parsea y cachea archivo seleccionado |
+| `cdep_ai_generate` | Closure en `products.php:911` | Genera contenido IA para un SKU (name/description/short_description) con prompt extra, resolucion de variables, contexto de marca y deteccion de rate limit |
+| `cdep_update_preview` | Closure en `products.php:873` | Valida mapeo y genera vista previa con soporte de manual_data, ai_data, calc y decimal_char |
+| `cdep_update_execute` | Closure en `products.php:1271` | Ejecuta actualizacion por lotes (offset) con soporte de manual_data, ai_data, calc y decimal_char |
+| `cdep_update_batch_skus` | Closure en `products.php:1307` | Actualiza SKUs especificos por lote (soporta decimal_char) |
+| `cdep_update_single` | Closure en `products.php:1362` | Actualiza un solo producto por SKU (soporta decimal_char) |
 
 ---
 
@@ -142,7 +147,7 @@ connexion-drive-exel-product/
 | `short_description` | string | `set_short_description()` |
 | `description` | string | `set_description()` |
 
-> **Nota:** Para productos existentes se mapean 3 campos (`regular_price`, `sale_price`, `stock_quantity`) con soporte de cálculos matemáticos y edición manual por fila. Para productos nuevos se mapean los 16 campos completos más la asignación de marca, categorías múltiples y atributos WooCommerce (con soporte de condiciones lógicas y edición manual).
+> **Nota:** Para productos existentes se mapean 5 campos (`regular_price`, `sale_price`, `stock_quantity`, `description`, `short_description`) con soporte de cálculos matemáticos, edición manual por fila y generación con IA (description/short_description). Para productos nuevos se mapean los 16 campos completos más la asignación de marca, categorías múltiples y atributos WooCommerce (con soporte de condiciones lógicas y edición manual).
 
 ---
 

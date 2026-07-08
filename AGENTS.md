@@ -17,10 +17,10 @@ Este archivo contiene las reglas, validaciones y convenciones que toda IA debe s
 ### JavaScript
 - **ES5**: Usa ES5 (`var`, `function`, no arrow functions, no `let`/`const`, no template literals). Excepción conocida: `URLSearchParams` se usa en el callback OAuth (admin.js).
 - **jQuery**: Usa `jQuery(function($){ ... })` para DOM ready.
-- **Objeto global**: Usa `window.cdep` (localizado via `wp_localize_script`) para `ajaxurl`, `nonce`, `config`, `is_connected`, `selected_file`, `oauth_url`, `productFields`, `attributeTaxonomies`, `aiFields`.
+- **Objeto global**: Usa `window.cdep` (localizado via `wp_localize_script`) para `ajaxurl`, `nonce`, `config`, `is_connected`, `selected_file`, `oauth_url`, `productFields`, `attributeTaxonomies`, `aiFields`, `ai_enabled`, `ai_provider`.
 - **AJAX**: Toda llamada AJAX usa la función helper `ajax(action, data, success, error)` definida en admin.js.
 - **Respuestas**: Espera `resp.success` + `resp.data` (estándar WordPress AJAX).
-- **localStorage**: Se usan cinco keys: `cdep_folder` (estado de navegación), `cdep_mapping_config` (mapeo de columnas), `cdep_ai_cache` (contenido generado por IA) y `cdep_manual_data` (datos de edición manual por fila) y `cdep_ai_prompts` (prompts extra para IA).
+- **localStorage**: Se usan siete keys: `cdep_folder` (estado de navegación), `cdep_mapping_config` (mapeo de columnas), `cdep_ai_cache` (contenido generado por IA), `cdep_manual_data` (datos de edición manual por fila), `cdep_ai_prompts` (prompts extra para IA), más keys temporales durante export/import.
 
 ### CSS
 - **Prefijo**: Todas las clases CSS deben llevar prefijo `cdep-`.
@@ -35,7 +35,8 @@ Este archivo contiene las reglas, validaciones y convenciones que toda IA debe s
 - `src/_.php` → Cargador maestro (`require` de `data/_.php`, `api/_.php`, `page/_.php`).
 - `src/api/` → Clases CDEP_DRIVE, CDEP_EXCEL, CDEP_PRODUCTS + handlers AJAX como closures.
 - `src/data/` → Capa de datos (CDEP_USE_DATA_BASE).
-- `src/page/` → Página admin con tabs (Conectar, Explorar, Mapear).
+- `src/page/` → Página admin con tabs (Conectar, Explorar, Mapear, Configuraciones IA).
+- `src/page/sections/ia.php` → Configuración de IA (proveedor Kodee/Gemini/Groq, enable/disable).
 - `src/js/admin.js` → Todo el JavaScript del admin.
 - `src/css/admin.css` → Estilos admin.
 
@@ -102,7 +103,7 @@ Usa las constantes definidas en `index.php`:
 
 ### Mapping (buildMapping)
 - `buildMapping()` retorna un objeto con tres grupos:
-  - **Update**: keys directas `regular_price`, `sale_price`, `stock_quantity` (índices de columna, `calc:expr`, o `__manual__`)
+  - **Update**: keys directas `regular_price`, `sale_price`, `stock_quantity`, `description`, `short_description` (índices de columna, `calc:expr`, o `__manual__`, y `__ai__` para description/short_description)
   - **Create**: keys con prefijo `create_` (ej: `create_product_name`, `create_regular_price`) — valor = índice de columna, `custom:template`, `__manual__`, `__ai__`, o `calc:expr`
   - **Config**: `creation_brand` (nombre del término, no slug), `creation_category` (nombre de categoría), `creation_categories` (array de nombres para múltiples categorías), `creation_brand` (nombre del término), `attributes` (array `[{taxonomy, term, conditions}]` con soporte de `term: '__manual__'`), `conditions` (objeto `{target: [{column, operator, value, apply}]}` para condicionar marca/categoría), `config_vars` (objeto `{varname: value}` para templates)
 
@@ -113,7 +114,7 @@ Usa las constantes definidas en `index.php`:
 - El listado de variables muestra primero las de configuración (ej: `marca`), separador, luego columnas
 
 ### Edición Manual
-- Opción `__manual__` disponible en selects de actualización (3 campos), creación (16 campos) y en Configuraciones de Creación (marca, categoría, atributos)
+- Opción `__manual__` disponible en selects de actualización (5 campos), creación (16 campos) y en Configuraciones de Creación (marca, categoría, atributos)
 - Valores guardados en `localStorage` key `cdep_manual_data` como `{sku: {field: value, __brand__: "...", __category__: "...", __categories__: ["cat1", "cat2", ...]}}`
 - Botón "Guardar Edición Manual" visible cuando al menos un campo usa `__manual__`
 - `auto_manual_empty` flag (`mapping['auto_manual_empty'] = '1'`): activa input editable para celdas vacías
@@ -122,14 +123,14 @@ Usa las constantes definidas en `index.php`:
 - Categorías múltiples: `__categories__` array donde índice 0 = categoría primaria, 1+ = categorías extra
 
 ### Generación con IA
-- Opción `__ai__` disponible en selects de creación (toggle via `toggleAiOptions(enabled)`)
+- Opción `__ai__` disponible en selects de creación y en selects de actualización para description/short_description (toggle via `toggleAiOptions(enabled)`)
 - Contenido generado guardado en `localStorage` key `cdep_ai_cache`
 - Prompt extra por campo: `mapping['create_{field}_prompt']` con soporte de `{variables}`
 - En PHP: `__ai__` usa `$aiData[$sku][$field]` para resolver valores
 - Extra prompts se envían al handler `cdep_ai_generate` que resuelve `{var}` via `resolveTemplate()`
 
 ### Cálculos Matemáticos
-- Opción `__calc__` disponible en selects de actualización (3 campos) y creación (16 campos)
+- Opción `__calc__` disponible en selects de actualización (5 campos) y creación (16 campos)
 - Expresión guardada con prefijo `calc:` (ej: `regular_price = "calc:{PRICE 2026} * 2 * 1.19"`)
 - `resolveCalc()` reemplaza `{var}` con `floatval(preg_replace('/[^0-9.eE\-]/', '', $valor))`, valida caracteres seguros y evalúa con `eval()`
 - Variables resueltas desde `config_vars` primero, luego columnas del archivo
@@ -150,6 +151,24 @@ Usa las constantes definidas en `index.php`:
 - Cada atributo: taxonomy → término (directo o condicional via `__condicionar__`)
 - `conditions` como array de `{column, operator, value, apply}` (apply = término a asignar si coincide)
 - `populateAttributeTerms()` preserva opción `__condicionar__` al filtrar términos
+
+### Decimal Character
+- `<select id="cdep-decimal-char">` en mapping.php con opciones Coma `,` (Latino) y Punto `.` (US)
+- `CDEP_PRODUCTS::setDecimalChar($char)` establece el carácter decimal estático
+- `CDEP_PRODUCTS::parseNumber()` maneja ambos formatos: Latino (coma decimal, punto miles) y US (punto decimal, coma miles)
+- Aceptado como `decimal_char` en handlers `cdep_update_preview`, `cdep_update_batch_skus`, `cdep_update_single`
+
+### CSV Delimiter
+- `<select id="cdep-delimiter">` en mapping.php con opciones: Auto, Coma, Punto y coma, Tabulación
+- `CDEP_EXCEL::detectDelimiter()` método privado que auto-detecta el delimitador
+- Delimitador almacenado en caché (`CDEP_SELECTED_DATA`) y re-parsea al cambiar
+- Aceptado como `delimiter` en handlers `cdep_refresh_cache`, `cdep_reparse_file`, `cdep_drive_select_file`
+
+### Export / Import Config
+- Botones "Exportar Configuración" e "Importar Configuración" en mapping.php
+- Exporta JSON con: `cdep_mapping_config`, `cdep_manual_data`, `cdep_ai_cache`, `cdep_ai_prompts`, `cdep_folder`
+- Import via `FileReader` + `JSON.parse`, recarga la página al completar
+- Handler JS en admin.js: `cdep-export-config` click y `cdep-import-file` change
 
 ### Condiciones (brand, category, attributes)
 - Activadas via opción `__condicionar__` en el select principal
