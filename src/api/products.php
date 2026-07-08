@@ -287,7 +287,9 @@ class CDEP_PRODUCTS
                     }
                 }
             } elseif (isset(self::$fields[$key])) {
-                if (is_string($colIndex) && strpos($colIndex, 'calc:') === 0) {
+                if (is_string($colIndex) && strpos($colIndex, 'custom:') === 0) {
+                    $updateMapping[$key] = $colIndex;
+                } elseif (is_string($colIndex) && strpos($colIndex, 'calc:') === 0) {
                     $updateMapping[$key] = $colIndex;
                 } elseif ($colIndex === '__manual__') {
                     $updateMapping[$key] = '__manual__';
@@ -551,7 +553,9 @@ class CDEP_PRODUCTS
                     }
                 }
             } elseif (isset(self::$fields[$key])) {
-                if (is_string($colIndex) && strpos($colIndex, 'calc:') === 0) {
+                if (is_string($colIndex) && strpos($colIndex, 'custom:') === 0) {
+                    $updateMapping[$key] = $colIndex;
+                } elseif (is_string($colIndex) && strpos($colIndex, 'calc:') === 0) {
                     $updateMapping[$key] = $colIndex;
                 } elseif ($colIndex === '__manual__') {
                     $updateMapping[$key] = '__manual__';

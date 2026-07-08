@@ -455,12 +455,17 @@ jQuery(function ($) {
             decimal_char: $('#cdep-decimal-char').val() || ',',
         };
 
-        // Update fields (existing products): regular_price, sale_price, stock_quantity, description, short_description
+        // Update fields (existing products)
         $('.cdep-field-select').each(function () {
             var field = $(this).data('field');
             var val = $(this).val();
             if (val) {
-                if (val === '__calc__') {
+                if (val === '__custom__') {
+                    var template = $(this).closest('td').find('.cdep-custom-template-input').val();
+                    if (template) {
+                        mapping[field] = 'custom:' + template;
+                    }
+                } else if (val === '__calc__') {
                     var calcExpr = $(this).closest('td').find('.cdep-calc-input').val();
                     if (calcExpr) {
                         mapping[field] = 'calc:' + calcExpr;
@@ -786,7 +791,11 @@ jQuery(function ($) {
                 if (mapping[field]) {
                     var val = mapping[field];
                     var $td = $(this).closest('td');
-                    if (typeof val === 'string' && val.indexOf('calc:') === 0) {
+                    if (typeof val === 'string' && val.indexOf('custom:') === 0) {
+                        $(this).val('__custom__');
+                        $td.find('.cdep-custom-template-input').val(val.substring(7));
+                        $td.find('.cdep-custom-template-wrap').show();
+                    } else if (typeof val === 'string' && val.indexOf('calc:') === 0) {
                         $(this).val('__calc__');
                         $td.find('.cdep-calc-input').val(val.substring(5));
                         $td.find('.cdep-calc-wrap').show();

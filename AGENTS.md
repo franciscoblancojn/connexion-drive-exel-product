@@ -103,7 +103,7 @@ Usa las constantes definidas en `index.php`:
 
 ### Mapping (buildMapping)
 - `buildMapping()` retorna un objeto con tres grupos:
-  - **Update**: keys directas `regular_price`, `sale_price`, `stock_quantity`, `description`, `short_description`, `product_name` (índices de columna, `calc:expr`, o `__manual__`, y `__ai__` para description/short_description/product_name)
+  - **Update**: keys directas `regular_price`, `sale_price`, `stock_quantity`, `description`, `short_description`, `product_name` (índices de columna, `custom:template`, `calc:expr`, o `__manual__`, y `__ai__` para description/short_description/product_name)
   - **Create**: keys con prefijo `create_` (ej: `create_product_name`, `create_regular_price`) — valor = índice de columna, `custom:template`, `__manual__`, `__ai__`, o `calc:expr`
   - **Config**: `creation_brand` (nombre del término, no slug), `creation_category` (nombre de categoría), `creation_categories` (array de nombres para múltiples categorías), `creation_brand` (nombre del término), `attributes` (array `[{taxonomy, term, conditions}]` con soporte de `term: '__manual__'`), `conditions` (objeto `{target: [{column, operator, value, apply}]}` para condicionar marca/categoría), `config_vars` (objeto `{varname: value}` para templates)
 
