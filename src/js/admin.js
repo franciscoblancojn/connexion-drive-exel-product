@@ -1413,6 +1413,33 @@ jQuery(function ($) {
     });
 
     // Row-level category add/remove in preview table
+    function getCatOptionsByParent(catOptions, parentPath) {
+        if (!parentPath) return catOptions;
+        var result = [];
+        $.each(catOptions, function (i, opt) {
+            if (opt.text === parentPath || opt.text.indexOf(parentPath + ' > ') === 0) {
+                result.push({ value: opt.value, text: opt.text });
+            }
+        });
+        return result.length > 0 ? result : catOptions;
+    }
+
+    function getParentPathFromCatOptions(catOptions, slug) {
+        if (!slug) return '';
+        var text = '';
+        $.each(catOptions, function (i, opt) {
+            if (opt.value === slug) {
+                text = opt.text;
+                return false;
+            }
+        });
+        if (!text) return '';
+        var parts = text.split(' > ');
+        if (parts.length <= 1) return '';
+        parts.pop();
+        return parts.join(' > ');
+    }
+
     $(document).on('click', '.cdep-category-add-row', function () {
         var sku = $(this).data('sku');
         var $container = $(this).siblings('.cdep-row-categories-container');
@@ -1420,12 +1447,30 @@ jQuery(function ($) {
         var $firstCatSelect = $('#cdep-categories-container .cdep-category-select').first();
         if ($firstCatSelect.length) {
             var seen = {};
+            var allOpts = [];
             $firstCatSelect.find('option').each(function () {
                 var v = $(this).val();
                 if (v && v !== '__condicionar__' && v !== '__manual__' && !seen[v]) {
                     seen[v] = true;
-                    catOptsHtml += '<option value="' + v + '">' + $(this).text() + '</option>';
+                    allOpts.push({ value: v, text: $(this).text() });
                 }
+            });
+            // Find context from existing selects in the container
+            var contextSlug = '';
+            $container.find('select.cdep-manual-input[data-field="__category__"]').each(function () {
+                var val = $(this).val();
+                if (val) {
+                    contextSlug = val;
+                    return false;
+                }
+            });
+            var filteredOpts = allOpts;
+            if (contextSlug) {
+                var parentPath = getParentPathFromCatOptions(allOpts, contextSlug);
+                filteredOpts = getCatOptionsByParent(allOpts, parentPath);
+            }
+            $.each(filteredOpts, function (i, opt) {
+                catOptsHtml += '<option value="' + opt.value + '">' + opt.text + '</option>';
             });
         }
         var $newItem = $('<div class="cdep-row-category-item" style="margin-top:2px">');
@@ -1618,12 +1663,19 @@ jQuery(function ($) {
                     if (state.manualData && state.manualData[p.sku] && state.manualData[p.sku]['__categories__']) {
                         allSavedCats = state.manualData[p.sku]['__categories__'];
                     }
+                    // Determine context from the first saved category to filter siblings
+                    var rowContextSlug = allSavedCats.length > 0 ? allSavedCats[0] : '';
+                    var rowParentPath = getParentPathFromCatOptions(catOptions, rowContextSlug);
                     $.each(allSavedCats, function (ci, savedExtraCat) {
+                        var filteredOpts = catOptions;
+                        if (ci > 0 && rowParentPath) {
+                            filteredOpts = getCatOptionsByParent(catOptions, rowParentPath);
+                        }
                         html += '<div class="cdep-row-category-item" style="margin-top:2px">';
                         html += '<select class="cdep-manual-input" data-sku="' + escHtml(p.sku) + '" data-field="__category__" style="width:calc(100% - 24px)">';
                         html += '<option value="">— Sin categoría —</option>';
-                        if (catOptions) {
-                            $.each(catOptions, function (i, opt) {
+                        if (filteredOpts) {
+                            $.each(filteredOpts, function (i, opt) {
                                 var sel = opt.value === savedExtraCat ? ' selected' : '';
                                 html += '<option value="' + opt.value + '"' + sel + '>' + escHtml(opt.text) + '</option>';
                             });
